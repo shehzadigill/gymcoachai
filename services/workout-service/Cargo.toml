@@ -1,0 +1,8 @@
+[package]
+name = "workout-service"
+version = "0.1.0"
+edition = "2021"
+
+# Note: TypeScript configuration for this service is located at ../../packages/tsconfig/lambda.json
+
+[dependencies]

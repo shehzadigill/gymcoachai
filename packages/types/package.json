@@ -1,0 +1,28 @@
+{
+  "name": "types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for GymCoach AI monorepo",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "private": true,
+  "files": [
+    "index.d.ts",
+    "index.js"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "typescript",
+    "types",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.16.1",
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

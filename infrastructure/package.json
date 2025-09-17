@@ -1,0 +1,39 @@
+{
+  "name": "infrastructure",
+  "version": "1.0.0",
+  "description": "AWS CDK infrastructure for GymCoach AI",
+  "main": "lib/infrastructure-stack.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "synth": "cdk synth",
+    "diff": "cdk diff"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "infrastructure",
+    "lambda",
+    "cloudfront"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.16.1",
+  "devDependencies": {
+    "@aws-cdk/aws-lambda-python-alpha": "2.215.0-alpha.0",
+    "@types/node": "^20.19.15",
+    "aws-cdk-lib": "^2.215.0",
+    "constructs": "^10.4.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.2.0",
+    "source-map-support": "^0.5.21"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "gymcoach-ai",
+  "version": "1.0.0",
+  "description": "AI-powered gym coach application with Next.js, React Native, and AWS Lambda",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "clean": "turbo clean",
+    "cdk:deploy": "turbo cdk:deploy",
+    "cdk:synth": "turbo cdk:synth",
+    "cdk:diff": "turbo cdk:diff",
+    "cdk:destroy": "turbo cdk:destroy",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md}\""
+  },
+  "keywords": [
+    "ai",
+    "fitness",
+    "gym",
+    "coach",
+    "nextjs",
+    "react-native",
+    "aws",
+    "lambda"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.16.1",
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.6"
+  }
+}

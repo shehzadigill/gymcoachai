@@ -1,0 +1,48 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "description": "Shared authentication package for GymCoach AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./components": "./dist/components/index.js",
+    "./hooks": "./dist/hooks/index.js",
+    "./utils": "./dist/utils/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "auth",
+    "cognito",
+    "amplify",
+    "authentication",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.16.1",
+  "dependencies": {
+    "@aws-amplify/ui-react": "^6.12.0",
+    "@aws-amplify/ui-react-native": "^2.6.0",
+    "@types/react": "^19.1.13",
+    "aws-amplify": "^6.15.6",
+    "types": "^0.1.1"
+  },
+  "devDependencies": {
+    "tsconfig": "^7.0.0",
+    "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  }
+}

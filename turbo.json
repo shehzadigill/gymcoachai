@@ -1,0 +1,65 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [
+        "dist/**",
+        "build/**",
+        ".next/**",
+        "!.next/cache/**",
+        "lib/**"
+      ],
+      "env": ["NODE_ENV", "NEXT_PUBLIC_*"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "env": ["NODE_ENV", "NEXT_PUBLIC_*"]
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "type-check": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "env": ["NODE_ENV", "CI"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "cdk:deploy": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "env": [
+        "CDK_DEFAULT_ACCOUNT",
+        "CDK_DEFAULT_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY"
+      ]
+    },
+    "cdk:synth": {
+      "dependsOn": ["build"],
+      "outputs": ["cdk.out/**"]
+    },
+    "cdk:diff": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "cdk:destroy": {
+      "cache": false,
+      "env": [
+        "CDK_DEFAULT_ACCOUNT",
+        "CDK_DEFAULT_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY"
+      ]
+    }
+  }
+}
