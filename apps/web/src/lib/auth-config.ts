@@ -11,14 +11,14 @@ export const initializeAuth = () => {
     // Fallback configuration for development
     configureAuth({
       userPoolId:
-        process.env.NEXT_PUBLIC_USER_POOL_ID || 'us-north-1_XXXXXXXXX',
+        process.env.NEXT_PUBLIC_USER_POOL_ID || 'eu-north-1_XXXXXXXXX',
       userPoolClientId:
         process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID ||
         'xxxxxxxxxxxxxxxxxxxxxxxxxx',
       userPoolDomain:
         process.env.NEXT_PUBLIC_USER_POOL_DOMAIN ||
-        'gymcoach-ai-dev.auth.us-north-1.amazoncognito.com',
-      region: process.env.NEXT_PUBLIC_AWS_REGION || 'us-north-1',
+        'gymcoach-ai-dev.auth.eu-north-1.amazoncognito.com',
+      region: process.env.NEXT_PUBLIC_AWS_REGION || 'eu-north-1',
       cloudFrontUrl:
         process.env.NEXT_PUBLIC_CLOUDFRONT_URL ||
         'https://d1234567890.cloudfront.net',

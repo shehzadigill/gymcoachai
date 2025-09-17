@@ -9,6 +9,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
+// Removed MonitoringStack import to avoid CloudWatch costs
 
 export class GymCoachAIStack extends cdk.Stack {
   public readonly userPool: cognito.UserPool;
@@ -27,7 +28,7 @@ export class GymCoachAIStack extends cdk.Stack {
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: true,
+      // Removed pointInTimeRecovery to avoid costs (20% of table cost)
     });
 
     // Add GSI for different access patterns
@@ -147,6 +148,28 @@ export class GymCoachAIStack extends cdk.Stack {
       },
     });
 
+    // Create User Groups for Role-Based Access Control
+    const adminGroup = new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'admin',
+      description: 'Administrators with full access',
+      precedence: 1,
+    });
+
+    const coachGroup = new cognito.CfnUserPoolGroup(this, 'CoachGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'coach',
+      description: 'Coaches with access to user data for coaching',
+      precedence: 2,
+    });
+
+    const userGroup = new cognito.CfnUserPoolGroup(this, 'UserGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'user',
+      description: 'Regular users with access to their own data',
+      precedence: 3,
+    });
+
     // Create Lambda Authorizer
     const authorizerLambda = new lambda.Function(this, 'AuthorizerLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -221,17 +244,29 @@ export class GymCoachAIStack extends cdk.Stack {
       'UserService',
       'user-service'
     );
+    const userProfileServiceLambda = this.createLambdaFunction(
+      'UserProfileService',
+      'user-profile-service'
+    );
     const workoutServiceLambda = this.createLambdaFunction(
       'WorkoutService',
       'workout-service'
+    );
+    const coachingServiceLambda = this.createLambdaFunction(
+      'CoachingService',
+      'coaching-service'
+    );
+    const analyticsServiceLambda = this.createLambdaFunction(
+      'AnalyticsService',
+      'analytics-service'
     );
     const nutritionServiceLambda = this.createLambdaFunction(
       'NutritionService',
       'nutrition-service'
     );
-    const aiServiceLambda = this.createLambdaFunction(
+    const aiServiceLambda = this.createPythonLambdaFunction(
       'AIService',
-      'ai-service'
+      'ai-service-python'
     );
 
     // Enable Lambda Function URLs
@@ -245,7 +280,37 @@ export class GymCoachAIStack extends cdk.Stack {
       },
     });
 
+    const userProfileServiceUrl = userProfileServiceLambda.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowCredentials: false,
+        allowedHeaders: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedOrigins: ['*'],
+      },
+    });
+
     const workoutServiceUrl = workoutServiceLambda.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowCredentials: false,
+        allowedHeaders: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedOrigins: ['*'],
+      },
+    });
+
+    const coachingServiceUrl = coachingServiceLambda.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowCredentials: false,
+        allowedHeaders: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedOrigins: ['*'],
+      },
+    });
+
+    const analyticsServiceUrl = analyticsServiceLambda.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
       cors: {
         allowCredentials: false,
@@ -299,8 +364,35 @@ export class GymCoachAIStack extends cdk.Stack {
             originRequestPolicy:
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
+          '/api/user-profiles/*': {
+            origin: new origins.HttpOrigin(userProfileServiceUrl.url),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+            originRequestPolicy:
+              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          },
           '/api/workouts/*': {
             origin: new origins.HttpOrigin(workoutServiceUrl.url),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+            originRequestPolicy:
+              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          },
+          '/api/coaching/*': {
+            origin: new origins.HttpOrigin(coachingServiceUrl.url),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+            originRequestPolicy:
+              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          },
+          '/api/analytics/*': {
+            origin: new origins.HttpOrigin(analyticsServiceUrl.url),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -344,11 +436,69 @@ export class GymCoachAIStack extends cdk.Stack {
       }
     );
 
-    // Create CloudWatch Log Groups
-    new logs.LogGroup(this, 'AuthorizerLogGroup', {
-      logGroupName: `/aws/lambda/${authorizerLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
+    // Create S3 Buckets
+    const userUploadsBucket = new s3.Bucket(this, 'UserUploadsBucket', {
+      bucketName: `gymcoach-ai-user-uploads-${this.account}`,
+      // Removed versioning to avoid costs
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      lifecycleRules: [
+        {
+          id: 'DeleteIncompleteMultipartUploads',
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+        },
+        {
+          id: 'TransitionToIA',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+        },
+        {
+          id: 'TransitionToGlacier',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(90),
+            },
+          ],
+        },
+      ],
     });
+
+    const staticAssetsBucket = new s3.Bucket(this, 'StaticAssetsBucket', {
+      bucketName: `gymcoach-ai-static-assets-${this.account}`,
+      // Removed versioning to avoid costs
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      publicReadAccess: false,
+    });
+
+    // Create S3 Bucket for processed images
+    const processedImagesBucket = new s3.Bucket(this, 'ProcessedImagesBucket', {
+      bucketName: `gymcoach-ai-processed-images-${this.account}`,
+      // Removed versioning to avoid costs
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // Removed lifecycle rules to avoid costs
+    });
+
+    // Grant permissions to Lambda functions for S3 access
+    userUploadsBucket.grantReadWrite(userProfileServiceLambda);
+    userUploadsBucket.grantReadWrite(workoutServiceLambda);
+    userUploadsBucket.grantReadWrite(analyticsServiceLambda);
+
+    processedImagesBucket.grantReadWrite(userProfileServiceLambda);
+    processedImagesBucket.grantReadWrite(workoutServiceLambda);
+    processedImagesBucket.grantReadWrite(analyticsServiceLambda);
+
+    // Removed CloudWatch Log Groups to avoid costs
+    // Lambda functions will use default log groups (free tier: 5GB/month)
 
     // Outputs
     new cdk.CfnOutput(this, 'UserPoolId', {
@@ -381,9 +531,24 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'User Service Lambda Function URL',
     });
 
+    new cdk.CfnOutput(this, 'UserProfileServiceUrl', {
+      value: userProfileServiceUrl.url,
+      description: 'User Profile Service Lambda Function URL',
+    });
+
     new cdk.CfnOutput(this, 'WorkoutServiceUrl', {
       value: workoutServiceUrl.url,
       description: 'Workout Service Lambda Function URL',
+    });
+
+    new cdk.CfnOutput(this, 'CoachingServiceUrl', {
+      value: coachingServiceUrl.url,
+      description: 'Coaching Service Lambda Function URL',
+    });
+
+    new cdk.CfnOutput(this, 'AnalyticsServiceUrl', {
+      value: analyticsServiceUrl.url,
+      description: 'Analytics Service Lambda Function URL',
     });
 
     new cdk.CfnOutput(this, 'NutritionServiceUrl', {
@@ -395,6 +560,24 @@ export class GymCoachAIStack extends cdk.Stack {
       value: aiServiceUrl.url,
       description: 'AI Service Lambda Function URL',
     });
+
+    new cdk.CfnOutput(this, 'UserUploadsBucketName', {
+      value: userUploadsBucket.bucketName,
+      description: 'User Uploads S3 Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'StaticAssetsBucketName', {
+      value: staticAssetsBucket.bucketName,
+      description: 'Static Assets S3 Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'ProcessedImagesBucketName', {
+      value: processedImagesBucket.bucketName,
+      description: 'Processed Images S3 Bucket Name',
+    });
+
+    // Removed monitoring stack to avoid CloudWatch costs
+    // this.createMonitoringStack();
   }
 
   private createLambdaFunction(
@@ -402,35 +585,101 @@ export class GymCoachAIStack extends cdk.Stack {
     serviceName: string
   ): lambda.Function {
     return new lambda.Function(this, `${name}Lambda`, {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-        exports.handler = async (event) => {
-          console.log('${serviceName} event:', JSON.stringify(event, null, 2));
-          
-          return {
-            statusCode: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-              'Access-Control-Allow-Methods': 'OPTIONS,POST,GET,PUT,DELETE'
-            },
-            body: JSON.stringify({
-              message: 'Hello from ${serviceName} Lambda!',
-              timestamp: new Date().toISOString(),
-              service: '${serviceName}',
-              event: event
-            })
-          };
-        };
-      `),
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
+      code: lambda.Code.fromAsset(
+        `../services/${serviceName}/target/lambda/${serviceName}/bootstrap.zip`
+      ),
       environment: {
         TABLE_NAME: this.mainTable.tableName,
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        USER_UPLOADS_BUCKET: userUploadsBucket.bucketName,
+        STATIC_ASSETS_BUCKET: staticAssetsBucket.bucketName,
+        PROCESSED_IMAGES_BUCKET: processedImagesBucket.bucketName,
+        JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
+        COGNITO_REGION: this.region,
+        COGNITO_USER_POOL_ID: this.userPool.userPoolId,
+        RUST_LOG: 'info',
+        RUST_BACKTRACE: '1',
       },
       timeout: cdk.Duration.seconds(30),
+      memorySize: 256, // Optimized for cold starts
+      reservedConcurrentExecutions: 10, // Prevent cold starts during high load
+      // Removed log retention to use free tier defaults (5GB/month free)
+      // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
+      layers: [this.createAuthLayer()],
     });
   }
+
+  private createPythonLambdaFunction(
+    name: string,
+    serviceName: string
+  ): lambda.Function {
+    return new lambda.Function(this, `${name}Lambda`, {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'lambda_function.lambda_handler',
+      code: lambda.Code.fromAsset(`../services/${serviceName}`),
+      environment: {
+        DYNAMODB_TABLE: this.mainTable.tableName,
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        USER_UPLOADS_BUCKET: userUploadsBucket.bucketName,
+        STATIC_ASSETS_BUCKET: staticAssetsBucket.bucketName,
+        PROCESSED_IMAGES_BUCKET: processedImagesBucket.bucketName,
+        JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
+        COGNITO_REGION: this.region,
+        COGNITO_USER_POOL_ID: this.userPool.userPoolId,
+        AWS_REGION: this.region,
+        PYTHONPATH: '/var/runtime:/var/task',
+      },
+      timeout: cdk.Duration.minutes(5), // AI functions may need more time
+      memorySize: 1024, // AI functions need more memory
+      reservedConcurrentExecutions: 5, // Limit concurrent executions for AI functions
+      // Removed log retention to use free tier defaults (5GB/month free)
+      // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
+      layers: [this.createPythonAuthLayer()],
+    });
+  }
+
+  private createAuthLayer(): lambda.LayerVersion {
+    return new lambda.LayerVersion(this, 'AuthLayer', {
+      code: lambda.Code.fromAsset(
+        '../services/auth-layer/target/lambda/auth-layer/bootstrap.zip'
+      ),
+      compatibleRuntimes: [lambda.Runtime.PROVIDED_AL2],
+      description:
+        'Authentication and authorization layer for GymCoach AI services',
+    });
+  }
+
+  private createPythonAuthLayer(): lambda.LayerVersion {
+    return new lambda.LayerVersion(this, 'PythonAuthLayer', {
+      code: lambda.Code.fromAsset('../services/ai-service-python'),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
+      description: 'Python authentication layer for AI services',
+    });
+  }
+
+  // Removed createMonitoringStack method to avoid CloudWatch costs
+  // private createMonitoringStack() {
+  //   // Create monitoring stack
+  //   new MonitoringStack(this, 'MonitoringStack', {
+  //     lambdaFunctions: [
+  //       this.userServiceLambda,
+  //       this.userProfileServiceLambda,
+  //       this.workoutServiceLambda,
+  //       this.coachingServiceLambda,
+  //       this.analyticsServiceLambda,
+  //       this.nutritionServiceLambda,
+  //       this.aiServiceLambda,
+  //     ],
+  //     dynamoDbTable: this.mainTable,
+  //     s3Buckets: [
+  //       this.userUploadsBucket,
+  //       this.staticAssetsBucket,
+  //       this.processedImagesBucket,
+  //     ],
+  //   });
+  // }
 }

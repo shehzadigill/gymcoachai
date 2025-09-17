@@ -48,7 +48,7 @@ export const getAuthConfig = (): AuthConfig => {
   const userPoolId = process.env.NEXT_PUBLIC_USER_POOL_ID || '';
   const userPoolClientId = process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID || '';
   const userPoolDomain = process.env.NEXT_PUBLIC_USER_POOL_DOMAIN || '';
-  const region = process.env.NEXT_PUBLIC_AWS_REGION || 'us-north-1';
+  const region = process.env.NEXT_PUBLIC_AWS_REGION || 'eu-north-1';
   const cloudFrontUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_URL || '';
 
   if (!userPoolId || !userPoolClientId || !userPoolDomain || !cloudFrontUrl) {

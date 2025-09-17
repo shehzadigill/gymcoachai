@@ -1,0 +1,878 @@
+openapi: 3.0.3
+info:
+  title: User Profile Service API
+  description: API for managing user profiles, preferences, and statistics in the GymCoach AI application
+  version: 1.0.0
+  contact:
+    name: GymCoach AI Team
+    email: support@gymcoach-ai.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.gymcoach-ai.com
+    description: Production server
+  - url: https://staging-api.gymcoach-ai.com
+    description: Staging server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/user-profiles:
+    post:
+      summary: Create user profile
+      description: Create a new user profile with basic information and preferences
+      operationId: createUserProfile
+      tags:
+        - User Profiles
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserProfileRequest'
+            example:
+              userId: "user123"
+              email: "user@example.com"
+              name: "John Doe"
+              fitnessGoals: "Build muscle"
+              experienceLevel: "beginner"
+              preferences:
+                units: "metric"
+                timezone: "UTC"
+                notifications:
+                  email: true
+                  push: true
+                  workoutReminders: true
+                  nutritionReminders: true
+                privacy:
+                  profileVisibility: "private"
+                  workoutSharing: false
+                  progressSharing: false
+      responses:
+        '201':
+          description: User profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Bad request - invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - user profile already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user-profiles/{userId}:
+    get:
+      summary: Get user profile
+      description: Retrieve a user profile by user ID
+      operationId: getUserProfile
+      tags:
+        - User Profiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update user profile
+      description: Update an existing user profile
+      operationId: updateUserProfile
+      tags:
+        - User Profiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserProfileRequest'
+            example:
+              name: "John Smith"
+              fitnessGoals: "Lose weight"
+              experienceLevel: "intermediate"
+              preferences:
+                units: "imperial"
+                timezone: "America/New_York"
+                notifications:
+                  email: true
+                  push: false
+                  workoutReminders: true
+                  nutritionReminders: false
+                privacy:
+                  profileVisibility: "public"
+                  workoutSharing: true
+                  progressSharing: true
+      responses:
+        '200':
+          description: User profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Bad request - invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete user profile
+      description: Delete a user profile and all associated data
+      operationId: deleteUserProfile
+      tags:
+        - User Profiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+      responses:
+        '204':
+          description: User profile deleted successfully
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user-profiles/{userId}/preferences:
+    get:
+      summary: Get user preferences
+      description: Retrieve user preferences and settings
+      operationId: getUserPreferences
+      tags:
+        - User Preferences
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User preferences not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update user preferences
+      description: Update user preferences and settings
+      operationId: updateUserPreferences
+      tags:
+        - User Preferences
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferences'
+            example:
+              units: "metric"
+              timezone: "UTC"
+              notifications:
+                email: true
+                push: true
+                workoutReminders: true
+                nutritionReminders: true
+              privacy:
+                profileVisibility: "private"
+                workoutSharing: false
+                progressSharing: false
+      responses:
+        '200':
+          description: User preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '400':
+          description: Bad request - invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User preferences not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user-profiles/{userId}/stats:
+    get:
+      summary: Get user statistics
+      description: Retrieve user statistics and metrics
+      operationId: getUserStats
+      tags:
+        - User Statistics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+        - name: period
+          in: query
+          required: false
+          description: Time period for statistics
+          schema:
+            type: string
+            enum: [week, month, quarter, year, all]
+            default: month
+        - name: includeDetails
+          in: query
+          required: false
+          description: Include detailed statistics
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: User statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStatistics'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User statistics not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user-profiles/{userId}/upload:
+    post:
+      summary: Generate upload URL
+      description: Generate a presigned URL for uploading user profile pictures
+      operationId: generateUploadUrl
+      tags:
+        - File Upload
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique identifier for the user
+          schema:
+            type: string
+            example: "user123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+            example:
+              fileName: "profile-picture.jpg"
+              fileType: "image/jpeg"
+              fileSize: 1048576
+      responses:
+        '200':
+          description: Upload URL generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Bad request - invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication service
+
+  schemas:
+    UserProfile:
+      type: object
+      required:
+        - userId
+        - email
+        - name
+        - fitnessGoals
+        - experienceLevel
+        - preferences
+        - createdAt
+        - updatedAt
+      properties:
+        userId:
+          type: string
+          description: Unique identifier for the user
+          example: "user123"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        name:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        fitnessGoals:
+          type: string
+          description: User's fitness goals
+          enum: [Build muscle, Lose weight, Improve endurance, General fitness, Sports performance]
+          example: "Build muscle"
+        experienceLevel:
+          type: string
+          description: User's fitness experience level
+          enum: [beginner, intermediate, advanced, expert]
+          example: "beginner"
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+        profilePictureUrl:
+          type: string
+          format: uri
+          description: URL to user's profile picture
+          example: "https://s3.amazonaws.com/gymcoach-ai-profiles/user123/profile.jpg"
+        createdAt:
+          type: string
+          format: date-time
+          description: Profile creation timestamp
+          example: "2024-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Profile last update timestamp
+          example: "2024-01-01T00:00:00Z"
+
+    UserPreferences:
+      type: object
+      required:
+        - units
+        - timezone
+        - notifications
+        - privacy
+      properties:
+        units:
+          type: string
+          description: Preferred unit system
+          enum: [metric, imperial]
+          example: "metric"
+        timezone:
+          type: string
+          description: User's timezone
+          example: "UTC"
+        notifications:
+          $ref: '#/components/schemas/NotificationPreferences'
+        privacy:
+          $ref: '#/components/schemas/PrivacyPreferences'
+
+    NotificationPreferences:
+      type: object
+      required:
+        - email
+        - push
+        - workoutReminders
+        - nutritionReminders
+      properties:
+        email:
+          type: boolean
+          description: Enable email notifications
+          example: true
+        push:
+          type: boolean
+          description: Enable push notifications
+          example: true
+        workoutReminders:
+          type: boolean
+          description: Enable workout reminders
+          example: true
+        nutritionReminders:
+          type: boolean
+          description: Enable nutrition reminders
+          example: true
+
+    PrivacyPreferences:
+      type: object
+      required:
+        - profileVisibility
+        - workoutSharing
+        - progressSharing
+      properties:
+        profileVisibility:
+          type: string
+          description: Profile visibility setting
+          enum: [private, friends, public]
+          example: "private"
+        workoutSharing:
+          type: boolean
+          description: Allow sharing workout data
+          example: false
+        progressSharing:
+          type: boolean
+          description: Allow sharing progress data
+          example: false
+
+    UserStatistics:
+      type: object
+      required:
+        - userId
+        - period
+        - totalWorkouts
+        - totalDuration
+        - averageWorkoutDuration
+        - favoriteExercises
+        - progressPhotos
+        - achievements
+        - createdAt
+        - updatedAt
+      properties:
+        userId:
+          type: string
+          description: Unique identifier for the user
+          example: "user123"
+        period:
+          type: string
+          description: Statistics period
+          enum: [week, month, quarter, year, all]
+          example: "month"
+        totalWorkouts:
+          type: integer
+          description: Total number of workouts completed
+          example: 24
+        totalDuration:
+          type: integer
+          description: Total workout duration in minutes
+          example: 1440
+        averageWorkoutDuration:
+          type: number
+          format: float
+          description: Average workout duration in minutes
+          example: 60.0
+        favoriteExercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseStats'
+          description: Most frequently performed exercises
+        progressPhotos:
+          type: integer
+          description: Number of progress photos uploaded
+          example: 12
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Achievement'
+          description: User achievements unlocked
+        createdAt:
+          type: string
+          format: date-time
+          description: Statistics creation timestamp
+          example: "2024-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Statistics last update timestamp
+          example: "2024-01-01T00:00:00Z"
+
+    ExerciseStats:
+      type: object
+      required:
+        - exerciseId
+        - exerciseName
+        - count
+        - totalDuration
+      properties:
+        exerciseId:
+          type: string
+          description: Unique identifier for the exercise
+          example: "ex123"
+        exerciseName:
+          type: string
+          description: Name of the exercise
+          example: "Push-ups"
+        count:
+          type: integer
+          description: Number of times performed
+          example: 150
+        totalDuration:
+          type: integer
+          description: Total duration in minutes
+          example: 300
+
+    Achievement:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - unlockedAt
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the achievement
+          example: "ach123"
+        name:
+          type: string
+          description: Achievement name
+          example: "First Workout"
+        description:
+          type: string
+          description: Achievement description
+          example: "Completed your first workout"
+        unlockedAt:
+          type: string
+          format: date-time
+          description: Achievement unlock timestamp
+          example: "2024-01-01T00:00:00Z"
+
+    CreateUserProfileRequest:
+      type: object
+      required:
+        - userId
+        - email
+        - name
+        - fitnessGoals
+        - experienceLevel
+        - preferences
+      properties:
+        userId:
+          type: string
+          description: Unique identifier for the user
+          example: "user123"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        name:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        fitnessGoals:
+          type: string
+          description: User's fitness goals
+          enum: [Build muscle, Lose weight, Improve endurance, General fitness, Sports performance]
+          example: "Build muscle"
+        experienceLevel:
+          type: string
+          description: User's fitness experience level
+          enum: [beginner, intermediate, advanced, expert]
+          example: "beginner"
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+
+    UpdateUserProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: User's full name
+          example: "John Smith"
+        fitnessGoals:
+          type: string
+          description: User's fitness goals
+          enum: [Build muscle, Lose weight, Improve endurance, General fitness, Sports performance]
+          example: "Lose weight"
+        experienceLevel:
+          type: string
+          description: User's fitness experience level
+          enum: [beginner, intermediate, advanced, expert]
+          example: "intermediate"
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+
+    UploadRequest:
+      type: object
+      required:
+        - fileName
+        - fileType
+        - fileSize
+      properties:
+        fileName:
+          type: string
+          description: Name of the file to upload
+          example: "profile-picture.jpg"
+        fileType:
+          type: string
+          description: MIME type of the file
+          example: "image/jpeg"
+        fileSize:
+          type: integer
+          description: Size of the file in bytes
+          example: 1048576
+
+    UploadResponse:
+      type: object
+      required:
+        - uploadUrl
+        - fileKey
+        - expiresAt
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+          description: Presigned URL for uploading the file
+          example: "https://s3.amazonaws.com/gymcoach-ai-profiles/user123/profile.jpg?X-Amz-Algorithm=..."
+        fileKey:
+          type: string
+          description: S3 key for the uploaded file
+          example: "user123/profile.jpg"
+        expiresAt:
+          type: string
+          format: date-time
+          description: URL expiration timestamp
+          example: "2024-01-01T01:00:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "ValidationError"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid input data provided"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2024-01-01T00:00:00Z"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        requestId:
+          type: string
+          description: Unique identifier for the request
+          example: "req123"
+
+tags:
+  - name: User Profiles
+    description: Operations for managing user profiles
+  - name: User Preferences
+    description: Operations for managing user preferences and settings
+  - name: User Statistics
+    description: Operations for retrieving user statistics and metrics
+  - name: File Upload
+    description: Operations for file uploads and media management

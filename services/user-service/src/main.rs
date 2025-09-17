@@ -1,9 +1,43 @@
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use aws_sdk_dynamodb::{Client as DynamoDbClient};
+use aws_config::meta::region::RegionProviderChain;
+use std::sync::Arc;
+use once_cell::sync::Lazy;
+use tracing::{info, error};
+use anyhow::Result;
+
+mod models;
+mod database;
+mod handlers;
+
+use handlers::*;
+use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
+
+// Global clients for cold start optimization
+static DYNAMODB_CLIENT: Lazy<Arc<DynamoDbClient>> = Lazy::new(|| {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
+        let config = aws_config::from_env().region(region_provider).load().await;
+        Arc::new(DynamoDbClient::new(&config))
+    })
+});
+
+static AUTH_LAYER: Lazy<AuthLayer> = Lazy::new(|| AuthLayer::new());
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_target(false)
+        .without_time()
+        .init();
+
+    // Initialize global clients
+    let _ = &*DYNAMODB_CLIENT;
+    let _ = &*AUTH_LAYER;
+
     let func = service_fn(handler);
     lambda_runtime::run(func).await?;
     Ok(())
@@ -11,49 +45,125 @@ async fn main() -> Result<(), Error> {
 
 async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let (event, _context) = event.into_parts();
-    
-    println!("User service event: {:?}", event);
-    
+
+    info!("User service event: {:?}", event);
+
+    // Convert to auth event format
+    let auth_event = AuthLambdaEvent {
+        headers: event.get("headers")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                    .collect()
+            }),
+        request_context: event.get("requestContext")
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        path_parameters: event.get("pathParameters")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                    .collect()
+            }),
+        query_string_parameters: event.get("queryStringParameters")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                    .collect()
+            }),
+        body: event.get("body")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+    };
+
+    // Authenticate request
+    let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
+        Ok(auth_result) => {
+            if !auth_result.is_authorized {
+                return Ok(json!({
+                    "statusCode": 403,
+                    "headers": get_cors_headers(),
+                    "body": json!({
+                        "error": "Forbidden",
+                        "message": auth_result.error.unwrap_or("Access denied".to_string())
+                    })
+                }));
+            }
+            auth_result.context.unwrap()
+        }
+        Err(e) => {
+            error!("Authentication error: {}", e);
+            return Ok(json!({
+                "statusCode": 401,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Unauthorized",
+                    "message": "Authentication failed"
+                })
+            }));
+        }
+    };
+
     let http_method = event["requestContext"]["http"]["method"]
         .as_str()
         .unwrap_or("GET");
-    
+
     let path = event["rawPath"]
         .as_str()
         .unwrap_or("/");
-    
-    let headers = event["headers"]
+
+    let body = event["body"]
+        .as_str()
+        .unwrap_or("{}");
+
+    let query_params = event["queryStringParameters"]
         .as_object()
         .unwrap_or(&serde_json::Map::new());
-    
-    // Extract user ID from path or headers
+
+    // Extract user ID from path
     let user_id = extract_user_id_from_path(path);
-    
+
+    // Initialize user repository
+    let table_name = std::env::var("DYNAMODB_TABLE").unwrap_or_else(|_| "gymcoach-ai".to_string());
+    let user_repo = database::UserRepository::new((*DYNAMODB_CLIENT).clone(), table_name);
+
     let response = match (http_method, path) {
+        ("GET", path) if path.starts_with("/api/users/") && path.ends_with("/stats") => {
+            handle_get_user_stats(&user_repo, &auth_context).await
+        }
+        ("GET", path) if path.starts_with("/api/users/") && path.ends_with("/verify-email") => {
+            handle_verify_user_email(&user_id.unwrap_or_default(), &user_repo, &auth_context).await
+        }
+        ("GET", path) if path.starts_with("/api/users/") && path.ends_with("/verify-phone") => {
+            handle_verify_user_phone(&user_id.unwrap_or_default(), &user_repo, &auth_context).await
+        }
         ("GET", path) if path.starts_with("/api/users/") => {
-            handle_get_user(user_id, headers).await
+            handle_get_user(&user_id.unwrap_or_default(), &user_repo, &auth_context).await
         }
         ("POST", "/api/users") => {
-            handle_create_user(&event).await
+            handle_create_user(body, &user_repo, &auth_context).await
         }
         ("PUT", path) if path.starts_with("/api/users/") => {
-            handle_update_user(user_id, &event).await
+            handle_update_user(&user_id.unwrap_or_default(), body, &user_repo, &auth_context).await
         }
         ("DELETE", path) if path.starts_with("/api/users/") => {
-            handle_delete_user(user_id).await
+            handle_delete_user(&user_id.unwrap_or_default(), &user_repo, &auth_context).await
         }
         ("GET", "/api/users") => {
-            handle_list_users(headers).await
+            let page = query_params.get("page")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u32>().ok());
+            let limit = query_params.get("limit")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u32>().ok());
+            handle_list_users(page, limit, &user_repo, &auth_context).await
         }
         _ => {
             json!({
                 "statusCode": 404,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
+                "headers": get_cors_headers(),
                 "body": json!({
                     "error": "Not Found",
                     "message": "Endpoint not found"
@@ -61,7 +171,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             })
         }
     };
-    
+
     Ok(response)
 }
 
@@ -72,184 +182,4 @@ fn extract_user_id_from_path(path: &str) -> Option<String> {
     } else {
         None
     }
-}
-
-async fn handle_get_user(user_id: Option<String>, headers: &serde_json::Map<String, Value>) -> Value {
-    match user_id {
-        Some(id) => {
-            // TODO: Implement actual user retrieval from DynamoDB
-            json!({
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
-                "body": json!({
-                    "id": id,
-                    "email": "user@example.com",
-                    "name": "John Doe",
-                    "createdAt": "2024-01-01T00:00:00Z",
-                    "updatedAt": "2024-01-01T00:00:00Z",
-                    "preferences": {
-                        "units": "metric",
-                        "timezone": "UTC",
-                        "notifications": {
-                            "email": true,
-                            "push": true,
-                            "workoutReminders": true,
-                            "nutritionReminders": true
-                        },
-                        "privacy": {
-                            "profileVisibility": "private",
-                            "workoutSharing": false,
-                            "progressSharing": false
-                        }
-                    }
-                })
-            })
-        }
-        None => {
-            json!({
-                "statusCode": 400,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
-                "body": json!({
-                    "error": "Bad Request",
-                    "message": "User ID is required"
-                })
-            })
-        }
-    }
-}
-
-async fn handle_create_user(event: &Value) -> Value {
-    // TODO: Implement actual user creation in DynamoDB
-    json!({
-        "statusCode": 201,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-        },
-        "body": json!({
-            "id": "new-user-id",
-            "email": "newuser@example.com",
-            "name": "New User",
-            "createdAt": "2024-01-01T00:00:00Z",
-            "updatedAt": "2024-01-01T00:00:00Z",
-            "message": "User created successfully"
-        })
-    })
-}
-
-async fn handle_update_user(user_id: Option<String>, event: &Value) -> Value {
-    match user_id {
-        Some(id) => {
-            // TODO: Implement actual user update in DynamoDB
-            json!({
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
-                "body": json!({
-                    "id": id,
-                    "message": "User updated successfully"
-                })
-            })
-        }
-        None => {
-            json!({
-                "statusCode": 400,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
-                "body": json!({
-                    "error": "Bad Request",
-                    "message": "User ID is required"
-                })
-            })
-        }
-    }
-}
-
-async fn handle_delete_user(user_id: Option<String>) -> Value {
-    match user_id {
-        Some(id) => {
-            // TODO: Implement actual user deletion from DynamoDB
-            json!({
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
-                "body": json!({
-                    "id": id,
-                    "message": "User deleted successfully"
-                })
-            })
-        }
-        None => {
-            json!({
-                "statusCode": 400,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-                },
-                "body": json!({
-                    "error": "Bad Request",
-                    "message": "User ID is required"
-                })
-            })
-        }
-    }
-}
-
-async fn handle_list_users(headers: &serde_json::Map<String, Value>) -> Value {
-    // TODO: Implement actual user listing from DynamoDB
-    json!({
-        "statusCode": 200,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
-        },
-        "body": json!({
-            "users": [
-                {
-                    "id": "user-1",
-                    "email": "user1@example.com",
-                    "name": "User One"
-                },
-                {
-                    "id": "user-2",
-                    "email": "user2@example.com",
-                    "name": "User Two"
-                }
-            ],
-            "pagination": {
-                "page": 1,
-                "limit": 10,
-                "total": 2,
-                "totalPages": 1
-            }
-        })
-    })
 }
