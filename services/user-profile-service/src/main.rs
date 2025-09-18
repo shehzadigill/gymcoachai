@@ -118,7 +118,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                 })
             }));
         }
-    }
+    };
     
     let http_method = event["requestContext"]["http"]["method"]
         .as_str()
@@ -155,18 +155,18 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             handle_update_user_preferences(path, body, &*DYNAMODB_CLIENT, &auth_context).await
         }
         _ => {
-            json!({
+            Ok(json!({
                 "statusCode": 404,
                 "headers": get_cors_headers(),
                 "body": json!({
                     "error": "Not Found",
                     "message": "Endpoint not found"
                 })
-            })
+            }))
         }
     };
     
-    Ok(response)
+    response
 }
 
 pub fn get_cors_headers() -> serde_json::Map<String, Value> {

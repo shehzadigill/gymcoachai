@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
+use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthContext {
@@ -92,13 +92,25 @@ impl AuthLayer {
     }
 
     fn validate_jwt_token(&self, token: &str) -> Result<HashMap<String, serde_json::Value>> {
-        let mut validation = Validation::new(Algorithm::RS256);
-        validation.set_issuer(&[&format!("https://cognito-idp.{}.amazonaws.com/{}", 
-            self.cognito_region, self.cognito_user_pool_id)]);
+        // For development, we'll use a simple JWT decode without verification
+        // In production, you should fetch the public key from Cognito and verify properly
         
-        // For now, we'll use a simple validation approach
-        // In production, you should fetch the public key from Cognito
-        let claims: HashMap<String, serde_json::Value> = serde_json::from_str(token)?;
+        // Split JWT into parts
+        let parts: Vec<&str> = token.split('.').collect();
+        if parts.len() != 3 {
+            return Err(anyhow!("Invalid JWT format"));
+        }
+        
+        // Decode the payload (middle part) - this is just for development
+        let payload = parts[1];
+        // Add padding if needed
+        let mut payload = payload.to_string();
+        while payload.len() % 4 != 0 {
+            payload.push('=');
+        }
+        
+        let decoded = general_purpose::STANDARD.decode(&payload)?;
+        let claims: HashMap<String, serde_json::Value> = serde_json::from_slice(&decoded)?;
         
         // Check if token is expired
         if let Some(exp) = claims.get("exp") {

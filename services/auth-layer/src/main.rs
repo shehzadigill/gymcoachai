@@ -1,4 +1,4 @@
-use lambda_runtime::{service_fn, Error, LambdaEvent};
+use lambda_runtime::{Error, LambdaEvent, service_fn};
 use serde_json::{json, Value};
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 
@@ -46,7 +46,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                 Ok(json!({
                     "isAuthorized": true,
                     "context": auth_result.context,
-                    "principalId": auth_result.context.as_ref().map(|c| &c.user_id).unwrap_or(""),
+                    "principalId": auth_result.context.as_ref().map(|c| c.user_id.as_str()).unwrap_or(""),
                     "policyDocument": {
                         "Version": "2012-10-17",
                         "Statement": [

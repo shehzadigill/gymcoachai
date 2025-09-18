@@ -22,9 +22,9 @@ pub async fn get_user_profile_from_db(
 
     if let Some(item) = result.item {
         let profile = UserProfile {
-            first_name: item.get("firstName").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            last_name: item.get("lastName").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            email: item.get("email").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            first_name: item.get("firstName").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            last_name: item.get("lastName").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            email: item.get("email").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             bio: item.get("bio").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             date_of_birth: item.get("dateOfBirth").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             height: item.get("height").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
@@ -33,25 +33,25 @@ pub async fn get_user_profile_from_db(
                 .and_then(|v| v.as_l().ok())
                 .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.to_string())).collect())
                 .unwrap_or_default(),
-            experience_level: item.get("experienceLevel").and_then(|v| v.as_s().ok()).unwrap_or("beginner").to_string(),
+            experience_level: item.get("experienceLevel").and_then(|v| v.as_s().ok()).map_or("beginner", |v| v).to_string(),
             profile_image_url: item.get("profileImageUrl").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             preferences: UserPreferences {
-                units: item.get("units").and_then(|v| v.as_s().ok()).unwrap_or("metric").to_string(),
-                timezone: item.get("timezone").and_then(|v| v.as_s().ok()).unwrap_or("UTC").to_string(),
+                units: item.get("units").and_then(|v| v.as_s().ok()).map_or("metric", |v| v).to_string(),
+                timezone: item.get("timezone").and_then(|v| v.as_s().ok()).map_or("UTC", |v| v).to_string(),
                 notifications: NotificationSettings {
-                    email: item.get("emailNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(true),
-                    push: item.get("pushNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(true),
-                    workout_reminders: item.get("workoutReminders").and_then(|v| v.as_bool().ok()).unwrap_or(true),
-                    nutrition_reminders: item.get("nutritionReminders").and_then(|v| v.as_bool().ok()).unwrap_or(true),
+                    email: *item.get("emailNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
+                    push: *item.get("pushNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
+                    workout_reminders: *item.get("workoutReminders").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
+                    nutrition_reminders: *item.get("nutritionReminders").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
                 },
                 privacy: PrivacySettings {
-                    profile_visibility: item.get("profileVisibility").and_then(|v| v.as_s().ok()).unwrap_or("private").to_string(),
-                    workout_sharing: item.get("workoutSharing").and_then(|v| v.as_bool().ok()).unwrap_or(false),
-                    progress_sharing: item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(false),
+                    profile_visibility: item.get("profileVisibility").and_then(|v| v.as_s().ok()).map_or("private", |v| v).to_string(),
+                    workout_sharing: *item.get("workoutSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
+                    progress_sharing: *item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
                 },
             },
-            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
         };
         
         Ok(serde_json::to_value(profile)?)
@@ -193,18 +193,18 @@ pub async fn get_user_preferences_from_db(
 
     if let Some(item) = result.item {
         let preferences = UserPreferences {
-            units: item.get("units").and_then(|v| v.as_s().ok()).unwrap_or("metric").to_string(),
-            timezone: item.get("timezone").and_then(|v| v.as_s().ok()).unwrap_or("UTC").to_string(),
+            units: item.get("units").and_then(|v| v.as_s().ok()).map_or("metric", |v| v).to_string(),
+            timezone: item.get("timezone").and_then(|v| v.as_s().ok()).map_or("UTC", |v| v).to_string(),
             notifications: NotificationSettings {
-                email: item.get("emailNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(true),
-                push: item.get("pushNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(true),
-                workout_reminders: item.get("workoutReminders").and_then(|v| v.as_bool().ok()).unwrap_or(true),
-                nutrition_reminders: item.get("nutritionReminders").and_then(|v| v.as_bool().ok()).unwrap_or(true),
+                email: *item.get("emailNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
+                push: *item.get("pushNotifications").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
+                workout_reminders: *item.get("workoutReminders").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
+                nutrition_reminders: *item.get("nutritionReminders").and_then(|v| v.as_bool().ok()).unwrap_or(&true),
             },
             privacy: PrivacySettings {
-                profile_visibility: item.get("profileVisibility").and_then(|v| v.as_s().ok()).unwrap_or("private").to_string(),
-                workout_sharing: item.get("workoutSharing").and_then(|v| v.as_bool().ok()).unwrap_or(false),
-                progress_sharing: item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(false),
+                profile_visibility: item.get("profileVisibility").and_then(|v| v.as_s().ok()).map_or("private", |v| v).to_string(),
+                workout_sharing: *item.get("workoutSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
+                progress_sharing: *item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
             },
         };
         

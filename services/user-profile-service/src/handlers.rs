@@ -4,6 +4,7 @@ use aws_sdk_s3::{Client as S3Client, presigning::PresigningConfig};
 use uuid::Uuid;
 use anyhow::Result;
 use tracing::error;
+use validator::Validate;
 
 use crate::models::*;
 use crate::database::*;
