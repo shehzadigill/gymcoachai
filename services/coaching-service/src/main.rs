@@ -9,20 +9,13 @@ use aws_config::meta::region::RegionProviderChain;
 use anyhow::Result;
 use tracing::{info, error};
 use std::sync::Arc;
-use once_cell::sync::Lazy;
+use once_cell::sync::{OnceCell, Lazy};
 
 use handlers::*;
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 
 // Global clients for cold start optimization
-static DYNAMODB_CLIENT: Lazy<Arc<DynamoDbClient>> = Lazy::new(|| {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
-        let config = aws_config::from_env().region(region_provider).load().await;
-        Arc::new(DynamoDbClient::new(&config))
-    })
-});
+static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
 
 static AUTH_LAYER: Lazy<AuthLayer> = Lazy::new(|| AuthLayer::new());
 
@@ -35,7 +28,11 @@ async fn main() -> Result<(), Error> {
         .init();
 
     // Initialize global clients
-    let _ = &*DYNAMODB_CLIENT;
+    if DYNAMODB_CLIENT.get().is_none() {
+        let region_provider = RegionProviderChain::default_provider();
+        let config = aws_config::from_env().region(region_provider).load().await;
+        let _ = DYNAMODB_CLIENT.set(Arc::new(DynamoDbClient::new(&config)));
+    }
     let _ = &*AUTH_LAYER;
 
     let func = service_fn(handler);
@@ -121,75 +118,75 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let response = match (http_method, path) {
         // Workout Recommendations
         ("GET", "/api/coaching/recommendations") => {
-            get_workout_recommendations_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_workout_recommendations_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         ("POST", "/api/coaching/recommendations") => {
-            create_workout_recommendation_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            create_workout_recommendation_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/coaching/recommendations/generate") => {
-            generate_workout_recommendations_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            generate_workout_recommendations_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Adaptive Plans
         ("GET", "/api/coaching/adaptive-plans") => {
-            get_adaptive_plans_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_adaptive_plans_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/coaching/adaptive-plans") => {
-            create_adaptive_plan_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            create_adaptive_plan_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Exercise Substitutions
         ("GET", "/api/coaching/exercise-substitutions") => {
-            get_exercise_substitutions_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_exercise_substitutions_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/coaching/exercise-substitutions/suggest") => {
-            suggest_exercise_substitution_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            suggest_exercise_substitution_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Recovery Plans
         ("GET", "/api/coaching/recovery-plans") => {
-            get_recovery_plans_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_recovery_plans_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/coaching/recovery-plans") => {
-            create_recovery_plan_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            create_recovery_plan_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // User Fitness Profile
         ("GET", path) if path.starts_with("/api/coaching/fitness-profiles/") => {
-            get_user_fitness_profile_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_user_fitness_profile_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("PUT", "/api/coaching/fitness-profiles") => {
-            update_user_fitness_profile_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            update_user_fitness_profile_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Coaching Rules
         ("GET", "/api/coaching/rules") => {
-            get_coaching_rules_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_coaching_rules_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Progress Metrics
         ("GET", "/api/coaching/progress-metrics") => {
-            get_progress_metrics_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            get_progress_metrics_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // AI-Powered Analysis
         ("POST", "/api/coaching/analyze-workout") => {
-            analyze_workout_performance_handler(event, &*DYNAMODB_CLIENT, &auth_context).await
+            analyze_workout_performance_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         _ => {
-            json!({
+            Ok(json!({
                 "statusCode": 404,
                 "headers": get_cors_headers(),
                 "body": json!({
                     "error": "Not Found",
                     "message": "Endpoint not found"
                 })
-            })
+            }))
         }
     };
     
-    Ok(response)
+    response
 }
 
 fn get_cors_headers() -> serde_json::Map<String, Value> {

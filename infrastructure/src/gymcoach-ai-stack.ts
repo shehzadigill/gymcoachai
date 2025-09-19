@@ -17,6 +17,11 @@ export class GymCoachAIStack extends cdk.Stack {
   public readonly userPoolDomain: cognito.UserPoolDomain;
   public readonly mainTable: dynamodb.Table;
   public readonly distribution: cloudfront.Distribution;
+  public readonly userUploadsBucket: s3.Bucket;
+  public readonly staticAssetsBucket: s3.Bucket;
+  public readonly processedImagesBucket: s3.Bucket;
+  private authLayer?: lambda.LayerVersion;
+  private pythonAuthLayer?: lambda.LayerVersion;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -170,6 +175,53 @@ export class GymCoachAIStack extends cdk.Stack {
       precedence: 3,
     });
 
+    // Create S3 Buckets (needed by Lambdas)
+    this.userUploadsBucket = new s3.Bucket(this, 'UserUploadsBucket', {
+      bucketName: `gymcoach-ai-user-uploads-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      lifecycleRules: [
+        {
+          id: 'DeleteIncompleteMultipartUploads',
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+        },
+        {
+          id: 'TransitionToIA',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+        },
+        {
+          id: 'TransitionToGlacier',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(90),
+            },
+          ],
+        },
+      ],
+    });
+
+    this.staticAssetsBucket = new s3.Bucket(this, 'StaticAssetsBucket', {
+      bucketName: `gymcoach-ai-static-assets-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      publicReadAccess: false,
+    });
+
+    this.processedImagesBucket = new s3.Bucket(this, 'ProcessedImagesBucket', {
+      bucketName: `gymcoach-ai-processed-images-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Create Lambda Authorizer
     const authorizerLambda = new lambda.Function(this, 'AuthorizerLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -240,10 +292,10 @@ export class GymCoachAIStack extends cdk.Stack {
     this.mainTable.grantReadData(authorizerLambda);
 
     // Create Lambda functions for each service
-    const userServiceLambda = this.createLambdaFunction(
-      'UserService',
-      'user-service'
-    );
+    // const userServiceLambda = this.createLambdaFunction(
+    //   'UserService',
+    //   'user-service'
+    // );
     const userProfileServiceLambda = this.createLambdaFunction(
       'UserProfileService',
       'user-profile-service'
@@ -264,21 +316,21 @@ export class GymCoachAIStack extends cdk.Stack {
       'NutritionService',
       'nutrition-service'
     );
-    const aiServiceLambda = this.createPythonLambdaFunction(
-      'AIService',
-      'ai-service-python'
-    );
+    // const aiServiceLambda = this.createPythonLambdaFunction(
+    //   'AIService',
+    //   'ai-service-python'
+    // );
 
     // Enable Lambda Function URLs
-    const userServiceUrl = userServiceLambda.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowCredentials: false,
-        allowedHeaders: ['*'],
-        allowedMethods: [lambda.HttpMethod.ALL],
-        allowedOrigins: ['*'],
-      },
-    });
+    // const userServiceUrl = userServiceLambda.addFunctionUrl({
+    //   authType: lambda.FunctionUrlAuthType.NONE,
+    //   cors: {
+    //     allowCredentials: false,
+    //     allowedHeaders: ['*'],
+    //     allowedMethods: [lambda.HttpMethod.ALL],
+    //     allowedOrigins: ['*'],
+    //   },
+    // });
 
     const userProfileServiceUrl = userProfileServiceLambda.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
@@ -330,23 +382,44 @@ export class GymCoachAIStack extends cdk.Stack {
       },
     });
 
-    const aiServiceUrl = aiServiceLambda.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowCredentials: false,
-        allowedHeaders: ['*'],
-        allowedMethods: [lambda.HttpMethod.ALL],
-        allowedOrigins: ['*'],
-      },
-    });
+    // const aiServiceUrl = aiServiceLambda.addFunctionUrl({
+    //   authType: lambda.FunctionUrlAuthType.NONE,
+    //   cors: {
+    //     allowCredentials: false,
+    //     allowedHeaders: ['*'],
+    //     allowedMethods: [lambda.HttpMethod.ALL],
+    //     allowedOrigins: ['*'],
+    //   },
+    // });
 
     // Create CloudFront Distribution with Lambda Function URLs as origins
+    const userProfileDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', userProfileServiceUrl.url)
+    );
+    const workoutDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', workoutServiceUrl.url)
+    );
+    const coachingDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', coachingServiceUrl.url)
+    );
+    const analyticsDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', analyticsServiceUrl.url)
+    );
+    const nutritionDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', nutritionServiceUrl.url)
+    );
+
     this.distribution = new cloudfront.Distribution(
       this,
       'GymCoachAIDistribution',
       {
         defaultBehavior: {
-          origin: new origins.HttpOrigin(userServiceUrl.url),
+          origin: new origins.HttpOrigin(userProfileDomain),
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -355,17 +428,17 @@ export class GymCoachAIStack extends cdk.Stack {
             cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
         additionalBehaviors: {
-          '/api/users/*': {
-            origin: new origins.HttpOrigin(userServiceUrl.url),
-            viewerProtocolPolicy:
-              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-            originRequestPolicy:
-              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          },
+          // '/api/users/*': {
+          //   origin: new origins.HttpOrigin(userServiceUrl.url),
+          //   viewerProtocolPolicy:
+          //     cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          //   allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          //   cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          //   originRequestPolicy:
+          //     cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          // },
           '/api/user-profiles/*': {
-            origin: new origins.HttpOrigin(userProfileServiceUrl.url),
+            origin: new origins.HttpOrigin(userProfileDomain),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -374,7 +447,7 @@ export class GymCoachAIStack extends cdk.Stack {
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
           '/api/workouts/*': {
-            origin: new origins.HttpOrigin(workoutServiceUrl.url),
+            origin: new origins.HttpOrigin(workoutDomain),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -383,7 +456,7 @@ export class GymCoachAIStack extends cdk.Stack {
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
           '/api/coaching/*': {
-            origin: new origins.HttpOrigin(coachingServiceUrl.url),
+            origin: new origins.HttpOrigin(coachingDomain),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -392,7 +465,7 @@ export class GymCoachAIStack extends cdk.Stack {
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
           '/api/analytics/*': {
-            origin: new origins.HttpOrigin(analyticsServiceUrl.url),
+            origin: new origins.HttpOrigin(analyticsDomain),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -401,7 +474,7 @@ export class GymCoachAIStack extends cdk.Stack {
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
           '/api/nutrition/*': {
-            origin: new origins.HttpOrigin(nutritionServiceUrl.url),
+            origin: new origins.HttpOrigin(nutritionDomain),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -409,15 +482,15 @@ export class GymCoachAIStack extends cdk.Stack {
             originRequestPolicy:
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
-          '/api/ai/*': {
-            origin: new origins.HttpOrigin(aiServiceUrl.url),
-            viewerProtocolPolicy:
-              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-            originRequestPolicy:
-              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          },
+          // '/api/ai/*': {
+          //   origin: new origins.HttpOrigin(aiServiceUrl.url),
+          //   viewerProtocolPolicy:
+          //     cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          //   allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          //   cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          //   originRequestPolicy:
+          //     cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          // },
         },
         comment: 'GymCoach AI CloudFront Distribution',
         defaultRootObject: 'index.html',
@@ -436,66 +509,14 @@ export class GymCoachAIStack extends cdk.Stack {
       }
     );
 
-    // Create S3 Buckets
-    const userUploadsBucket = new s3.Bucket(this, 'UserUploadsBucket', {
-      bucketName: `gymcoach-ai-user-uploads-${this.account}`,
-      // Removed versioning to avoid costs
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      lifecycleRules: [
-        {
-          id: 'DeleteIncompleteMultipartUploads',
-          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
-        },
-        {
-          id: 'TransitionToIA',
-          transitions: [
-            {
-              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(30),
-            },
-          ],
-        },
-        {
-          id: 'TransitionToGlacier',
-          transitions: [
-            {
-              storageClass: s3.StorageClass.GLACIER,
-              transitionAfter: cdk.Duration.days(90),
-            },
-          ],
-        },
-      ],
-    });
-
-    const staticAssetsBucket = new s3.Bucket(this, 'StaticAssetsBucket', {
-      bucketName: `gymcoach-ai-static-assets-${this.account}`,
-      // Removed versioning to avoid costs
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      publicReadAccess: false,
-    });
-
-    // Create S3 Bucket for processed images
-    const processedImagesBucket = new s3.Bucket(this, 'ProcessedImagesBucket', {
-      bucketName: `gymcoach-ai-processed-images-${this.account}`,
-      // Removed versioning to avoid costs
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      // Removed lifecycle rules to avoid costs
-    });
-
     // Grant permissions to Lambda functions for S3 access
-    userUploadsBucket.grantReadWrite(userProfileServiceLambda);
-    userUploadsBucket.grantReadWrite(workoutServiceLambda);
-    userUploadsBucket.grantReadWrite(analyticsServiceLambda);
+    this.userUploadsBucket.grantReadWrite(userProfileServiceLambda);
+    this.userUploadsBucket.grantReadWrite(workoutServiceLambda);
+    this.userUploadsBucket.grantReadWrite(analyticsServiceLambda);
 
-    processedImagesBucket.grantReadWrite(userProfileServiceLambda);
-    processedImagesBucket.grantReadWrite(workoutServiceLambda);
-    processedImagesBucket.grantReadWrite(analyticsServiceLambda);
+    this.processedImagesBucket.grantReadWrite(userProfileServiceLambda);
+    this.processedImagesBucket.grantReadWrite(workoutServiceLambda);
+    this.processedImagesBucket.grantReadWrite(analyticsServiceLambda);
 
     // Removed CloudWatch Log Groups to avoid costs
     // Lambda functions will use default log groups (free tier: 5GB/month)
@@ -526,10 +547,10 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'DynamoDB Table Name',
     });
 
-    new cdk.CfnOutput(this, 'UserServiceUrl', {
-      value: userServiceUrl.url,
-      description: 'User Service Lambda Function URL',
-    });
+    // new cdk.CfnOutput(this, 'UserServiceUrl', {
+    //   value: userServiceUrl.url,
+    //   description: 'User Service Lambda Function URL',
+    // });
 
     new cdk.CfnOutput(this, 'UserProfileServiceUrl', {
       value: userProfileServiceUrl.url,
@@ -556,23 +577,23 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'Nutrition Service Lambda Function URL',
     });
 
-    new cdk.CfnOutput(this, 'AIServiceUrl', {
-      value: aiServiceUrl.url,
-      description: 'AI Service Lambda Function URL',
-    });
+    // new cdk.CfnOutput(this, 'AIServiceUrl', {
+    //   value: aiServiceUrl.url,
+    //   description: 'AI Service Lambda Function URL',
+    // });
 
     new cdk.CfnOutput(this, 'UserUploadsBucketName', {
-      value: userUploadsBucket.bucketName,
+      value: this.userUploadsBucket.bucketName,
       description: 'User Uploads S3 Bucket Name',
     });
 
     new cdk.CfnOutput(this, 'StaticAssetsBucketName', {
-      value: staticAssetsBucket.bucketName,
+      value: this.staticAssetsBucket.bucketName,
       description: 'Static Assets S3 Bucket Name',
     });
 
     new cdk.CfnOutput(this, 'ProcessedImagesBucketName', {
-      value: processedImagesBucket.bucketName,
+      value: this.processedImagesBucket.bucketName,
       description: 'Processed Images S3 Bucket Name',
     });
 
@@ -588,15 +609,15 @@ export class GymCoachAIStack extends cdk.Stack {
       runtime: lambda.Runtime.PROVIDED_AL2,
       handler: 'bootstrap',
       code: lambda.Code.fromAsset(
-        `../services/${serviceName}/target/lambda/${serviceName}/bootstrap.zip`
+        `../services/${serviceName}/target/lambda/${serviceName}`
       ),
       environment: {
         TABLE_NAME: this.mainTable.tableName,
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
-        USER_UPLOADS_BUCKET: userUploadsBucket.bucketName,
-        STATIC_ASSETS_BUCKET: staticAssetsBucket.bucketName,
-        PROCESSED_IMAGES_BUCKET: processedImagesBucket.bucketName,
+        USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,
+        STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
+        PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
         JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
         COGNITO_REGION: this.region,
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
@@ -624,9 +645,9 @@ export class GymCoachAIStack extends cdk.Stack {
         DYNAMODB_TABLE: this.mainTable.tableName,
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
-        USER_UPLOADS_BUCKET: userUploadsBucket.bucketName,
-        STATIC_ASSETS_BUCKET: staticAssetsBucket.bucketName,
-        PROCESSED_IMAGES_BUCKET: processedImagesBucket.bucketName,
+        USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,
+        STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
+        PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
         JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
         COGNITO_REGION: this.region,
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
@@ -643,22 +664,28 @@ export class GymCoachAIStack extends cdk.Stack {
   }
 
   private createAuthLayer(): lambda.LayerVersion {
-    return new lambda.LayerVersion(this, 'AuthLayer', {
-      code: lambda.Code.fromAsset(
-        '../services/auth-layer/target/lambda/auth-layer/bootstrap.zip'
-      ),
+    if (this.authLayer) {
+      return this.authLayer;
+    }
+    this.authLayer = new lambda.LayerVersion(this, 'AuthLayer', {
+      code: lambda.Code.fromAsset('../services/auth-layer/layer'),
       compatibleRuntimes: [lambda.Runtime.PROVIDED_AL2],
       description:
         'Authentication and authorization layer for GymCoach AI services',
     });
+    return this.authLayer;
   }
 
   private createPythonAuthLayer(): lambda.LayerVersion {
-    return new lambda.LayerVersion(this, 'PythonAuthLayer', {
+    if (this.pythonAuthLayer) {
+      return this.pythonAuthLayer;
+    }
+    this.pythonAuthLayer = new lambda.LayerVersion(this, 'PythonAuthLayer', {
       code: lambda.Code.fromAsset('../services/ai-service-python'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       description: 'Python authentication layer for AI services',
     });
+    return this.pythonAuthLayer;
   }
 
   // Removed createMonitoringStack method to avoid CloudWatch costs

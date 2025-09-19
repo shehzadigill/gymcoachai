@@ -61,13 +61,13 @@ pub async fn create_workout_plan_handler(
             Some(WorkoutExercise {
                 exercise_id: exercise["exerciseId"].as_str()?.to_string(),
                 name: exercise["name"].as_str()?.to_string(),
-                sets: exercise["sets"].as_u64()? as u32,
-                reps: exercise["reps"].as_u64().map(|r| r as u32),
-                duration_seconds: exercise["durationSeconds"].as_u64().map(|d| d as u32),
+                sets: exercise["sets"].as_u64()? as i32,
+                reps: exercise["reps"].as_u64().map(|r| r as i32),
+                duration_seconds: exercise["durationSeconds"].as_u64().map(|d| d as i32),
                 weight: exercise["weight"].as_f64().map(|w| w as f32),
-                rest_seconds: exercise["restSeconds"].as_u64().map(|r| r as u32),
+                rest_seconds: exercise["restSeconds"].as_u64().map(|r| r as i32),
                 notes: exercise["notes"].as_str().map(|s| s.to_string()),
-                order: index as u32,
+                order: index as i32,
             })
         })
         .collect();
@@ -78,8 +78,8 @@ pub async fn create_workout_plan_handler(
         name,
         description: payload["body"]["description"].as_str().map(|s| s.to_string()),
         difficulty,
-        duration_weeks,
-        frequency_per_week,
+        duration_weeks: duration_weeks as i32,
+        frequency_per_week: frequency_per_week as i32,
         exercises,
         created_at: Utc::now().to_rfc3339(),
         updated_at: Utc::now().to_rfc3339(),
@@ -132,13 +132,13 @@ pub async fn update_workout_plan_handler(
             Some(WorkoutExercise {
                 exercise_id: exercise["exerciseId"].as_str()?.to_string(),
                 name: exercise["name"].as_str()?.to_string(),
-                sets: exercise["sets"].as_u64()? as u32,
-                reps: exercise["reps"].as_u64().map(|r| r as u32),
-                duration_seconds: exercise["durationSeconds"].as_u64().map(|d| d as u32),
+                sets: exercise["sets"].as_u64()? as i32,
+                reps: exercise["reps"].as_u64().map(|r| r as i32),
+                duration_seconds: exercise["durationSeconds"].as_u64().map(|d| d as i32),
                 weight: exercise["weight"].as_f64().map(|w| w as f32),
-                rest_seconds: exercise["restSeconds"].as_u64().map(|r| r as u32),
+                rest_seconds: exercise["restSeconds"].as_u64().map(|r| r as i32),
                 notes: exercise["notes"].as_str().map(|s| s.to_string()),
-                order: index as u32,
+                order: index as i32,
             })
         })
         .collect();
@@ -149,8 +149,8 @@ pub async fn update_workout_plan_handler(
         name,
         description: payload["body"]["description"].as_str().map(|s| s.to_string()),
         difficulty,
-        duration_weeks,
-        frequency_per_week,
+        duration_weeks: duration_weeks as i32,
+        frequency_per_week: frequency_per_week as i32,
         exercises,
         created_at: payload["body"]["createdAt"].as_str().unwrap_or("").to_string(),
         updated_at: Utc::now().to_rfc3339(),
@@ -219,11 +219,11 @@ pub async fn create_workout_session_handler(
                 .enumerate()
                 .filter_map(|(set_index, set)| {
                     Some(ExerciseSet {
-                        set_number: (set_index + 1) as u32,
-                        reps: set["reps"].as_u64().map(|r| r as u32),
+                        set_number: (set_index + 1) as i32,
+                        reps: set["reps"].as_u64().map(|r| r as i32),
                         weight: set["weight"].as_f64().map(|w| w as f32),
-                        duration_seconds: set["durationSeconds"].as_u64().map(|d| d as u32),
-                        rest_seconds: set["restSeconds"].as_u64().map(|r| r as u32),
+                        duration_seconds: set["durationSeconds"].as_u64().map(|d| d as i32),
+                        rest_seconds: set["restSeconds"].as_u64().map(|r| r as i32),
                         completed: set["completed"].as_bool().unwrap_or(false),
                         notes: set["notes"].as_str().map(|s| s.to_string()),
                     })
@@ -235,7 +235,7 @@ pub async fn create_workout_session_handler(
                 name: exercise["name"].as_str()?.to_string(),
                 sets,
                 notes: exercise["notes"].as_str().map(|s| s.to_string()),
-                order: index as u32,
+                order: index as i32,
             })
         })
         .collect();
@@ -302,11 +302,11 @@ pub async fn update_workout_session_handler(
                 .enumerate()
                 .filter_map(|(set_index, set)| {
                     Some(ExerciseSet {
-                        set_number: (set_index + 1) as u32,
-                        reps: set["reps"].as_u64().map(|r| r as u32),
+                        set_number: (set_index + 1) as i32,
+                        reps: set["reps"].as_u64().map(|r| r as i32),
                         weight: set["weight"].as_f64().map(|w| w as f32),
-                        duration_seconds: set["durationSeconds"].as_u64().map(|d| d as u32),
-                        rest_seconds: set["restSeconds"].as_u64().map(|r| r as u32),
+                        duration_seconds: set["durationSeconds"].as_u64().map(|d| d as i32),
+                        rest_seconds: set["restSeconds"].as_u64().map(|r| r as i32),
                         completed: set["completed"].as_bool().unwrap_or(false),
                         notes: set["notes"].as_str().map(|s| s.to_string()),
                     })
@@ -318,7 +318,7 @@ pub async fn update_workout_session_handler(
                 name: exercise["name"].as_str()?.to_string(),
                 sets,
                 notes: exercise["notes"].as_str().map(|s| s.to_string()),
-                order: index as u32,
+                order: index as i32,
             })
         })
         .collect();
@@ -330,9 +330,9 @@ pub async fn update_workout_session_handler(
         name,
         started_at: payload["body"]["startedAt"].as_str().unwrap_or("").to_string(),
         completed_at: payload["body"]["completedAt"].as_str().map(|s| s.to_string()),
-        duration_minutes: payload["body"]["durationMinutes"].as_u64().map(|d| d as u32),
+        duration_minutes: payload["body"]["durationMinutes"].as_u64().map(|d| d as i32),
         notes: payload["body"]["notes"].as_str().map(|s| s.to_string()),
-        rating: payload["body"]["rating"].as_u64().map(|r| r as u32),
+        rating: payload["body"]["rating"].as_u64().map(|r| r as i32),
         exercises,
         created_at: payload["body"]["createdAt"].as_str().unwrap_or("").to_string(),
         updated_at: Utc::now().to_rfc3339(),

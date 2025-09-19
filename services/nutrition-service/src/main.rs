@@ -1,9 +1,10 @@
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde_json::{json, Value};
-use aws_sdk_dynamodb::{Client as DynamoDbClient};
+use aws_sdk_dynamodb::Client as DynamoDbClient;
+use aws_sdk_s3::Client as S3Client;
 use aws_config::meta::region::RegionProviderChain;
 use std::sync::Arc;
-use once_cell::sync::Lazy;
+use once_cell::sync::{OnceCell, Lazy};
 use tracing::{info, error};
 use anyhow::Result;
 
@@ -15,14 +16,8 @@ use handlers::*;
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 
 // Global clients for cold start optimization
-static DYNAMODB_CLIENT: Lazy<Arc<DynamoDbClient>> = Lazy::new(|| {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
-        let config = aws_config::from_env().region(region_provider).load().await;
-        Arc::new(DynamoDbClient::new(&config))
-    })
-});
+static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
+static S3_CLIENT: OnceCell<Arc<S3Client>> = OnceCell::new();
 
 static AUTH_LAYER: Lazy<AuthLayer> = Lazy::new(|| AuthLayer::new());
 
@@ -35,7 +30,12 @@ async fn main() -> Result<(), Error> {
         .init();
 
     // Initialize global clients
-    let _ = &*DYNAMODB_CLIENT;
+    if DYNAMODB_CLIENT.get().is_none() || S3_CLIENT.get().is_none() {
+        let region_provider = RegionProviderChain::default_provider();
+        let config = aws_config::from_env().region(region_provider).load().await;
+        let _ = DYNAMODB_CLIENT.set(Arc::new(DynamoDbClient::new(&config)));
+        let _ = S3_CLIENT.set(Arc::new(S3Client::new(&config)));
+    }
     let _ = &*AUTH_LAYER;
 
     let func = service_fn(handler);
@@ -104,7 +104,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                 })
             }));
         }
-    }
+    };
 
     let http_method = event["requestContext"]["http"]["method"]
         .as_str()
@@ -118,9 +118,8 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         .as_str()
         .unwrap_or("{}");
 
-    let query_params = event["queryStringParameters"]
-        .as_object()
-        .unwrap_or(&serde_json::Map::new());
+    let qp_obj = event["queryStringParameters"].as_object().cloned().unwrap_or_default();
+    let query_params = qp_obj;
 
     // Extract user ID and other parameters from path
     let path_parts: Vec<&str> = path.split('/').collect();
@@ -132,7 +131,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
     // Initialize nutrition repository
     let table_name = std::env::var("DYNAMODB_TABLE").unwrap_or_else(|_| "gymcoach-ai".to_string());
-    let nutrition_repo = database::NutritionRepository::new((*DYNAMODB_CLIENT).clone(), table_name);
+    let nutrition_repo = database::NutritionRepository::new(DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref().clone(), table_name);
 
     let response = match (http_method, path) {
         // Meal endpoints
@@ -140,19 +139,19 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             handle_create_meal(&user_id.unwrap_or_default(), body, &nutrition_repo, &auth_context).await
         }
         ("GET", path) if path.starts_with("/api/users/") && path.contains("/meals/") && !path.contains("/date") => {
-            let meal_id = path_parts.last().unwrap_or("");
+            let meal_id = path_parts.last().map_or("", |v| v);
             handle_get_meal(&user_id.unwrap_or_default(), meal_id, &nutrition_repo, &auth_context).await
         }
         ("GET", path) if path.starts_with("/api/users/") && path.contains("/meals/date/") => {
-            let date = path_parts.last().unwrap_or("");
+            let date = path_parts.last().map_or("", |v| v);
             handle_get_meals_by_date(&user_id.unwrap_or_default(), date, &nutrition_repo, &auth_context).await
         }
         ("PUT", path) if path.starts_with("/api/users/") && path.contains("/meals/") => {
-            let meal_id = path_parts.last().unwrap_or("");
+            let meal_id = path_parts.last().map_or("", |v| v);
             handle_update_meal(&user_id.unwrap_or_default(), meal_id, body, &nutrition_repo, &auth_context).await
         }
         ("DELETE", path) if path.starts_with("/api/users/") && path.contains("/meals/") => {
-            let meal_id = path_parts.last().unwrap_or("");
+            let meal_id = path_parts.last().map_or("", |v| v);
             handle_delete_meal(&user_id.unwrap_or_default(), meal_id, &nutrition_repo, &auth_context).await
         }
         
@@ -161,7 +160,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             handle_create_food(body, &nutrition_repo, &auth_context).await
         }
         ("GET", path) if path.starts_with("/api/foods/") && !path.contains("/search") => {
-            let food_id = path_parts.last().unwrap_or("");
+            let food_id = path_parts.last().map_or("", |v| v);
             handle_get_food(food_id, &nutrition_repo, &auth_context).await
         }
         ("GET", "/api/foods/search") => {
@@ -179,21 +178,21 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             handle_create_nutrition_plan(&user_id.unwrap_or_default(), body, &nutrition_repo, &auth_context).await
         }
         ("GET", path) if path.starts_with("/api/users/") && path.contains("/nutrition-plans/") => {
-            let plan_id = path_parts.last().unwrap_or("");
+            let plan_id = path_parts.last().map_or("", |v| v);
             handle_get_nutrition_plan(&user_id.unwrap_or_default(), plan_id, &nutrition_repo, &auth_context).await
         }
         
         _ => {
-            json!({
+            Ok(json!({
                 "statusCode": 404,
                 "headers": get_cors_headers(),
                 "body": json!({
                     "error": "Not Found",
                     "message": "Endpoint not found"
                 })
-            })
+            }))
         }
     };
 
-    Ok(response)
+    Ok(response?)
 }

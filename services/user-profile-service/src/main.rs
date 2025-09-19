@@ -9,7 +9,7 @@ use validator::Validate;
 use anyhow::Result;
 use tracing::{info, error};
 use std::sync::Arc;
-use once_cell::sync::Lazy;
+use once_cell::sync::{OnceCell, Lazy};
 
 mod models;
 mod handlers;
@@ -19,23 +19,8 @@ use handlers::*;
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 
 // Global clients for cold start optimization
-static DYNAMODB_CLIENT: Lazy<Arc<DynamoDbClient>> = Lazy::new(|| {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
-        let config = aws_config::from_env().region(region_provider).load().await;
-        Arc::new(DynamoDbClient::new(&config))
-    })
-});
-
-static S3_CLIENT: Lazy<Arc<S3Client>> = Lazy::new(|| {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
-        let config = aws_config::from_env().region(region_provider).load().await;
-        Arc::new(S3Client::new(&config))
-    })
-});
+static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
+static S3_CLIENT: OnceCell<Arc<S3Client>> = OnceCell::new();
 
 static AUTH_LAYER: Lazy<AuthLayer> = Lazy::new(|| AuthLayer::new());
 
@@ -48,8 +33,12 @@ async fn main() -> Result<(), Error> {
         .init();
 
     // Initialize global clients
-    let _ = &*DYNAMODB_CLIENT;
-    let _ = &*S3_CLIENT;
+    if DYNAMODB_CLIENT.get().is_none() || S3_CLIENT.get().is_none() {
+        let region_provider = RegionProviderChain::default_provider();
+        let config = aws_config::from_env().region(region_provider).load().await;
+        let _ = DYNAMODB_CLIENT.set(Arc::new(DynamoDbClient::new(&config)));
+        let _ = S3_CLIENT.set(Arc::new(S3Client::new(&config)));
+    }
     let _ = &*AUTH_LAYER;
 
     let func = service_fn(handler);
@@ -134,25 +123,30 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     
     let response = match (http_method, path) {
         ("GET", path) if path.starts_with("/api/users/profile/") => {
-            handle_get_user_profile(path, &*DYNAMODB_CLIENT, &auth_context).await
+            handle_get_user_profile(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         ("PUT", path) if path.starts_with("/api/users/profile/") => {
-            handle_update_user_profile(path, body, &*DYNAMODB_CLIENT, &auth_context).await
+            handle_update_user_profile(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         ("POST", "/api/users/profile/upload") => {
-            handle_generate_upload_url(body, &*S3_CLIENT, &auth_context).await
+            handle_generate_upload_url(body, S3_CLIENT.get().expect("S3 not initialized").as_ref(), &auth_context).await
         }
         ("GET", "/api/users/profile/stats") => {
-            handle_get_user_stats(path, &*DYNAMODB_CLIENT, &auth_context).await
+            handle_get_user_stats(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         ("DELETE", path) if path.starts_with("/api/users/profile/") => {
-            handle_delete_user_profile(path, &*DYNAMODB_CLIENT, &*S3_CLIENT, &auth_context).await
+            handle_delete_user_profile(
+                path,
+                DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(),
+                S3_CLIENT.get().expect("S3 not initialized").as_ref(),
+                &auth_context,
+            ).await
         }
         ("GET", "/api/users/profile/preferences") => {
-            handle_get_user_preferences(path, &*DYNAMODB_CLIENT, &auth_context).await
+            handle_get_user_preferences(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         ("PUT", "/api/users/profile/preferences") => {
-            handle_update_user_preferences(path, body, &*DYNAMODB_CLIENT, &auth_context).await
+            handle_update_user_preferences(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         _ => {
             Ok(json!({

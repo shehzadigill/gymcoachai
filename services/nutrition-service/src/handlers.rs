@@ -1,4 +1,5 @@
 use serde_json::{json, Value};
+use validator::Validate;
 use anyhow::Result;
 use tracing::{info, error, warn};
 use uuid::Uuid;
@@ -179,6 +180,7 @@ pub async fn handle_get_meal(
     user_id: &str,
     meal_id: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     match nutrition_repo.get_meal_by_id(user_id, meal_id).await {
         Ok(Some(meal)) => {
@@ -218,6 +220,7 @@ pub async fn handle_get_meals_by_date(
     user_id: &str,
     date: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     let meal_date = match chrono::DateTime::parse_from_rfc3339(date) {
         Ok(dt) => dt.with_timezone(&Utc),
@@ -266,6 +269,7 @@ pub async fn handle_update_meal(
     meal_id: &str,
     body: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     let update_request: UpdateMealRequest = match serde_json::from_str(body) {
         Ok(request) => request,
@@ -364,6 +368,7 @@ pub async fn handle_delete_meal(
     user_id: &str,
     meal_id: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     // Check if meal exists
     match nutrition_repo.get_meal_by_id(user_id, meal_id).await {
@@ -423,6 +428,7 @@ pub async fn handle_delete_meal(
 pub async fn handle_create_food(
     body: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     let create_request: CreateFoodRequest = match serde_json::from_str(body) {
         Ok(request) => request,
@@ -515,6 +521,7 @@ pub async fn handle_create_food(
 pub async fn handle_get_food(
     food_id: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     match nutrition_repo.get_food_by_id(food_id).await {
         Ok(Some(food)) => {
@@ -554,6 +561,7 @@ pub async fn handle_search_foods(
     query: &str,
     limit: Option<u32>,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     let limit = limit.unwrap_or(20).min(100); // Max 100 results
 
@@ -590,6 +598,7 @@ pub async fn handle_create_nutrition_plan(
     user_id: &str,
     body: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     let create_request: CreateNutritionPlanRequest = match serde_json::from_str(body) {
         Ok(request) => request,
@@ -689,6 +698,7 @@ pub async fn handle_get_nutrition_plan(
     user_id: &str,
     plan_id: &str,
     nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
 ) -> Result<Value> {
     match nutrition_repo.get_nutrition_plan_by_id(user_id, plan_id).await {
         Ok(Some(plan)) => {

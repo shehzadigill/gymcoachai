@@ -59,7 +59,7 @@ pub async fn get_workout_plans_from_db(
                     .unwrap_or_default(),
                 created_at: item.get("createdAt")?.as_s().ok()?.clone(),
                 updated_at: item.get("updatedAt")?.as_s().ok()?.clone(),
-                is_active: item.get("isActive")?.as_bool().ok()?,
+                is_active: *item.get("isActive")?.as_bool().ok()?,
             })
         })
         .collect();
@@ -147,11 +147,11 @@ pub async fn get_workout_plan_from_db(
 
     if let Some(item) = result.item {
         let plan = WorkoutPlan {
-            id: item.get("id").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            user_id: item.get("userId").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            name: item.get("name").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            id: item.get("id").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            user_id: item.get("userId").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            name: item.get("name").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             description: item.get("description").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            difficulty: item.get("difficulty").and_then(|v| v.as_s().ok()).unwrap_or("beginner").to_string(),
+            difficulty: item.get("difficulty").and_then(|v| v.as_s().ok()).map_or("beginner", |v| v).to_string(),
             duration_weeks: item.get("durationWeeks").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(0),
             frequency_per_week: item.get("frequencyPerWeek").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(0),
             exercises: item.get("exercises")
@@ -171,9 +171,9 @@ pub async fn get_workout_plan_from_db(
                     })
                 }).collect())
                 .unwrap_or_default(),
-            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            is_active: item.get("isActive").and_then(|v| v.as_bool().ok()).unwrap_or(false),
+            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            is_active: *item.get("isActive").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
         };
         
         Ok(serde_json::to_value(plan)?)
@@ -262,7 +262,7 @@ pub async fn get_workout_sessions_from_db(
                                         weight: set_obj.get("weight").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         duration_seconds: set_obj.get("durationSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         rest_seconds: set_obj.get("restSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                                        completed: set_obj.get("completed")?.as_bool().ok()?,
+                                        completed: *set_obj.get("completed")?.as_bool().ok()?,
                                         notes: set_obj.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
                                     })
                                 }).collect())
@@ -384,17 +384,17 @@ pub async fn get_workout_session_from_db(
 
     if let Some(item) = result.item {
         let session = WorkoutSession {
-            id: item.get("id").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            user_id: item.get("userId").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            id: item.get("id").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            user_id: item.get("userId").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             workout_plan_id: item.get("workoutPlanId").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            name: item.get("name").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            started_at: item.get("startedAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            name: item.get("name").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            started_at: item.get("startedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             completed_at: item.get("completedAt").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             duration_minutes: item.get("durationMinutes").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
             notes: item.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             rating: item.get("rating").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             exercises: item.get("exercises")
                 .and_then(|v| v.as_l().ok())
                 .map(|list| list.iter().filter_map(|v| {
@@ -412,7 +412,7 @@ pub async fn get_workout_session_from_db(
                                     weight: set_obj.get("weight").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                     duration_seconds: set_obj.get("durationSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                     rest_seconds: set_obj.get("restSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                                    completed: set_obj.get("completed")?.as_bool().ok()?,
+                                    completed: *set_obj.get("completed")?.as_bool().ok()?,
                                     notes: set_obj.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
                                 })
                             }).collect())
@@ -579,10 +579,10 @@ pub async fn get_exercise_from_db(
 
     if let Some(item) = result.item {
         let exercise = Exercise {
-            id: item.get("id").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            name: item.get("name").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            id: item.get("id").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            name: item.get("name").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             description: item.get("description").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            category: item.get("category").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            category: item.get("category").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             muscle_groups: item.get("muscleGroups")
                 .and_then(|v| v.as_l().ok())
                 .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
@@ -591,7 +591,7 @@ pub async fn get_exercise_from_db(
                 .and_then(|v| v.as_l().ok())
                 .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
                 .unwrap_or_default(),
-            difficulty: item.get("difficulty").and_then(|v| v.as_s().ok()).unwrap_or("beginner").to_string(),
+            difficulty: item.get("difficulty").and_then(|v| v.as_s().ok()).map_or("beginner", |v| v).to_string(),
             instructions: item.get("instructions")
                 .and_then(|v| v.as_l().ok())
                 .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
@@ -599,8 +599,8 @@ pub async fn get_exercise_from_db(
             tips: item.get("tips").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             video_url: item.get("videoUrl").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             image_url: item.get("imageUrl").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
-            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).unwrap_or("").to_string(),
+            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
         };
         
         Ok(serde_json::to_value(exercise)?)

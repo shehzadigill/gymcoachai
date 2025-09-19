@@ -94,7 +94,7 @@ impl NutritionRepository {
         match request.send().await {
             Ok(response) => {
                 if let Some(item) = response.item() {
-                    self.item_to_meal(item)
+                    Ok(Some(self.item_to_meal(item)?))
                 } else {
                     Ok(None)
                 }
@@ -117,15 +117,11 @@ impl NutritionRepository {
         match request.send().await {
             Ok(response) => {
                 let mut meals = Vec::new();
-                
-                if let Some(items) = response.items() {
-                    for item in items {
-                        if let Ok(meal) = self.item_to_meal(item) {
-                            meals.push(meal);
-                        }
+                for item in response.items() {
+                    if let Ok(meal) = self.item_to_meal(item) {
+                        meals.push(meal);
                     }
                 }
-                
                 Ok(meals)
             }
             Err(e) => {
@@ -180,17 +176,17 @@ impl NutritionRepository {
             .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
             .key("SK", AttributeValue::S(format!("MEAL#{}", meal_id)))
             .update_expression(update_expression)
-            .expression_attribute_values(expression_attribute_values)
+            .set_expression_attribute_values(Some(expression_attribute_values))
             .return_values(ReturnValue::AllNew);
 
         if !expression_attribute_names.is_empty() {
-            request = request.expression_attribute_names(expression_attribute_names);
+            request = request.set_expression_attribute_names(Some(expression_attribute_names));
         }
 
         match request.send().await {
             Ok(response) => {
                 if let Some(attributes) = response.attributes() {
-                    self.item_to_meal(attributes)
+                    Ok(self.item_to_meal(attributes)?)
                 } else {
                     Err(anyhow::anyhow!("No attributes returned from update"))
                 }
@@ -314,7 +310,7 @@ impl NutritionRepository {
         match request.send().await {
             Ok(response) => {
                 if let Some(item) = response.item() {
-                    self.item_to_food(item)
+                    Ok(Some(self.item_to_food(item)?))
                 } else {
                     Ok(None)
                 }
@@ -338,15 +334,11 @@ impl NutritionRepository {
         match request.send().await {
             Ok(response) => {
                 let mut foods = Vec::new();
-                
-                if let Some(items) = response.items() {
-                    for item in items {
-                        if let Ok(food) = self.item_to_food(item) {
-                            foods.push(food);
-                        }
+                for item in response.items() {
+                    if let Ok(food) = self.item_to_food(item) {
+                        foods.push(food);
                     }
                 }
-                
                 Ok(foods)
             }
             Err(e) => {
@@ -431,7 +423,7 @@ impl NutritionRepository {
         match request.send().await {
             Ok(response) => {
                 if let Some(item) = response.item() {
-                    self.item_to_nutrition_plan(item)
+                    Ok(Some(self.item_to_nutrition_plan(item)?))
                 } else {
                     Ok(None)
                 }
@@ -606,7 +598,7 @@ impl NutritionRepository {
 
         let serving_unit = item.get("ServingUnit")
             .and_then(|v| v.as_s().ok())
-            .unwrap_or("serving")
+            .map_or("serving", |v| v)
             .to_string();
 
         let common_servings = item.get("CommonServings")
@@ -626,6 +618,7 @@ impl NutritionRepository {
 
         let verified = item.get("Verified")
             .and_then(|v| v.as_bool().ok())
+            .copied()
             .unwrap_or(false);
 
         let verified_by = item.get("VerifiedBy")
@@ -765,6 +758,7 @@ impl NutritionRepository {
 
         let is_active = item.get("IsActive")
             .and_then(|v| v.as_bool().ok())
+            .copied()
             .unwrap_or(true);
 
         let created_at = item.get("CreatedAt")

@@ -182,7 +182,7 @@ pub async fn get_progress_charts_from_db(
                             x_value: obj.get("xValue")?.as_s().ok()?.clone(),
                             y_value: obj.get("yValue")?.as_n().ok()?.parse().ok()?,
                             label: obj.get("label").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                            metadata: obj.get("metadata").and_then(|v| serde_json::from_value(v.clone()).ok()),
+                            metadata: obj.get("metadata").and_then(|vv| vv.as_s().ok()).and_then(|s| serde_json::from_str(s).ok()),
                         })
                     }).collect())
                     .unwrap_or_default(),
@@ -277,7 +277,7 @@ pub async fn get_milestones_from_db(
                 target_value: item.get("targetValue")?.as_n().ok()?.parse().ok()?,
                 current_value: item.get("currentValue")?.as_n().ok()?.parse().ok()?,
                 progress_percentage: item.get("progressPercentage")?.as_n().ok()?.parse().ok()?,
-                achieved: item.get("achieved")?.as_bool().ok()?,
+                achieved: *item.get("achieved")?.as_bool().ok()?,
                 achieved_at: item.get("achievedAt").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
                 created_at: item.get("createdAt")?.as_s().ok()?.clone(),
                 target_date: item.get("targetDate").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
@@ -433,7 +433,7 @@ pub async fn get_workout_sessions_for_analytics(
                                         reps: set_obj.get("reps").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         weight: set_obj.get("weight").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         duration_seconds: set_obj.get("durationSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                                        completed: set_obj.get("completed")?.as_bool().ok()?,
+                                        completed: *set_obj.get("completed")?.as_bool().ok()?,
                                     })
                                 }).collect())
                                 .unwrap_or_default(),
