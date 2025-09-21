@@ -193,6 +193,16 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             create_milestone_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
+        // Achievements
+        ("GET", path) if path.starts_with("/api/analytics/achievements/") => {
+            info!("Route: GET achievements");
+            get_achievements_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+        }
+        ("POST", "/api/analytics/achievements") => {
+            info!("Route: POST achievements");
+            create_achievement_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+        }
+        
         // Performance Trends
         ("GET", path) if path.starts_with("/api/analytics/trends/") => {
             info!("Route: GET trends");

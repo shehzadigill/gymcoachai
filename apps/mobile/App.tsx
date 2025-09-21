@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -42,15 +43,27 @@ Amplify.configure({
   },
 });
 
+// Web-compatible storage functions
 async function getAccessToken() {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem('access_token');
+  }
   return SecureStore.getItemAsync('access_token');
 }
 
 async function setAccessToken(token: string) {
+  if (Platform.OS === 'web') {
+    localStorage.setItem('access_token', token);
+    return;
+  }
   await SecureStore.setItemAsync('access_token', token);
 }
 
 async function clearAccessToken() {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem('access_token');
+    return;
+  }
   await SecureStore.deleteItemAsync('access_token');
 }
 

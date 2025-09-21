@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../../lib/api-client';
-import { useCurrentUser } from '../../../../packages/auth/dist/hooks/useCurrentUser';
+import { api } from '../../../lib/api-client';
+import { useCurrentUser } from '@packages/auth';
 import {
   Play,
   Clock,
@@ -53,9 +53,7 @@ export default function WorkoutsPage() {
       setError(null);
 
       // Fetch workout sessions from API
-      const response = await apiFetch<{ statusCode: number; body: any[] }>(
-        '/api/workouts/sessions'
-      );
+      const response = await api.getWorkoutSessions();
 
       if (response.statusCode === 200) {
         // Transform API response to frontend format
@@ -191,13 +189,9 @@ export default function WorkoutsPage() {
   const completeWorkout = async (workoutId: string) => {
     try {
       // API call to update workout session status
-      await apiFetch(`/api/workouts/sessions`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          id: workoutId,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-        }),
+      await api.updateWorkoutSession(workoutId, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
       });
 
       setWorkouts(
@@ -251,7 +245,7 @@ export default function WorkoutsPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => (window.location.href = '/workouts/create')}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />

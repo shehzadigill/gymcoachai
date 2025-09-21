@@ -240,3 +240,15 @@ pub struct AnalyticsResponse {
     pub recommendations: Vec<String>,
     pub generated_at: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Achievement {
+    pub id: String,
+    pub user_id: String,
+    pub title: String,
+    pub description: String,
+    pub category: String, // "strength", "endurance", "consistency", "milestone", "special"
+    pub points: i32,
+    pub achieved_at: String,
+    pub created_at: String,
+}

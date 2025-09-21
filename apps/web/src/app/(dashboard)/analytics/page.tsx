@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../../lib/api-client';
+import { api } from '../../../lib/api-client';
 import {
   TrendingUp,
   TrendingDown,
@@ -60,16 +60,12 @@ export default function AnalyticsPage() {
 
       const [strengthProgress, bodyMeasurements, milestones] =
         await Promise.all([
-          apiFetch<{ statusCode: number; body: any }>(
-            '/api/analytics/strength-progress/me'
-          ).catch(() => ({
+          api.getStrengthProgress().catch(() => ({
             statusCode: 200,
             body: { completed: 0, weeklyGoal: 3, monthlyGoal: 12, trend: 15 },
           })),
 
-          apiFetch<{ statusCode: number; body: any }>(
-            '/api/analytics/body-measurements/me'
-          ).catch(() => ({
+          api.getBodyMeasurements().catch(() => ({
             statusCode: 200,
             body: {
               caloriesToday: 1850,
@@ -80,9 +76,7 @@ export default function AnalyticsPage() {
             },
           })),
 
-          apiFetch<{ statusCode: number; body: any }>(
-            '/api/analytics/milestones/me'
-          ).catch(() => ({
+          api.getMilestones().catch(() => ({
             statusCode: 200,
             body: {
               recommendations: 3,
@@ -104,7 +98,7 @@ export default function AnalyticsPage() {
         { day: 'Sun', workouts: 1, calories: 1900, duration: 45 },
       ];
 
-      setData({
+      const analyticsData = {
         strengthProgress: {
           completed: strengthProgress.body?.completed ?? 0,
           weeklyGoal: strengthProgress.body?.weeklyGoal ?? 3,
@@ -128,7 +122,9 @@ export default function AnalyticsPage() {
           totalWorkouts: milestones.body?.totalWorkouts ?? 12,
         },
         weeklyData,
-      });
+      };
+
+      setData(analyticsData);
     } catch (e: any) {
       setError(e?.message || 'Failed to load analytics');
     } finally {

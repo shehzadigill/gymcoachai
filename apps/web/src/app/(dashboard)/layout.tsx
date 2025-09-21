@@ -52,7 +52,7 @@ export default function DashboardLayout({
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
         {/* Mobile sidebar */}
         <div
           className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
@@ -81,20 +81,18 @@ export default function DashboardLayout({
         </div>
 
         {/* Desktop sidebar */}
-        <div className="hidden lg:flex lg:flex-shrink-0">
-          <div className="flex flex-col w-64">
-            <SidebarContent
-              navigation={navigation}
-              pathname={pathname}
-              user={user}
-              onSignOut={handleSignOut}
-            />
-          </div>
+        <div className="hidden lg:flex lg:flex-shrink-0 lg:w-64">
+          <SidebarContent
+            navigation={navigation}
+            pathname={pathname}
+            user={user}
+            onSignOut={handleSignOut}
+          />
         </div>
 
-        {/* Main content */}
-        <div className="lg:pl-64 flex flex-col flex-1">
-          {/* Top bar */}
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Top bar for mobile */}
           <div className="sticky top-0 z-10 lg:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-50 dark:bg-gray-900">
             <button
               type="button"
@@ -107,8 +105,8 @@ export default function DashboardLayout({
 
           {/* Page header */}
           <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-            <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center">
+            <div className="px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-16">
                 <div>
                   <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
                     {navigation.find((item) => item.href === pathname)?.name ||
@@ -131,10 +129,8 @@ export default function DashboardLayout({
           </header>
 
           {/* Main content */}
-          <main className="flex-1">
-            <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-              {children}
-            </div>
+          <main className="flex-1 overflow-auto">
+            <div className="px-4 sm:px-6 lg:px-8 py-6">{children}</div>
           </main>
         </div>
       </div>
@@ -154,7 +150,7 @@ function SidebarContent({
   onSignOut: () => void;
 }) {
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         <div className="flex items-center flex-shrink-0 px-4">
           <div className="flex items-center">

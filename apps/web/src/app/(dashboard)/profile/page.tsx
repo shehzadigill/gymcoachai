@@ -1,148 +1,183 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../../lib/api-client';
-import { useCurrentUser } from '../../../../../../packages/auth/dist/hooks/useCurrentUser';
+import { api } from '../../../lib/api-client';
+import { useCurrentUser } from '@packages/auth';
 import {
   User,
-  Mail,
-  Calendar,
-  Target,
   Settings,
   Camera,
   Save,
   Edit,
-  Check,
-  X,
+  Target,
+  Activity,
+  Heart,
+  Weight,
+  Ruler,
+  Calendar,
+  Bell,
+  Shield,
+  Globe,
 } from 'lucide-react';
 
 interface UserProfile {
-  first_name: string;
-  last_name: string;
+  id: string;
+  name: string;
   email: string;
-  bio?: string;
-  date_of_birth?: string;
+  profileImage?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other';
   height?: number; // in cm
   weight?: number; // in kg
-  fitness_goals: string[];
-  experience_level: string;
-  profile_image_url?: string;
+  fitnessLevel?: 'beginner' | 'intermediate' | 'advanced';
+  goals?: string[];
   preferences: {
-    units: string;
+    units: 'metric' | 'imperial';
     timezone: string;
     notifications: {
       email: boolean;
       push: boolean;
-      workout_reminders: boolean;
-      nutrition_reminders: boolean;
+      workoutReminders: boolean;
+      nutritionReminders: boolean;
     };
     privacy: {
-      profile_visibility: string;
-      workout_sharing: boolean;
-      progress_sharing: boolean;
+      profileVisibility: 'public' | 'private' | 'friends';
+      workoutSharing: boolean;
+      progressSharing: boolean;
     };
   };
-  created_at: string;
-  updated_at: string;
 }
 
 export default function ProfilePage() {
-  const { user } = useCurrentUser();
+  const currentUser = useCurrentUser();
+  const user = currentUser;
+  const userLoading = currentUser.isLoading;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    'profile' | 'preferences' | 'goals'
+  >('profile');
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (!userLoading && user) {
+      fetchProfile();
+    }
+  }, [userLoading, user]);
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await apiFetch<{
-        statusCode: number;
-        body: UserProfile;
-      }>('/api/user-profiles/profile');
-
+      const response = await api.getUserProfile();
       if (response.statusCode === 200) {
         setProfile(response.body);
-      } else if (response.statusCode === 404) {
-        // Create a default profile if none exists
+      } else {
+        // Create default profile if none exists
         const defaultProfile: UserProfile = {
-          first_name: user?.attributes?.given_name || '',
-          last_name: user?.attributes?.family_name || '',
-          email: user?.attributes?.email || '',
-          bio: '',
-          date_of_birth: '',
-          height: 0,
-          weight: 0,
-          fitness_goals:
-            user?.attributes?.['custom:fitnessGoals']?.split(',') || [],
-          experience_level:
-            user?.attributes?.['custom:experienceLevel'] || 'beginner',
-          profile_image_url: '',
+          id: user?.id || '',
+          name: user?.name || '',
+          email: user?.email || '',
           preferences: {
             units: 'metric',
-            timezone: 'UTC',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             notifications: {
               email: true,
               push: true,
-              workout_reminders: true,
-              nutrition_reminders: true,
+              workoutReminders: true,
+              nutritionReminders: true,
             },
             privacy: {
-              profile_visibility: 'private',
-              workout_sharing: false,
-              progress_sharing: false,
+              profileVisibility: 'private',
+              workoutSharing: false,
+              progressSharing: false,
             },
           },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         };
         setProfile(defaultProfile);
       }
     } catch (e: any) {
-      setError(e?.message || 'Failed to load profile');
+      console.error('Failed to fetch profile:', e);
+      // If profile not found, create a default profile
+      if (
+        e?.message?.includes('User profile not found') ||
+        e?.message?.includes('Not Found') ||
+        e?.message?.includes('"Not Found"')
+      ) {
+        const defaultProfile: UserProfile = {
+          id: user?.id || '',
+          name: user?.name || '',
+          email: user?.email || '',
+          preferences: {
+            units: 'metric',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            notifications: {
+              email: true,
+              push: true,
+              workoutReminders: true,
+              nutritionReminders: true,
+            },
+            privacy: {
+              profileVisibility: 'private',
+              workoutSharing: false,
+              progressSharing: false,
+            },
+          },
+        };
+        setProfile(defaultProfile);
+        setError(null); // Clear error since we're creating a default profile
+      } else {
+        setError(e?.message || 'Failed to load profile');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const saveProfile = async () => {
-    if (!profile) return;
-
+  const saveProfile = async (updatedProfile: UserProfile) => {
     try {
       setSaving(true);
+      setError(null);
+      setSuccess(null);
 
-      const response = await apiFetch('/api/user-profiles/profile', {
-        method: 'PUT',
-        body: JSON.stringify(profile),
-      });
-
-      if (response.statusCode === 200) {
-        setEditing(false);
+      const response = await api.updateUserProfile(updatedProfile);
+      if (response.statusCode === 200 || response.statusCode === 201) {
+        setProfile(updatedProfile);
+        setSuccess('Profile saved successfully');
+      } else {
+        setError('Failed to save profile');
       }
     } catch (e: any) {
+      console.error('Failed to save profile:', e);
       setError(e?.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
   };
 
-  const updateProfile = (updates: Partial<UserProfile>) => {
-    if (!profile) return;
-    setProfile({
-      ...profile,
-      ...updates,
-      updated_at: new Date().toISOString(),
-    });
+  const handleProfileUpdate = (updates: Partial<UserProfile>) => {
+    if (profile) {
+      const updatedProfile = { ...profile, ...updates };
+      setProfile(updatedProfile);
+    }
   };
 
-  if (loading) {
+  const handlePreferencesUpdate = (
+    updates: Partial<UserProfile['preferences']>
+  ) => {
+    if (profile) {
+      const updatedProfile = {
+        ...profile,
+        preferences: { ...profile.preferences, ...updates },
+      };
+      setProfile(updatedProfile);
+    }
+  };
+
+  if (userLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -150,7 +185,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (error) {
+  if (error && !profile) {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <div className="text-red-600 dark:text-red-400">{error}</div>
@@ -158,7 +193,25 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Profile Settings
+        </h1>
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <p className="text-yellow-800 dark:text-yellow-200">
+            {loading
+              ? 'Loading profile...'
+              : 'No profile data available. Please create your profile.'}
+          </p>
+          {error && (
+            <p className="text-red-600 dark:text-red-400">Error: {error}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -166,371 +219,470 @@ export default function ProfilePage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Profile
+            Profile Settings
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage your personal information
+            Manage your personal information and preferences
           </p>
         </div>
-        <div className="flex space-x-2">
-          {editing ? (
-            <>
-              <button
-                onClick={saveProfile}
-                disabled={saving}
-                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-              >
-                <Save className="h-4 w-4" />
-                <span>{saving ? 'Saving...' : 'Save'}</span>
-              </button>
-              <button
-                onClick={() => setEditing(false)}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-              >
-                <X className="h-4 w-4" />
-                <span>Cancel</span>
-              </button>
-            </>
-          ) : (
+        <button
+          onClick={() => saveProfile(profile)}
+          disabled={saving}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+        >
+          <Save className="h-4 w-4" />
+          <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+        </button>
+      </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+          <div className="text-green-600 dark:text-green-400">{success}</div>
+        </div>
+      )}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="text-red-600 dark:text-red-400">{error}</div>
+        </div>
+      )}
+
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8">
+          {[
+            { id: 'profile', name: 'Profile', icon: User },
+            { id: 'preferences', name: 'Preferences', icon: Settings },
+            { id: 'goals', name: 'Goals', icon: Target },
+          ].map((tab) => (
             <button
-              onClick={() => setEditing(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
             >
-              <Edit className="h-4 w-4" />
-              <span>Edit</span>
+              <tab.icon className="h-4 w-4" />
+              <span>{tab.name}</span>
             </button>
-          )}
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="space-y-6">
+        {activeTab === 'profile' && (
+          <ProfileTab profile={profile} onUpdate={handleProfileUpdate} />
+        )}
+        {activeTab === 'preferences' && (
+          <PreferencesTab
+            preferences={profile.preferences}
+            onUpdate={handlePreferencesUpdate}
+          />
+        )}
+        {activeTab === 'goals' && (
+          <GoalsTab profile={profile} onUpdate={handleProfileUpdate} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProfileTab({
+  profile,
+  onUpdate,
+}: {
+  profile: UserProfile;
+  onUpdate: (updates: Partial<UserProfile>) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Profile Image */}
+      <div className="lg:col-span-2">
+        <div className="flex items-center space-x-6">
+          <div className="relative">
+            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              {profile.profileImage ? (
+                <img
+                  src={profile.profileImage}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover"
+                />
+              ) : (
+                <User className="h-12 w-12 text-gray-400" />
+              )}
+            </div>
+            <button className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700">
+              <Camera className="h-4 w-4" />
+            </button>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {profile.name || 'No name set'}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">{profile.email}</p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Picture & Basic Info */}
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="text-center">
-              <div className="relative inline-block">
-                <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {profile.profile_image_url ? (
-                    <img
-                      src={profile.profile_image_url}
-                      alt="Profile"
-                      className="w-24 h-24 rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="h-12 w-12 text-gray-400" />
-                  )}
-                </div>
-                {editing && (
-                  <button className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full">
-                    <Camera className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {profile.first_name} {profile.last_name}
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                {profile.email}
-              </p>
-              {profile.bio && (
-                <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                  {profile.bio}
-                </p>
-              )}
-            </div>
-          </div>
+      {/* Basic Information */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Basic Information
+        </h3>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Full Name
+          </label>
+          <input
+            type="text"
+            value={profile.name || ''}
+            onChange={(e) => onUpdate({ name: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
         </div>
 
-        {/* Profile Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Personal Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Personal Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  First Name
-                </label>
-                {editing ? (
-                  <input
-                    type="text"
-                    value={profile.first_name}
-                    onChange={(e) =>
-                      updateProfile({ first_name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                ) : (
-                  <p className="text-gray-900 dark:text-white">
-                    {profile.first_name}
-                  </p>
-                )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Email
+          </label>
+          <input
+            type="email"
+            value={profile.email || ''}
+            onChange={(e) => onUpdate({ email: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Date of Birth
+          </label>
+          <input
+            type="date"
+            value={profile.dateOfBirth || ''}
+            onChange={(e) => onUpdate({ dateOfBirth: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Gender
+          </label>
+          <select
+            value={profile.gender || ''}
+            onChange={(e) => onUpdate({ gender: e.target.value as any })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Physical Information */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Physical Information
+        </h3>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Height (cm)
+          </label>
+          <input
+            type="number"
+            value={profile.height || ''}
+            onChange={(e) => onUpdate({ height: Number(e.target.value) })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Weight (kg)
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            value={profile.weight || ''}
+            onChange={(e) => onUpdate({ weight: Number(e.target.value) })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Fitness Level
+          </label>
+          <select
+            value={profile.fitnessLevel || ''}
+            onChange={(e) => onUpdate({ fitnessLevel: e.target.value as any })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="">Select fitness level</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreferencesTab({
+  preferences,
+  onUpdate,
+}: {
+  preferences: UserProfile['preferences'];
+  onUpdate: (updates: Partial<UserProfile['preferences']>) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Units */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Units
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Measurement System
+            </label>
+            <select
+              value={preferences.units}
+              onChange={(e) => onUpdate({ units: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="metric">Metric (kg, cm)</option>
+              <option value="imperial">Imperial (lbs, ft)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Timezone
+            </label>
+            <select
+              value={preferences.timezone}
+              onChange={(e) => onUpdate({ timezone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="UTC">UTC</option>
+              <option value="America/New_York">Eastern Time</option>
+              <option value="America/Chicago">Central Time</option>
+              <option value="America/Denver">Mountain Time</option>
+              <option value="America/Los_Angeles">Pacific Time</option>
+              <option value="Europe/London">London</option>
+              <option value="Europe/Paris">Paris</option>
+              <option value="Asia/Tokyo">Tokyo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Notifications
+        </h3>
+        <div className="space-y-3">
+          {[
+            { key: 'email', label: 'Email Notifications', icon: Bell },
+            { key: 'push', label: 'Push Notifications', icon: Bell },
+            {
+              key: 'workoutReminders',
+              label: 'Workout Reminders',
+              icon: Activity,
+            },
+            {
+              key: 'nutritionReminders',
+              label: 'Nutrition Reminders',
+              icon: Heart,
+            },
+          ].map(({ key, label, icon: Icon }) => (
+            <div key={key} className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Icon className="h-5 w-5 text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {label}
+                </span>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Last Name
-                </label>
-                {editing ? (
-                  <input
-                    type="text"
-                    value={profile.last_name}
-                    onChange={(e) =>
-                      updateProfile({ last_name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                ) : (
-                  <p className="text-gray-900 dark:text-white">
-                    {profile.last_name}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
-                </label>
-                <p className="text-gray-900 dark:text-white">{profile.email}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Date of Birth
-                </label>
-                {editing ? (
-                  <input
-                    type="date"
-                    value={profile.date_of_birth || ''}
-                    onChange={(e) =>
-                      updateProfile({ date_of_birth: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                ) : (
-                  <p className="text-gray-900 dark:text-white">
-                    {profile.date_of_birth || 'Not set'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Height
-                </label>
-                {editing ? (
-                  <div className="flex">
-                    <input
-                      type="number"
-                      value={profile.height || ''}
-                      onChange={(e) =>
-                        updateProfile({ height: Number(e.target.value) })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                    <span className="ml-2 text-gray-500 dark:text-gray-400 self-center">
-                      cm
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-gray-900 dark:text-white">
-                    {profile.height ? `${profile.height} cm` : 'Not set'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Weight
-                </label>
-                {editing ? (
-                  <div className="flex">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={profile.weight || ''}
-                      onChange={(e) =>
-                        updateProfile({ weight: Number(e.target.value) })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                    <span className="ml-2 text-gray-500 dark:text-gray-400 self-center">
-                      kg
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-gray-900 dark:text-white">
-                    {profile.weight ? `${profile.weight} kg` : 'Not set'}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Bio
-              </label>
-              {editing ? (
-                <textarea
-                  value={profile.bio || ''}
-                  onChange={(e) => updateProfile({ bio: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Tell us about yourself..."
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={
+                    preferences.notifications[
+                      key as keyof typeof preferences.notifications
+                    ]
+                  }
+                  onChange={(e) =>
+                    onUpdate({
+                      notifications: {
+                        ...preferences.notifications,
+                        [key]: e.target.checked,
+                      },
+                    })
+                  }
+                  className="sr-only peer"
                 />
-              ) : (
-                <p className="text-gray-900 dark:text-white">
-                  {profile.bio || 'No bio provided'}
-                </p>
-              )}
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
             </div>
-          </div>
+          ))}
+        </div>
+      </div>
 
-          {/* Fitness Goals */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Fitness Goals
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Experience Level
-                </label>
-                {editing ? (
-                  <select
-                    value={profile.experience_level}
-                    onChange={(e) =>
-                      updateProfile({ experience_level: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
-                ) : (
-                  <p className="text-gray-900 dark:text-white capitalize">
-                    {profile.experience_level}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Goals
-                </label>
-                {editing ? (
-                  <div className="space-y-2">
-                    {[
-                      'Build muscle',
-                      'Lose weight',
-                      'Improve endurance',
-                      'Get stronger',
-                      'Stay healthy',
-                    ].map((goal) => (
-                      <label key={goal} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={profile.fitness_goals.includes(goal)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              updateProfile({
-                                fitness_goals: [...profile.fitness_goals, goal],
-                              });
-                            } else {
-                              updateProfile({
-                                fitness_goals: profile.fitness_goals.filter(
-                                  (g) => g !== goal
-                                ),
-                              });
-                            }
-                          }}
-                          className="mr-2"
-                        />
-                        <span className="text-gray-900 dark:text-white">
-                          {goal}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {profile.fitness_goals.map((goal, index) => (
-                      <span
-                        key={index}
-                        className="bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-sm"
-                      >
-                        {goal}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+      {/* Privacy */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Privacy
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Profile Visibility
+            </label>
+            <select
+              value={preferences.privacy.profileVisibility}
+              onChange={(e) =>
+                onUpdate({
+                  privacy: {
+                    ...preferences.privacy,
+                    profileVisibility: e.target.value as any,
+                  },
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="public">Public</option>
+              <option value="friends">Friends Only</option>
+              <option value="private">Private</option>
+            </select>
           </div>
+          {[
+            {
+              key: 'workoutSharing',
+              label: 'Share Workout Progress',
+              icon: Activity,
+            },
+            {
+              key: 'progressSharing',
+              label: 'Share Progress Photos',
+              icon: Camera,
+            },
+          ].map(({ key, label, icon: Icon }) => (
+            <div key={key} className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Icon className="h-5 w-5 text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {label}
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={
+                    preferences.privacy[key as keyof typeof preferences.privacy]
+                  }
+                  onChange={(e) =>
+                    onUpdate({
+                      privacy: {
+                        ...preferences.privacy,
+                        [key]: e.target.checked,
+                      },
+                    })
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-          {/* Preferences */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Preferences
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Units
-                </label>
-                {editing ? (
-                  <select
-                    value={profile.preferences.units}
-                    onChange={(e) =>
-                      updateProfile({
-                        preferences: {
-                          ...profile.preferences,
-                          units: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="metric">Metric</option>
-                    <option value="imperial">Imperial</option>
-                  </select>
-                ) : (
-                  <p className="text-gray-900 dark:text-white capitalize">
-                    {profile.preferences.units}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Notifications
-                </label>
-                <div className="space-y-2">
-                  {Object.entries(profile.preferences.notifications).map(
-                    ([key, value]) => (
-                      <label key={key} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={value}
-                          onChange={(e) =>
-                            updateProfile({
-                              preferences: {
-                                ...profile.preferences,
-                                notifications: {
-                                  ...profile.preferences.notifications,
-                                  [key]: e.target.checked,
-                                },
-                              },
-                            })
-                          }
-                          disabled={!editing}
-                          className="mr-2"
-                        />
-                        <span className="text-gray-900 dark:text-white capitalize">
-                          {key.replace('_', ' ')}
-                        </span>
-                      </label>
-                    )
-                  )}
-                </div>
-              </div>
+function GoalsTab({
+  profile,
+  onUpdate,
+}: {
+  profile: UserProfile;
+  onUpdate: (updates: Partial<UserProfile>) => void;
+}) {
+  const [newGoal, setNewGoal] = useState('');
+
+  const addGoal = () => {
+    if (newGoal.trim() && profile.goals) {
+      onUpdate({
+        goals: [...profile.goals, newGoal.trim()],
+      });
+      setNewGoal('');
+    }
+  };
+
+  const removeGoal = (index: number) => {
+    if (profile.goals) {
+      onUpdate({
+        goals: profile.goals.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Fitness Goals
+        </h3>
+
+        {/* Add Goal Form */}
+        <div className="flex space-x-2 mb-4">
+          <input
+            type="text"
+            value={newGoal}
+            onChange={(e) => setNewGoal(e.target.value)}
+            placeholder="Add a new goal..."
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            onKeyPress={(e) => e.key === 'Enter' && addGoal()}
+          />
+          <button
+            onClick={addGoal}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Goals List */}
+        <div className="space-y-2">
+          {(profile.goals || []).map((goal, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+            >
+              <span className="text-gray-900 dark:text-white">{goal}</span>
+              <button
+                onClick={() => removeGoal(index)}
+                className="text-red-500 hover:text-red-700"
+              >
+                Remove
+              </button>
             </div>
-          </div>
+          ))}
+          {(!profile.goals || profile.goals.length === 0) && (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+              No goals set yet. Add your first goal above!
+            </p>
+          )}
         </div>
       </div>
     </div>

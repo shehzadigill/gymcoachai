@@ -449,3 +449,69 @@ pub async fn get_workout_sessions_for_analytics(
     
     Ok(serde_json::to_value(sessions)?)
 }
+
+// Achievements Database Operations
+pub async fn get_achievements_from_db(
+    user_id: &str,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    
+    let result = dynamodb_client
+        .query()
+        .table_name(&table_name)
+        .key_condition_expression("PK = :pk AND begins_with(SK, :sk)")
+        .expression_attribute_values(":pk", AttributeValue::S("ACHIEVEMENT".to_string()))
+        .expression_attribute_values(":sk", AttributeValue::S(format!("USER#{}", user_id)))
+        .send()
+        .await?;
+    
+    let achievements: Vec<Achievement> = result
+        .items
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|item| {
+            Some(Achievement {
+                id: item.get("id")?.as_s().ok()?.clone(),
+                user_id: item.get("userId")?.as_s().ok()?.clone(),
+                title: item.get("title")?.as_s().ok()?.clone(),
+                description: item.get("description")?.as_s().ok()?.clone(),
+                category: item.get("category")?.as_s().ok()?.clone(),
+                points: item.get("points")?.as_n().ok()?.parse().ok()?,
+                achieved_at: item.get("achievedAt")?.as_s().ok()?.clone(),
+                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
+            })
+        })
+        .collect();
+    
+    Ok(serde_json::to_value(achievements)?)
+}
+
+pub async fn create_achievement_in_db(
+    achievement: &Achievement,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    
+    let item = std::collections::HashMap::from([
+        ("PK".to_string(), AttributeValue::S("ACHIEVEMENT".to_string())),
+        ("SK".to_string(), AttributeValue::S(format!("USER#{}#{}", achievement.user_id, achievement.id))),
+        ("id".to_string(), AttributeValue::S(achievement.id.clone())),
+        ("userId".to_string(), AttributeValue::S(achievement.user_id.clone())),
+        ("title".to_string(), AttributeValue::S(achievement.title.clone())),
+        ("description".to_string(), AttributeValue::S(achievement.description.clone())),
+        ("category".to_string(), AttributeValue::S(achievement.category.clone())),
+        ("points".to_string(), AttributeValue::N(achievement.points.to_string())),
+        ("achievedAt".to_string(), AttributeValue::S(achievement.achieved_at.clone())),
+        ("createdAt".to_string(), AttributeValue::S(achievement.created_at.clone())),
+    ]);
+    
+    dynamodb_client
+        .put_item()
+        .table_name(&table_name)
+        .set_item(Some(item))
+        .send()
+        .await?;
+    
+    Ok(())
+}

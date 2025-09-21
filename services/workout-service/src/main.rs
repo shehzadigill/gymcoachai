@@ -190,6 +190,11 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             get_workout_history_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
+        // Log Activity
+        ("POST", "/api/workouts/log-activity") => {
+            log_activity_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
+        
         _ => {
             Ok(json!({
                 "statusCode": 404,

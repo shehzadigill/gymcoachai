@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '../../lib/api-client';
+import { api } from '../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
   CalendarDays,
@@ -58,28 +58,26 @@ export default function DashboardPage() {
 
         const [workouts, profile, nutrition, ai, milestones] =
           await Promise.all([
-            apiFetch<{ statusCode: number; body: { completed: number } }>(
-              '/api/analytics/strength-progress/me'
-            ).catch(() => ({ statusCode: 200, body: { completed: 0 } })),
+            api
+              .getStrengthProgress()
+              .catch(() => ({ statusCode: 200, body: { completed: 0 } })),
 
-            apiFetch<{ statusCode: number; body: any }>(
-              '/api/user-profiles/profile'
-            ).catch(() => ({
+            api.getUserProfile().catch(() => ({
               statusCode: 200,
               body: { activePlan: 'No active plan' },
             })),
 
-            apiFetch<{ statusCode: number; body: { caloriesToday: number } }>(
-              '/api/analytics/body-measurements/me'
-            ).catch(() => ({ statusCode: 200, body: { caloriesToday: 0 } })),
+            api
+              .getBodyMeasurements()
+              .catch(() => ({ statusCode: 200, body: { caloriesToday: 0 } })),
 
-            apiFetch<{ statusCode: number; body: { recommendations: number } }>(
-              '/api/analytics/milestones/me'
-            ).catch(() => ({ statusCode: 200, body: { recommendations: 0 } })),
+            api
+              .getMilestones()
+              .catch(() => ({ statusCode: 200, body: { recommendations: 0 } })),
 
-            apiFetch<{ statusCode: number; body: { achievements: string[] } }>(
-              '/api/analytics/achievements/me'
-            ).catch(() => ({ statusCode: 200, body: { achievements: [] } })),
+            api
+              .getAchievements()
+              .catch(() => ({ statusCode: 200, body: { achievements: [] } })),
           ]);
 
         setData({
@@ -288,10 +286,19 @@ export default function DashboardPage() {
                   setLogSubmitting(true);
                   setLogError(null);
                   setLogSuccess(null);
-                  await apiFetch('/api/workouts/log-activity', {
-                    method: 'POST',
-                    body: JSON.stringify(activity),
-                  });
+                  // Transform the activity data to match backend expectations
+                  const activityData = {
+                    activityType: activity.exercise,
+                    duration: 30, // Default duration in minutes
+                    caloriesBurned: Math.round(
+                      activity.sets * activity.reps * activity.weight * 0.1
+                    ), // Rough calculation
+                    notes: activity.notes,
+                    sets: activity.sets,
+                    reps: activity.reps,
+                    weight: activity.weight,
+                  };
+                  await api.logActivity(activityData);
                   setLogSuccess('Activity logged successfully');
                   fetchDashboardData();
                 } catch (err: any) {

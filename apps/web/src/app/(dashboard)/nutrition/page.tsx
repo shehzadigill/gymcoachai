@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../../lib/api-client';
-import { useCurrentUser } from '../../../../../../packages/auth/dist/hooks/useCurrentUser';
+import { api } from '../../../lib/api-client';
+import { useCurrentUser } from '@packages/auth';
 import {
   Apple,
   Plus,
@@ -68,14 +68,9 @@ export default function NutritionPage() {
       setLoading(true);
       setError(null);
 
-      // Get current user ID from auth context
-      const userId = user?.id || 'current-user';
-
       // Fetch meals for today
       const today = new Date().toISOString().split('T')[0];
-      const response = await apiFetch<{ statusCode: number; body: any[] }>(
-        `/api/users/${userId}/meals/date/${today}`
-      );
+      const response = await api.getMealsByDate(today);
 
       if (response.statusCode === 200) {
         // Transform API response to frontend format
@@ -255,9 +250,8 @@ export default function NutritionPage() {
       const userId = user?.id || 'current-user';
 
       // Create meal via API
-      const response = await apiFetch(`/api/users/${userId}/meals`, {
-        method: 'POST',
-        body: JSON.stringify({
+      const response = await api.createMeal(
+        {
           food_name: entry.name,
           calories: entry.calories,
           protein: entry.protein,
@@ -267,8 +261,9 @@ export default function NutritionPage() {
           sugar: entry.sugar,
           serving_size: entry.servingSize,
           meal_type: entry.mealType,
-        }),
-      });
+        },
+        userId
+      );
 
       if (response.statusCode === 200 || response.statusCode === 201) {
         // Add to local state
@@ -298,9 +293,7 @@ export default function NutritionPage() {
       const userId = user?.id || 'current-user';
 
       // Delete meal via API
-      await apiFetch(`/api/users/${userId}/meals/${id}`, {
-        method: 'DELETE',
-      });
+      await api.deleteMeal(id, userId);
 
       // Remove from local state
       setEntries((prev) => prev.filter((entry) => entry.id !== id));
@@ -375,11 +368,11 @@ export default function NutritionPage() {
             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => (window.location.href = '/nutrition/log')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Food</span>
+            <span>Log Food</span>
           </button>
         </div>
       </div>

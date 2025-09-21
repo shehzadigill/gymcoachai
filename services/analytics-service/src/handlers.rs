@@ -525,3 +525,71 @@ pub async fn generate_progress_report_handler(
 
     create_response(200, json!(report))
 }
+
+// Achievements Handlers
+pub async fn get_achievements_handler(
+    payload: Value,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<Value, Error> {
+    let user_id = payload["pathParameters"]["userId"].as_str().unwrap_or("");
+
+    if user_id.is_empty() {
+        return create_response(400, json!({"message": "User ID is required"}));
+    }
+
+    match get_achievements_from_db(user_id, dynamodb_client).await {
+        Ok(achievements) => create_response(200, achievements),
+        Err(e) => {
+            eprintln!("Error fetching achievements: {}", e);
+            create_response(500, json!({"message": "Failed to fetch achievements"}))
+        }
+    }
+}
+
+pub async fn create_achievement_handler(
+    payload: Value,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<Value, Error> {
+    let user_id = payload["pathParameters"]["userId"].as_str().unwrap_or("");
+    
+    if user_id.is_empty() {
+        return create_response(400, json!({"message": "User ID is required"}));
+    }
+
+    let body: Value = serde_json::from_str(
+        payload.get("body")
+            .ok_or("Missing body")?
+            .as_str()
+            .ok_or("Body is not a string")?,
+    )?;
+
+    let achievement = Achievement {
+        id: Uuid::new_v4().to_string(),
+        user_id: user_id.to_string(),
+        title: body.get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("New Achievement")
+            .to_string(),
+        description: body.get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        category: body.get("category")
+            .and_then(|v| v.as_str())
+            .unwrap_or("general")
+            .to_string(),
+        points: body.get("points")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(10) as i32,
+        achieved_at: Utc::now().to_rfc3339(),
+        created_at: Utc::now().to_rfc3339(),
+    };
+
+    match create_achievement_in_db(&achievement, dynamodb_client).await {
+        Ok(_) => create_response(201, json!(achievement)),
+        Err(e) => {
+            eprintln!("Error creating achievement: {}", e);
+            create_response(500, json!({"message": "Failed to create achievement"}))
+        }
+    }
+}

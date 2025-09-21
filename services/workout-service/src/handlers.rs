@@ -575,3 +575,85 @@ pub async fn get_workout_history_handler(
         Err(e) => create_response(500, json!({"message": format!("Failed to retrieve workout history: {}", e)})),
     }
 }
+
+// Log Activity Handler
+pub async fn log_activity_handler(
+    payload: Value,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<Value, Error> {
+    let body: Value = serde_json::from_str(
+        payload.get("body")
+            .ok_or("Missing body")?
+            .as_str()
+            .ok_or("Body is not a string")?,
+    )?;
+
+    let activity_type = body.get("activityType")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing activityType")?;
+    let duration = body.get("duration")
+        .and_then(|v| v.as_u64())
+        .ok_or("Missing duration")?;
+    let calories_burned = body.get("caloriesBurned")
+        .and_then(|v| v.as_u64())
+        .ok_or("Missing caloriesBurned")?;
+    let notes = body.get("notes")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    // Create a new workout session for the logged activity
+    let session_id = format!("activity_{}", chrono::Utc::now().timestamp_millis());
+    let user_id = payload["requestContext"]["authorizer"]["userId"]
+        .as_str()
+        .ok_or("Missing userId in auth context")?;
+
+    let workout_session = WorkoutSession {
+        id: session_id.clone(),
+        user_id: user_id.to_string(),
+        workout_plan_id: None,
+        name: format!("{} Activity", activity_type),
+        started_at: chrono::Utc::now().to_rfc3339(),
+        completed_at: Some(chrono::Utc::now().to_rfc3339()),
+        duration_minutes: Some(duration as i32),
+        notes: Some(format!("Activity: {} | Calories: {} | Notes: {}", activity_type, calories_burned, notes)),
+        exercises: vec![],
+        rating: None,
+        created_at: chrono::Utc::now().to_rfc3339(),
+        updated_at: chrono::Utc::now().to_rfc3339(),
+    };
+
+    // Save to database using the existing database function
+    let table_name = std::env::var("WORKOUTS_TABLE_NAME")
+        .expect("WORKOUTS_TABLE_NAME environment variable not set");
+    
+    // Create a simple item for DynamoDB
+    let mut item = std::collections::HashMap::new();
+    item.insert("PK".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(format!("USER#{}", user_id)));
+    item.insert("SK".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(format!("SESSION#{}", session_id)));
+    item.insert("id".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(session_id.clone()));
+    item.insert("user_id".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(user_id.to_string()));
+    item.insert("name".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(format!("{} Activity", activity_type)));
+    item.insert("started_at".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(chrono::Utc::now().to_rfc3339()));
+    item.insert("completed_at".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(chrono::Utc::now().to_rfc3339()));
+    item.insert("duration_minutes".to_string(), aws_sdk_dynamodb::types::AttributeValue::N(duration.to_string()));
+    item.insert("notes".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(format!("Activity: {} | Calories: {} | Notes: {}", activity_type, calories_burned, notes)));
+    item.insert("created_at".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(chrono::Utc::now().to_rfc3339()));
+    item.insert("updated_at".to_string(), aws_sdk_dynamodb::types::AttributeValue::S(chrono::Utc::now().to_rfc3339()));
+    
+    dynamodb_client
+        .put_item()
+        .table_name(&table_name)
+        .set_item(Some(item))
+        .send()
+        .await?;
+
+    let response = json!({
+        "id": session_id,
+        "message": "Activity logged successfully",
+        "activityType": activity_type,
+        "duration": duration,
+        "caloriesBurned": calories_burned
+    });
+
+    create_response(201, response)
+}
