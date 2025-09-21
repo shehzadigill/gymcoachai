@@ -7,8 +7,9 @@ export interface AuthConfig {
   region: string;
   cloudFrontUrl: string;
 }
-
 export const configureAuth = (config: AuthConfig) => {
+  console.log('config', config);
+
   Amplify.configure({
     Auth: {
       Cognito: {

@@ -45,6 +45,12 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     
     info!("Analytics service event: {:?}", event);
 
+    // Read method and path early so they are available for logging/auth
+    let http_method = event["requestContext"]["http"]["method"]
+        .as_str()
+        .unwrap_or("GET");
+    let path = event["rawPath"].as_str().unwrap_or("/");
+
     // Convert to auth event format
     let auth_event = AuthLambdaEvent {
         headers: event.get("headers")
@@ -75,6 +81,14 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             .map(|s| s.to_string()),
     };
 
+    // Handle CORS preflight early
+    if http_method == "OPTIONS" {
+        return Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers()
+        }));
+    }
+
     // Authenticate request
     let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
         Ok(auth_result) => {
@@ -88,7 +102,9 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                     })
                 }));
             }
-            auth_result.context.unwrap()
+            let ctx = auth_result.context.unwrap();
+            info!("Auth ok: user_id={}, path={} method={}", ctx.user_id, path, http_method);
+            ctx
         }
         Err(e) => {
             error!("Authentication error: {}", e);
@@ -103,57 +119,90 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         }
     };
     
-    let http_method = event["requestContext"]["http"]["method"]
-        .as_str()
-        .unwrap_or("GET");
-    
-    let path = event["rawPath"]
-        .as_str()
-        .unwrap_or("/");
+    // http_method and path already computed above
     
     let _body = event["body"].as_str().unwrap_or("{}");
     
+    // Ensure pathParameters.userId is available for handlers. If the path ends with
+    // '/me', substitute the authenticated user's id. Otherwise, try to parse from path.
+    let mut payload = event.clone();
+    {
+        use serde_json::{Map, Value as JsonValue};
+        let auth_user_id = auth_context.user_id.clone();
+        let mut path_params: Map<String, JsonValue> = payload
+            .get("pathParameters")
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+
+        // Derive userId: prefer explicit path segment if it's not a placeholder; else use auth user id
+        let last_segment = path.rsplit('/').next().unwrap_or("");
+        let candidate = if !last_segment.is_empty()
+            && last_segment != "me"
+            && last_segment != "userId"
+        {
+            last_segment.to_string()
+        } else {
+            auth_user_id
+        };
+
+        path_params.insert("userId".to_string(), JsonValue::String(candidate.clone()));
+        payload["pathParameters"] = JsonValue::Object(path_params);
+
+        // Log derived path parameters for debugging
+        info!("Resolved userId for request: {}", candidate);
+    }
+
     let response = match (http_method, path) {
         // Strength Progress
         ("GET", path) if path.starts_with("/api/analytics/strength-progress/") => {
-            get_strength_progress_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: GET strength-progress");
+            get_strength_progress_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/analytics/strength-progress") => {
-            create_strength_progress_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: POST strength-progress");
+            create_strength_progress_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Body Measurements
         ("GET", path) if path.starts_with("/api/analytics/body-measurements/") => {
-            get_body_measurements_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: GET body-measurements");
+            get_body_measurements_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/analytics/body-measurements") => {
-            create_body_measurement_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: POST body-measurements");
+            create_body_measurement_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Progress Charts
         ("GET", path) if path.starts_with("/api/analytics/charts/") => {
-            get_progress_charts_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: GET charts");
+            get_progress_charts_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/analytics/charts") => {
-            create_progress_chart_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: POST charts");
+            create_progress_chart_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Milestones
         ("GET", path) if path.starts_with("/api/analytics/milestones/") => {
-            get_milestones_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: GET milestones");
+            get_milestones_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/analytics/milestones") => {
-            create_milestone_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: POST milestones");
+            create_milestone_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Performance Trends
         ("GET", path) if path.starts_with("/api/analytics/trends/") => {
-            get_performance_trends_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: GET trends");
+            get_performance_trends_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         
         // Comprehensive Analytics
         ("GET", path) if path.starts_with("/api/analytics/workout/") => {
-            get_workout_analytics_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
+            info!("Route: GET workout analytics");
+            get_workout_analytics_handler(payload.clone(), DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await
         }
         ("POST", "/api/analytics/reports") => {
             generate_progress_report_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref()).await

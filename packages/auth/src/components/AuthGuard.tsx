@@ -13,7 +13,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
   redirectTo = '/auth/signin',
 }) => {
   const { isAuthenticated, isLoading, error } = useAuthStatus();
-
+  console.log('AuthGuard', { isAuthenticated, isLoading, error });
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

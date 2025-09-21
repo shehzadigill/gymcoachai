@@ -50,6 +50,13 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let (event, _context) = event.into_parts();
     
     info!("User profile service event: {:?}", event);
+
+
+    // Read method and path early so they are available for logging/auth
+    let http_method = event["requestContext"]["http"]["method"]
+        .as_str()
+        .unwrap_or("GET");
+    let path = event["rawPath"].as_str().unwrap_or("/");
     
     // Convert to auth event format
     let auth_event = AuthLambdaEvent {
@@ -80,6 +87,14 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
     };
+
+    // Handle CORS preflight early
+    if http_method == "OPTIONS" {
+        return Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers()
+        }));
+    }
     
     // Authenticate request
     let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
@@ -94,7 +109,9 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                     })
                 }));
             }
-            auth_result.context.unwrap()
+            let ctx = auth_result.context.unwrap();
+            info!("Auth ok: user_id={}, path={} method={}", ctx.user_id, path, http_method);
+            ctx
         }
         Err(e) => {
             error!("Authentication error: {}", e);
@@ -109,32 +126,64 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         }
     };
     
-    let http_method = event["requestContext"]["http"]["method"]
-        .as_str()
-        .unwrap_or("GET");
-    
-    let path = event["rawPath"]
-        .as_str()
-        .unwrap_or("/");
-    
     let body = event["body"]
         .as_str()
         .unwrap_or("{}");
-    
+
+     
+    // Ensure pathParameters.userId is available for handlers. If the path ends with
+    // '/me', substitute the authenticated user's id. Otherwise, try to parse from path.
+    let mut payload = event.clone();
+    {
+        use serde_json::{Map, Value as JsonValue};
+        let auth_user_id = auth_context.user_id.clone();
+        let mut path_params: Map<String, JsonValue> = payload
+            .get("pathParameters")
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+
+        // Derive userId:
+        // - If exact path is /api/user-profiles/profile or it ends with /me, use auth user id
+        // - If path is /api/user-profiles/profile/{userId}, extract last segment
+        let candidate = if path == "/api/user-profiles/profile" || path == "/api/user-profiles/profile/" {
+            auth_user_id
+        } else if path.ends_with("/me") {
+            auth_user_id
+        } else {
+            let last_segment = path.rsplit('/').next().unwrap_or("");
+            if !last_segment.is_empty() && last_segment != "profile" && last_segment != "userId" {
+                last_segment.to_string()
+            } else {
+                auth_user_id
+            }
+        };
+
+        path_params.insert("userId".to_string(), JsonValue::String(candidate.clone()));
+        payload["pathParameters"] = JsonValue::Object(path_params);
+
+        // Log derived path parameters for debugging
+        info!("Resolved userId for request: {}", candidate);
+    }    
+    info!("Path: {}", path);
     let response = match (http_method, path) {
-        ("GET", path) if path.starts_with("/api/users/profile/") => {
+        ("GET", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
+            info!("Route: GET user profile");
             handle_get_user_profile(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
-        ("PUT", path) if path.starts_with("/api/users/profile/") => {
+        ("PUT", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
+            info!("Route: PUT user profile");
             handle_update_user_profile(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
-        ("POST", "/api/users/profile/upload") => {
+        ("POST", "/api/user-profiles/profile/upload") => {
+            info!("Route: POST upload");
             handle_generate_upload_url(body, S3_CLIENT.get().expect("S3 not initialized").as_ref(), &auth_context).await
         }
-        ("GET", "/api/users/profile/stats") => {
+        ("GET", "/api/user-profiles/profile/stats") => {
+            info!("Route: GET user stats");
             handle_get_user_stats(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
-        ("DELETE", path) if path.starts_with("/api/users/profile/") => {
+        ("DELETE", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
+            info!("Route: DELETE user profile");
             handle_delete_user_profile(
                 path,
                 DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(),
@@ -142,13 +191,16 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                 &auth_context,
             ).await
         }
-        ("GET", "/api/users/profile/preferences") => {
+        ("GET", "/api/user-profiles/profile/preferences") => {
+            info!("Route: GET user preferences");
             handle_get_user_preferences(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
-        ("PUT", "/api/users/profile/preferences") => {
+        ("PUT", "/api/user-profiles/profile/preferences") => {
+            info!("Route: PUT user preferences");
             handle_update_user_preferences(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         _ => {
+            info!("Route: Not Found {}", path);
             Ok(json!({
                 "statusCode": 404,
                 "headers": get_cors_headers(),

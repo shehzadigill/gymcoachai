@@ -1,13 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from '../../../../../packages/auth/dist';
-import { Button, Card, Input } from '../../../../packages/ui/dist';
+import { signIn } from '../../../../../../packages/auth/dist';
+import { Button, Card, Input } from '../../../../../../packages/ui/dist';
+import { PasswordStrength } from '../../../../../../packages/ui/dist';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { fetchAuthSession } from '../../../../../../packages/auth/dist';
+import Cookies from 'js-cookie';
 
 export default function SignInPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const [username, setUsername] = useState('rehanbhattisweden');
+  const [password, setPassword] = useState('Rehan@123');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,12 +23,21 @@ export default function SignInPage() {
 
     try {
       await signIn({
-        username: email,
+        username: username,
         password,
       });
-
+      // Set access_token cookie for middleware
+      const session = await fetchAuthSession();
+      const jwt = session.tokens?.accessToken?.toString();
+      if (jwt) {
+        Cookies.set('access_token', jwt, {
+          sameSite: 'lax',
+          path: '/',
+          secure: process.env.NODE_ENV === 'production',
+        });
+      }
       // Redirect to dashboard or home page
-      window.location.href = '/';
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
@@ -51,22 +65,25 @@ export default function SignInPage() {
           )}
 
           <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            label="Username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
-            placeholder="Enter your email"
+            placeholder="Enter your username"
           />
 
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            placeholder="Enter your password"
-          />
+          <div className="space-y-2">
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="Enter your password"
+            />
+            <PasswordStrength password={password} />
+          </div>
 
           <Button
             type="submit"

@@ -1,23 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { signUp } from '../../../../../packages/auth/dist';
-import { Button, Card, Input } from '../../../../packages/ui/dist';
+import { signUp } from '../../../../../../packages/auth/dist';
+import { Button, Card, Input } from '../../../../../../packages/ui/dist';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-    fitnessGoals: '',
+    username: 'rehanbhattisweden',
+    email: 'rehanbhattisweden@gmail.com',
+    password: 'Rehan@123',
+    confirmPassword: 'Rehan@123',
+    firstName: 'Rehan',
+    lastName: 'Bhatti',
+    fitnessGoals: 'Build muscle, lose weight, improve endurance',
     experienceLevel: 'beginner',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -41,20 +44,21 @@ export default function SignUpPage() {
 
     try {
       await signUp({
-        username: formData.email,
+        username: formData.username,
         password: formData.password,
         options: {
           userAttributes: {
             email: formData.email,
             given_name: formData.firstName,
             family_name: formData.lastName,
-            'custom:fitness_goals': formData.fitnessGoals,
-            'custom:experience_level': formData.experienceLevel,
+            'custom:fitnessGoals': formData.fitnessGoals,
+            'custom:experienceLevel': formData.experienceLevel,
           },
         },
       });
 
       setSuccess(true);
+      router.push(`/auth/codeVerification?username=${formData.username}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
     } finally {
@@ -121,6 +125,15 @@ export default function SignUpPage() {
               placeholder="Doe"
             />
           </div>
+
+          <Input
+            label="Username"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            required
+            placeholder="john.doe"
+          />
 
           <Input
             label="Email"

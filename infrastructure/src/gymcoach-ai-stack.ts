@@ -493,19 +493,6 @@ export class GymCoachAIStack extends cdk.Stack {
           // },
         },
         comment: 'GymCoach AI CloudFront Distribution',
-        defaultRootObject: 'index.html',
-        errorResponses: [
-          {
-            httpStatus: 403,
-            responseHttpStatus: 200,
-            responsePagePath: '/index.html',
-          },
-          {
-            httpStatus: 404,
-            responseHttpStatus: 200,
-            responsePagePath: '/index.html',
-          },
-        ],
       }
     );
 
@@ -517,6 +504,17 @@ export class GymCoachAIStack extends cdk.Stack {
     this.processedImagesBucket.grantReadWrite(userProfileServiceLambda);
     this.processedImagesBucket.grantReadWrite(workoutServiceLambda);
     this.processedImagesBucket.grantReadWrite(analyticsServiceLambda);
+    // Allow service to read from the main DynamoDB table
+    this.mainTable.grantReadData(analyticsServiceLambda);
+    this.mainTable.grantReadData(nutritionServiceLambda);
+    this.mainTable.grantReadData(userProfileServiceLambda);
+    this.mainTable.grantReadData(workoutServiceLambda);
+    this.mainTable.grantReadData(coachingServiceLambda);
+    this.mainTable.grantWriteData(analyticsServiceLambda);
+    this.mainTable.grantWriteData(nutritionServiceLambda);
+    this.mainTable.grantWriteData(userProfileServiceLambda);
+    this.mainTable.grantWriteData(workoutServiceLambda);
+    this.mainTable.grantWriteData(coachingServiceLambda);
 
     // Removed CloudWatch Log Groups to avoid costs
     // Lambda functions will use default log groups (free tier: 5GB/month)

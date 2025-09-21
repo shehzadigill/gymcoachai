@@ -210,7 +210,7 @@ impl AuthLayer {
     fn check_role_access(&self, context: &AuthContext, resource: &str, action: &str) -> bool {
         // Define role-based access rules
         let admin_resources = ["/api/admin", "/api/analytics", "/api/coaching"];
-        let user_resources = ["/api/user-profiles", "/api/workouts", "/api/nutrition"];
+        let user_resources = ["/api/user-profiles", "/api/workouts", "/api/nutrition", "/api/analytics"];
         
         if context.roles.contains(&"admin".to_string()) {
             return true; // Admin has access to everything
@@ -230,8 +230,9 @@ impl AuthLayer {
             (r, "PUT") if r.starts_with("/api/user-profiles") => vec!["write:profile"],
             (r, "POST") if r.starts_with("/api/workouts") => vec!["write:workout"],
             (r, "GET") if r.starts_with("/api/workouts") => vec!["read:workout"],
+            // Allow analytics reads for authenticated users via role check above; only POST requires permission
             (r, "POST") if r.starts_with("/api/analytics") => vec!["write:analytics"],
-            (r, "GET") if r.starts_with("/api/analytics") => vec!["read:analytics"],
+            (r, "GET") if r.starts_with("/api/analytics") => vec![],
             _ => vec![],
         };
         

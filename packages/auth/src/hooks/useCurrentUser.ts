@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
+import { configureAuth } from '../config';
 // Define User interface locally since types package doesn't have proper declarations
 interface User {
   id: string;
@@ -102,7 +103,20 @@ export const useCurrentUser = (): CurrentUser => {
           isLoading: false,
           error: null,
         });
-      } catch (error) {
+      } catch (error: any) {
+        // Treat unauthenticated as a normal state without logging noisy errors
+        if (
+          error?.name === 'UserUnAuthenticatedException' ||
+          error?.name === 'AuthUserPoolException'
+        ) {
+          setUser((prev) => ({
+            ...prev,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          }));
+          return;
+        }
         console.error('Error loading user:', error);
         setUser((prev) => ({
           ...prev,

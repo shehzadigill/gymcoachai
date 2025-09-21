@@ -3,6 +3,7 @@ export { Button } from './components/Button';
 export { Card } from './components/Card';
 export { Input } from './components/Input';
 export { Badge } from './components/Badge';
+export * from './components/PasswordStrength';
 
 // Export types
 export type { ButtonProps } from './components/Button';

@@ -16,8 +16,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   fallback,
   requireAll = false,
 }) => {
-  const { isAuthenticated, isLoading } = useCurrentUser();
-
+  const { isAuthenticated, isLoading, ...rest } = useCurrentUser();
+  console.log('RoleGuard', { isAuthenticated, isLoading, ...rest });
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

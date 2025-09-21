@@ -21,20 +21,22 @@ export class TokenManager {
   async getValidToken(): Promise<string | null> {
     try {
       const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
+      // Prefer ID token so backend has profile claims like email
+      const idToken = session.tokens?.idToken?.toString();
+      const tokenToUse = idToken || session.tokens?.accessToken?.toString();
 
-      if (!accessToken) {
+      if (!tokenToUse) {
         return null;
       }
 
       // Check if token is expired
-      const payload = this.parseJwtPayload(accessToken);
+      const payload = this.parseJwtPayload(tokenToUse);
       if (payload && payload.exp * 1000 < Date.now()) {
         // Token is expired, try to refresh
         return await this.refreshToken();
       }
 
-      return accessToken;
+      return tokenToUse;
     } catch (error) {
       console.error('Error getting valid token:', error);
       return null;
@@ -44,8 +46,8 @@ export class TokenManager {
   async refreshToken(): Promise<string | null> {
     try {
       const session = await fetchAuthSession({ forceRefresh: true });
-      const accessToken = session.tokens?.accessToken?.toString();
-      return accessToken || null;
+      const idToken = session.tokens?.idToken?.toString();
+      return idToken || session.tokens?.accessToken?.toString() || null;
     } catch (error) {
       console.error('Error refreshing token:', error);
       return null;

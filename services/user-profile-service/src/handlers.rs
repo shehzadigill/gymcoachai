@@ -16,7 +16,7 @@ pub async fn handle_get_user_profile(
     dynamodb_client: &DynamoDbClient,
     auth_context: &AuthContext,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id = extract_user_id_from_path(path);
+    let user_id = extract_user_id_from_path(path).or_else(|| Some(auth_context.user_id.clone()));
     
     // Check if user can access this profile
     if let Some(id) = &user_id {
@@ -44,14 +44,26 @@ pub async fn handle_get_user_profile(
                 }
                 Err(e) => {
                     error!("Error fetching user profile: {}", e);
-                    Ok(json!({
-                        "statusCode": 500,
-                        "headers": get_cors_headers(),
-                        "body": json!({
-                            "error": "Internal Server Error",
-                            "message": "Failed to fetch user profile"
-                        })
-                    }))
+                    let msg = e.to_string();
+                    if msg.to_lowercase().contains("not found") {
+                        Ok(json!({
+                            "statusCode": 404,
+                            "headers": get_cors_headers(),
+                            "body": json!({
+                                "error": "Not Found",
+                                "message": "User profile not found"
+                            })
+                        }))
+                    } else {
+                        Ok(json!({
+                            "statusCode": 500,
+                            "headers": get_cors_headers(),
+                            "body": json!({
+                                "error": "Internal Server Error",
+                                "message": "Failed to fetch user profile"
+                            })
+                        }))
+                    }
                 }
             }
         }
@@ -74,7 +86,7 @@ pub async fn handle_update_user_profile(
     dynamodb_client: &DynamoDbClient,
     auth_context: &AuthContext,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id = extract_user_id_from_path(path);
+    let user_id = extract_user_id_from_path(path).or_else(|| Some(auth_context.user_id.clone()));
     
     match user_id {
         Some(id) => {
@@ -216,7 +228,7 @@ pub async fn handle_get_user_stats(
     dynamodb_client: &DynamoDbClient,
     auth_context: &AuthContext,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id = extract_user_id_from_path(path);
+    let user_id = extract_user_id_from_path(path).or_else(|| Some(auth_context.user_id.clone()));
     
     match user_id {
         Some(id) => {
@@ -260,7 +272,7 @@ pub async fn handle_delete_user_profile(
     s3_client: &S3Client,
     auth_context: &AuthContext,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id = extract_user_id_from_path(path);
+    let user_id = extract_user_id_from_path(path).or_else(|| Some(auth_context.user_id.clone()));
     
     match user_id {
         Some(id) => {
@@ -305,7 +317,7 @@ pub async fn handle_get_user_preferences(
     dynamodb_client: &DynamoDbClient,
     auth_context: &AuthContext,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let user_id = extract_user_id_from_path(path);
+    let user_id = extract_user_id_from_path(path).or_else(|| Some(auth_context.user_id.clone()));
     
     match user_id {
         Some(id) => {
@@ -427,9 +439,18 @@ fn can_manage_user_profiles(auth_context: &AuthContext) -> bool {
 
 fn extract_user_id_from_path(path: &str) -> Option<String> {
     let parts: Vec<&str> = path.split('/').collect();
-    if parts.len() >= 4 && parts[1] == "api" && parts[2] == "users" && parts[3] == "profile" {
+    // Expect formats:
+    // - /api/user-profiles/profile
+    // - /api/user-profiles/profile/{userId}
+    // - /api/user-profiles/profile/me
+    if parts.len() >= 4 && parts[1] == "api" && parts[2] == "user-profiles" && parts[3] == "profile" {
         if parts.len() > 4 {
-            Some(parts[4].to_string())
+            let last = parts[4];
+            if last == "me" || last.is_empty() {
+                None
+            } else {
+                Some(last.to_string())
+            }
         } else {
             None
         }
