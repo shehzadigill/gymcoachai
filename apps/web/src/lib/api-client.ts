@@ -9,7 +9,6 @@ export async function apiFetch<T>(
   const isLocal =
     typeof window !== 'undefined' && window.location.hostname === 'localhost';
   const finalBase = isLocal ? '' : baseUrl;
-  console.log('apiFetch', { baseUrl: finalBase, path, init });
   const authHeaders = await tokenManager.getAuthHeaders();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -42,7 +41,6 @@ export async function getCurrentUserId(): Promise<string> {
     if (!payload || !payload.sub) {
       throw new Error('Invalid token payload');
     }
-
     return payload.sub;
   } catch (error) {
     console.error('Failed to get current user ID:', error);
@@ -73,49 +71,36 @@ export const api = {
   // Analytics endpoints
   async getStrengthProgress(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/analytics/strength-progress/${id}`
-    );
+    return apiFetch<any>(`/api/analytics/strength-progress/${id}`);
   },
 
   async getBodyMeasurements(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/analytics/body-measurements/${id}`
-    );
+    return apiFetch<any>(`/api/analytics/body-measurements/${id}`);
   },
 
   async getMilestones(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/analytics/milestones/${id}`
-    );
+    return apiFetch<any>(`/api/analytics/milestones/${id}`);
   },
 
   async getAchievements(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/analytics/achievements/${id}`
-    );
+    return apiFetch<any>(`/api/analytics/achievements/${id}`);
   },
 
   // User profile endpoints
   async getUserProfile(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/user-profiles/profile/${id}`
-    );
+    return apiFetch<any>(`/api/user-profiles/profile/${id}`);
   },
 
   async updateUserProfile(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/user-profiles/profile/${id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }
-    );
+    return apiFetch<any>(`/api/user-profiles/profile/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
 
   // Workout endpoints
@@ -128,35 +113,26 @@ export const api = {
 
   async createWorkoutSession(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/workouts/sessions`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ ...data, userId: id }),
-      }
-    );
+    return apiFetch<any>(`/api/workouts/sessions`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
   },
 
   async updateWorkoutSession(sessionId: string, data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/workouts/sessions`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ ...data, id: sessionId, userId: id }),
-      }
-    );
+    return apiFetch<any>(`/api/workouts/sessions`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, id: sessionId, userId: id }),
+    });
   },
 
   async logActivity(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/workouts/log-activity`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ ...data, userId: id }),
-      }
-    );
+    return apiFetch<any>(`/api/workouts/log-activity`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
   },
 
   // Nutrition endpoints
@@ -169,34 +145,25 @@ export const api = {
 
   async createMeal(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/users/${id}/meals`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+    return apiFetch<any>(`/api/users/${id}/meals`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
   async updateMeal(mealId: string, data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/users/${id}/meals/${mealId}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }
-    );
+    return apiFetch<any>(`/api/users/${id}/meals/${mealId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
 
   async deleteMeal(mealId: string, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any }>(
-      `/api/users/${id}/meals/${mealId}`,
-      {
-        method: 'DELETE',
-      }
-    );
+    return apiFetch<any>(`/api/users/${id}/meals/${mealId}`, {
+      method: 'DELETE',
+    });
   },
 
   // Food search endpoints
@@ -207,6 +174,36 @@ export const api = {
   },
 
   async getFood(foodId: string) {
-    return apiFetch<{ statusCode: number; body: any }>(`/api/foods/${foodId}`);
+    return apiFetch<any>(`/api/foods/${foodId}`);
+  },
+
+  // Image upload endpoints
+  async generateUploadUrl(fileType: string) {
+    return apiFetch<{
+      upload_url: string;
+      key: string;
+      bucket_name: string;
+      expires_in: number;
+    }>(`/api/user-profiles/profile/upload`, {
+      method: 'POST',
+      body: JSON.stringify({ file_type: fileType }),
+    });
+  },
+
+  async uploadImage(file: File, uploadUrl: string): Promise<void> {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+        // Don't add any other headers as S3 presigned URLs are very specific
+      },
+      mode: 'cors', // Explicitly set CORS mode
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+    }
   },
 };

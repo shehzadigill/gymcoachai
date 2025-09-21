@@ -22,15 +22,21 @@ import {
 
 interface UserProfile {
   id: string;
+  firstName: string;
+  lastName: string;
   name: string;
   email: string;
-  profileImage?: string;
+  bio?: string;
+  profileImageUrl?: string;
   dateOfBirth?: string;
   gender?: 'male' | 'female' | 'other';
   height?: number; // in cm
   weight?: number; // in kg
   fitnessLevel?: 'beginner' | 'intermediate' | 'advanced';
-  goals?: string[];
+  fitnessGoals?: string[];
+  goals?: string[]; // alias for fitnessGoals
+  createdAt?: string;
+  updatedAt?: string;
   preferences: {
     units: 'metric' | 'imperial';
     timezone: string;
@@ -48,6 +54,36 @@ interface UserProfile {
   };
 }
 
+// Helper function to create default profile
+const createDefaultProfile = (user: any): UserProfile => ({
+  id: user?.id || '',
+  firstName: user?.name?.split(' ')[0] || '',
+  lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+  name: user?.name || '',
+  email: user?.email || '',
+  bio: '',
+  profileImageUrl: '',
+  fitnessGoals: [],
+  goals: [], // alias for fitnessGoals
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  preferences: {
+    units: 'metric',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    notifications: {
+      email: true,
+      push: true,
+      workoutReminders: true,
+      nutritionReminders: true,
+    },
+    privacy: {
+      profileVisibility: 'private',
+      workoutSharing: false,
+      progressSharing: false,
+    },
+  },
+});
+
 export default function ProfilePage() {
   const currentUser = useCurrentUser();
   const user = currentUser;
@@ -60,6 +96,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<
     'profile' | 'preferences' | 'goals'
   >('profile');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!userLoading && user) {
@@ -73,31 +110,28 @@ export default function ProfilePage() {
       setError(null);
 
       const response = await api.getUserProfile();
-      if (response.statusCode === 200) {
-        setProfile(response.body);
-      } else {
-        // Create default profile if none exists
-        const defaultProfile: UserProfile = {
-          id: user?.id || '',
-          name: user?.name || '',
-          email: user?.email || '',
+
+      if (response) {
+        const profileData = response;
+        setProfile({
+          ...createDefaultProfile(user),
+          ...profileData,
           preferences: {
-            units: 'metric',
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            ...createDefaultProfile(user).preferences,
+            ...profileData.preferences,
             notifications: {
-              email: true,
-              push: true,
-              workoutReminders: true,
-              nutritionReminders: true,
+              ...createDefaultProfile(user).preferences.notifications,
+              ...profileData.preferences?.notifications,
             },
             privacy: {
-              profileVisibility: 'private',
-              workoutSharing: false,
-              progressSharing: false,
+              ...createDefaultProfile(user).preferences.privacy,
+              ...profileData.preferences?.privacy,
             },
           },
-        };
-        setProfile(defaultProfile);
+        });
+      } else {
+        // Create default profile if none exists
+        setProfile(createDefaultProfile(user));
       }
     } catch (e: any) {
       console.error('Failed to fetch profile:', e);
@@ -107,27 +141,7 @@ export default function ProfilePage() {
         e?.message?.includes('Not Found') ||
         e?.message?.includes('"Not Found"')
       ) {
-        const defaultProfile: UserProfile = {
-          id: user?.id || '',
-          name: user?.name || '',
-          email: user?.email || '',
-          preferences: {
-            units: 'metric',
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            notifications: {
-              email: true,
-              push: true,
-              workoutReminders: true,
-              nutritionReminders: true,
-            },
-            privacy: {
-              profileVisibility: 'private',
-              workoutSharing: false,
-              progressSharing: false,
-            },
-          },
-        };
-        setProfile(defaultProfile);
+        setProfile(createDefaultProfile(user));
         setError(null); // Clear error since we're creating a default profile
       } else {
         setError(e?.message || 'Failed to load profile');
@@ -143,9 +157,26 @@ export default function ProfilePage() {
       setError(null);
       setSuccess(null);
 
-      const response = await api.updateUserProfile(updatedProfile);
-      if (response.statusCode === 200 || response.statusCode === 201) {
-        setProfile(updatedProfile);
+      // Transform the profile data to match backend expectations
+      const profileData = {
+        firstName: updatedProfile.firstName,
+        lastName: updatedProfile.lastName,
+        email: updatedProfile.email,
+        bio: updatedProfile.bio,
+        profileImageUrl: updatedProfile.profileImageUrl,
+        dateOfBirth: updatedProfile.dateOfBirth,
+        height: updatedProfile.height,
+        weight: updatedProfile.weight,
+        fitnessGoals: updatedProfile.fitnessGoals || updatedProfile.goals || [],
+        experienceLevel: updatedProfile.fitnessLevel || 'beginner',
+        preferences: updatedProfile.preferences,
+        updatedAt: new Date().toISOString(),
+        fitnessLevel: updatedProfile.fitnessLevel || 'beginner',
+        gender: updatedProfile.gender,
+      };
+
+      const response = await api.updateUserProfile(profileData);
+      if (response) {
         setSuccess('Profile saved successfully');
       } else {
         setError('Failed to save profile');
@@ -174,6 +205,43 @@ export default function ProfilePage() {
         preferences: { ...profile.preferences, ...updates },
       };
       setProfile(updatedProfile);
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!profile) return;
+
+    try {
+      setUploading(true);
+      setError(null);
+
+      // Generate presigned URL
+      const uploadResponse = await api.generateUploadUrl(file.type);
+
+      const { upload_url, key, bucket_name } = uploadResponse;
+
+      // Upload file to S3
+      await api.uploadImage(file, upload_url);
+
+      // Update profile with new image URL
+      // The presigned URL already contains the correct S3 URL format
+      // We just need to remove the query parameters to get the public URL
+      const uploadUrlObj = new URL(upload_url);
+      const imageUrl = `${uploadUrlObj.protocol}//${uploadUrlObj.hostname}${uploadUrlObj.pathname}`;
+      const updatedProfile = {
+        ...profile,
+        profileImageUrl: imageUrl,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save profile with new image URL
+      await saveProfile(updatedProfile);
+      setSuccess('Profile image updated successfully');
+    } catch (e: any) {
+      console.error('Failed to upload image:', e);
+      setError(e?.message || 'Failed to upload image');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -274,7 +342,12 @@ export default function ProfilePage() {
       {/* Tab Content */}
       <div className="space-y-6">
         {activeTab === 'profile' && (
-          <ProfileTab profile={profile} onUpdate={handleProfileUpdate} />
+          <ProfileTab
+            profile={profile}
+            onUpdate={handleProfileUpdate}
+            onImageUpload={handleImageUpload}
+            uploading={uploading}
+          />
         )}
         {activeTab === 'preferences' && (
           <PreferencesTab
@@ -293,10 +366,32 @@ export default function ProfilePage() {
 function ProfileTab({
   profile,
   onUpdate,
+  onImageUpload,
+  uploading,
 }: {
   profile: UserProfile;
   onUpdate: (updates: Partial<UserProfile>) => void;
+  onImageUpload: (file: File) => void;
+  uploading: boolean;
 }) {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+
+      onImageUpload(file);
+    }
+  };
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Profile Image */}
@@ -304,9 +399,9 @@ function ProfileTab({
         <div className="flex items-center space-x-6">
           <div className="relative">
             <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-              {profile.profileImage ? (
+              {profile.profileImageUrl ? (
                 <img
-                  src={profile.profileImage}
+                  src={profile.profileImageUrl}
                   alt="Profile"
                   className="w-24 h-24 rounded-full object-cover"
                 />
@@ -314,15 +409,34 @@ function ProfileTab({
                 <User className="h-12 w-12 text-gray-400" />
               )}
             </div>
-            <button className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700">
+            <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 cursor-pointer">
               <Camera className="h-4 w-4" />
-            </button>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={uploading}
+              />
+            </label>
+            {uploading && (
+              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+              </div>
+            )}
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {profile.name || 'No name set'}
+              {profile.firstName && profile.lastName
+                ? `${profile.firstName} ${profile.lastName}`
+                : profile.name || 'No name set'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400">{profile.email}</p>
+            {profile.createdAt && (
+              <p className="text-sm text-gray-500 dark:text-gray-500">
+                Member since {new Date(profile.createdAt).toLocaleDateString()}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -335,16 +449,15 @@ function ProfileTab({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Full Name
+            First Name
           </label>
           <input
             type="text"
-            value={profile.name || ''}
-            onChange={(e) => onUpdate({ name: e.target.value })}
+            value={profile.firstName || ''}
+            onChange={(e) => onUpdate({ firstName: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Email
@@ -353,6 +466,19 @@ function ProfileTab({
             type="email"
             value={profile.email || ''}
             onChange={(e) => onUpdate({ email: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Bio
+          </label>
+          <textarea
+            value={profile.bio || ''}
+            onChange={(e) => onUpdate({ bio: e.target.value })}
+            rows={3}
+            placeholder="Tell us about yourself..."
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
@@ -391,7 +517,17 @@ function ProfileTab({
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           Physical Information
         </h3>
-
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Last Name
+          </label>
+          <input
+            type="text"
+            value={profile.lastName || ''}
+            onChange={(e) => onUpdate({ lastName: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Height (cm)
@@ -621,18 +757,18 @@ function GoalsTab({
   const [newGoal, setNewGoal] = useState('');
 
   const addGoal = () => {
-    if (newGoal.trim() && profile.goals) {
+    if (newGoal.trim() && profile.fitnessGoals) {
       onUpdate({
-        goals: [...profile.goals, newGoal.trim()],
+        fitnessGoals: [...profile.fitnessGoals, newGoal.trim()],
       });
       setNewGoal('');
     }
   };
 
   const removeGoal = (index: number) => {
-    if (profile.goals) {
+    if (profile.fitnessGoals) {
       onUpdate({
-        goals: profile.goals.filter((_, i) => i !== index),
+        fitnessGoals: profile.fitnessGoals.filter((_, i) => i !== index),
       });
     }
   };
@@ -664,7 +800,7 @@ function GoalsTab({
 
         {/* Goals List */}
         <div className="space-y-2">
-          {(profile.goals || []).map((goal, index) => (
+          {(profile.fitnessGoals || []).map((goal, index) => (
             <div
               key={index}
               className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
@@ -678,7 +814,7 @@ function GoalsTab({
               </button>
             </div>
           ))}
-          {(!profile.goals || profile.goals.length === 0) && (
+          {(!profile.fitnessGoals || profile.fitnessGoals.length === 0) && (
             <p className="text-gray-500 dark:text-gray-400 text-center py-4">
               No goals set yet. Add your first goal above!
             </p>

@@ -179,8 +179,28 @@ export class GymCoachAIStack extends cdk.Stack {
     this.userUploadsBucket = new s3.Bucket(this, 'UserUploadsBucket', {
       bucketName: `gymcoach-ai-user-uploads-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        blockPublicPolicy: false,
+        ignorePublicAcls: false,
+        restrictPublicBuckets: false,
+      }),
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      cors: [
+        {
+          allowedHeaders: ['*'],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD,
+          ],
+          allowedOrigins: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000,
+        },
+      ],
       lifecycleRules: [
         {
           id: 'DeleteIncompleteMultipartUploads',
@@ -206,6 +226,16 @@ export class GymCoachAIStack extends cdk.Stack {
         },
       ],
     });
+
+    // Add bucket policy to allow public read access to uploaded images
+    this.userUploadsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.AnyPrincipal()],
+        actions: ['s3:GetObject'],
+        resources: [`${this.userUploadsBucket.bucketArn}/user-profiles/*`],
+      })
+    );
 
     this.staticAssetsBucket = new s3.Bucket(this, 'StaticAssetsBucket', {
       bucketName: `gymcoach-ai-static-assets-${this.account}`,

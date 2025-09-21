@@ -18,7 +18,7 @@ import {
   X,
   Settings,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
@@ -212,13 +212,50 @@ function SidebarContent({
 }
 
 function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const [isDark, setIsDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+    // Check if dark mode is already applied
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    setIsDark(isDarkMode);
+  }, []);
+
+  const handleThemeToggle = () => {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+
+    if (newIsDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('gymcoach-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('gymcoach-theme', 'light');
+    }
+
+    console.log('Theme toggled to:', newIsDark ? 'dark' : 'light');
+    console.log('HTML classes:', document.documentElement.className);
+  };
+
+  if (!mounted) {
+    return (
+      <button
+        className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+        disabled
+      >
+        Loading...
+      </button>
+    );
+  }
+
   return (
     <button
-      className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+      onClick={handleThemeToggle}
     >
-      {theme === 'dark' ? 'Light' : 'Dark'} mode
+      {isDark ? 'Light' : 'Dark'} mode
     </button>
   );
 }

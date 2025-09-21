@@ -50,6 +50,8 @@ pub async fn get_user_profile_from_db(
                     progress_sharing: *item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
                 },
             },
+            gender: item.get("gender").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
+            fitness_level: item.get("fitnessLevel").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
         };
@@ -93,6 +95,12 @@ pub async fn update_user_profile_in_db(
     }
     if let Some(image_url) = &profile.profile_image_url {
         item.insert("profileImageUrl".to_string(), AttributeValue::S(image_url.clone()));
+    }
+    if let Some(gender) = &profile.gender {
+        item.insert("gender".to_string(), AttributeValue::S(gender.clone()));
+    }
+    if let Some(fitness_level) = &profile.fitness_level {
+        item.insert("fitnessLevel".to_string(), AttributeValue::S(fitness_level.clone()));
     }
     
     // Add fitness goals as a list

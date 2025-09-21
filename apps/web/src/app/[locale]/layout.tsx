@@ -30,7 +30,13 @@ export default async function LocaleLayout({
       </head>
       <body className={inter.className}>
         {/* <NextIntlClientProvider messages={messages} locale={locale}> */}
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange={false}
+          storageKey="gymcoach-theme"
+        >
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
         {/* </NextIntlClientProvider> */}

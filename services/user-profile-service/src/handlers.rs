@@ -175,9 +175,11 @@ pub async fn handle_generate_upload_url(
             
             let presigning_config = PresigningConfig::expires_in(std::time::Duration::from_secs(300))?;
             
+            let bucket_name = std::env::var("USER_UPLOADS_BUCKET").unwrap_or_else(|_| "gymcoach-ai-user-uploads".to_string());
+            
             match s3_client
                 .put_object()
-                .bucket("gymcoach-ai-user-uploads")
+                .bucket(&bucket_name)
                 .key(&key)
                 .content_type(&file_type)
                 .presigned(presigning_config)
@@ -187,6 +189,7 @@ pub async fn handle_generate_upload_url(
                     let response = UploadResponse {
                         upload_url: presigned_url.uri().to_string(),
                         key,
+                        bucket_name: bucket_name.clone(),
                         expires_in: 300,
                     };
                     
