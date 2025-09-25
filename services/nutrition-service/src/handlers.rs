@@ -50,7 +50,7 @@ pub async fn handle_create_meal(
     let meal_id = Uuid::new_v4().to_string();
     let now = Utc::now();
 
-    // Calculate nutrition totals from foods
+    // Calculate nutrition totals from foods or custom nutrition
     let mut total_calories = 0.0;
     let mut total_protein = 0.0;
     let mut total_carbs = 0.0;
@@ -60,7 +60,24 @@ pub async fn handle_create_meal(
     let mut total_sodium = 0.0;
 
     let mut foods = Vec::new();
-    for food_request in &create_request.foods {
+    
+    // If foods array is empty but custom_nutrition is provided, use custom values
+    if create_request.foods.is_empty() {
+        if let Some(custom_nutrition) = &create_request.custom_nutrition {
+            total_calories = custom_nutrition.calories;
+            total_protein = custom_nutrition.protein;
+            total_carbs = custom_nutrition.total_carbs;
+            total_fat = custom_nutrition.total_fat;
+            total_fiber = custom_nutrition.dietary_fiber;
+            total_sugar = custom_nutrition.total_sugars;
+            total_sodium = custom_nutrition.sodium;
+            
+            info!("Using custom nutrition values: calories={}, protein={}, carbs={}, fat={}", 
+                total_calories, total_protein, total_carbs, total_fat);
+        }
+    } else {
+        // Calculate totals from foods
+        for food_request in &create_request.foods {
         // Get food details from database
         match nutrition_repo.get_food_by_id(&food_request.food_id).await {
             Ok(Some(food)) => {
@@ -77,10 +94,10 @@ pub async fn handle_create_meal(
                     serving_unit: food.serving_unit.clone(),
                     calories: food.nutrition_facts.calories * multiplier,
                     protein: food.nutrition_facts.protein * multiplier,
-                    carbs: food.nutrition_facts.total_carbs * multiplier,
-                    fat: food.nutrition_facts.total_fat * multiplier,
-                    fiber: food.nutrition_facts.dietary_fiber * multiplier,
-                    sugar: food.nutrition_facts.total_sugars * multiplier,
+                    total_carbs: food.nutrition_facts.total_carbs * multiplier,
+                    total_fat: food.nutrition_facts.total_fat * multiplier,
+                    dietary_fiber: food.nutrition_facts.dietary_fiber * multiplier,
+                    total_sugars: food.nutrition_facts.total_sugars * multiplier,
                     sodium: food.nutrition_facts.sodium * multiplier,
                     barcode: food.barcode.clone(),
                     nutrition_facts: Some(food.nutrition_facts.clone()),
@@ -88,10 +105,10 @@ pub async fn handle_create_meal(
 
                 total_calories += food_item.calories;
                 total_protein += food_item.protein;
-                total_carbs += food_item.carbs;
-                total_fat += food_item.fat;
-                total_fiber += food_item.fiber;
-                total_sugar += food_item.sugar;
+                total_carbs += food_item.total_carbs;
+                total_fat += food_item.total_fat;
+                total_fiber += food_item.dietary_fiber;
+                total_sugar += food_item.total_sugars;
                 total_sodium += food_item.sodium;
 
                 foods.push(food_item);
@@ -118,6 +135,7 @@ pub async fn handle_create_meal(
                 }));
             }
         }
+        }
     }
 
     let meal = Meal {
@@ -132,9 +150,9 @@ pub async fn handle_create_meal(
         total_protein,
         total_carbs,
         total_fat,
-        total_fiber,
-        total_sugar,
-        total_sodium,
+        dietary_fiber: total_fiber,
+        total_sugars: total_sugar,
+        sodium: total_sodium,
         foods,
         notes: create_request.notes,
         created_at: now,
@@ -222,24 +240,46 @@ pub async fn handle_get_meals_by_date(
     nutrition_repo: &NutritionRepository,
     _auth_context: &AuthContext,
 ) -> Result<Value> {
-    let meal_date = match chrono::DateTime::parse_from_rfc3339(date) {
-        Ok(dt) => dt.with_timezone(&Utc),
-        Err(e) => {
-            error!("Invalid date format: {}", e);
-            return Ok(json!({
-                "statusCode": 400,
-                "headers": get_cors_headers(),
-                "body": json!({
-                    "error": "Bad Request",
-                    "message": "Invalid date format. Use ISO 8601 format"
-                })
-            }));
+    let meal_date = if date.contains('T') || date.contains('Z') {
+        // Try parsing as ISO 8601 format
+        match chrono::DateTime::parse_from_rfc3339(date) {
+            Ok(dt) => dt.with_timezone(&Utc),
+            Err(e) => {
+                error!("Invalid ISO 8601 date format: {}", e);
+                return Ok(json!({
+                    "statusCode": 400,
+                    "headers": get_cors_headers(),
+                    "body": json!({
+                        "error": "Bad Request",
+                        "message": "Invalid date format. Use ISO 8601 format or YYYY-MM-DD"
+                    })
+                }));
+            }
+        }
+    } else {
+        // Try parsing as YYYY-MM-DD format
+        match chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") {
+            Ok(naive_date) => {
+                // Convert to UTC datetime at start of day
+                naive_date.and_hms_opt(0, 0, 0).unwrap().and_utc()
+            }
+            Err(e) => {
+                error!("Invalid date format: {}", e);
+                return Ok(json!({
+                    "statusCode": 400,
+                    "headers": get_cors_headers(),
+                    "body": json!({
+                        "error": "Bad Request",
+                        "message": "Invalid date format. Use ISO 8601 format or YYYY-MM-DD"
+                    })
+                }));
+            }
         }
     };
 
     match nutrition_repo.get_meals_by_date(user_id, &meal_date).await {
         Ok(meals) => {
-            info!("Meals retrieved successfully for date: {}", date);
+            info!("Meals retrieved successfully for date: {}, found {} meals", date, meals.len());
             Ok(json!({
                 "statusCode": 200,
                 "headers": get_cors_headers(),
@@ -252,12 +292,45 @@ pub async fn handle_get_meals_by_date(
         }
         Err(e) => {
             error!("Failed to get meals by date: {}", e);
+            // Return empty meals array instead of error for better UX
+            Ok(json!({
+                "statusCode": 200,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "meals": [],
+                    "date": date,
+                    "count": 0
+                })
+            }))
+        }
+    }
+}
+
+pub async fn handle_get_user_meals(
+    user_id: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    match nutrition_repo.get_user_meals(user_id).await {
+        Ok(meals) => {
+            info!("User meals retrieved successfully: {} meals", meals.len());
+            Ok(json!({
+                "statusCode": 200,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "meals": meals,
+                    "count": meals.len()
+                })
+            }))
+        }
+        Err(e) => {
+            error!("Failed to get user meals: {}", e);
             Ok(json!({
                 "statusCode": 500,
                 "headers": get_cors_headers(),
                 "body": json!({
                     "error": "Internal Server Error",
-                    "message": "Failed to retrieve meals"
+                    "message": "Failed to retrieve user meals"
                 })
             }))
         }
@@ -476,8 +549,8 @@ pub async fn handle_create_food(
         serving_size: create_request.serving_size,
         serving_unit: create_request.serving_unit,
         common_servings: create_request.common_servings.unwrap_or_default(),
-        allergens: create_request.allergens.unwrap_or_default(),
-        dietary_tags: create_request.dietary_tags.unwrap_or_default(),
+        allergens: create_request.allergens.unwrap_or_default().into_iter().map(|a| a.to_string()).collect(),
+        dietary_tags: create_request.dietary_tags.unwrap_or_default().into_iter().map(|d| d.to_string()).collect(),
         verified: false,
         verified_by: None,
         verified_at: None,
@@ -562,11 +635,12 @@ pub async fn handle_search_foods(
     limit: Option<u32>,
     nutrition_repo: &NutritionRepository,
     _auth_context: &AuthContext,
+    cursor: Option<String>,
 ) -> Result<Value> {
     let limit = limit.unwrap_or(20).min(100); // Max 100 results
 
-    match nutrition_repo.search_foods(query, limit).await {
-        Ok(foods) => {
+    match nutrition_repo.search_foods(query, limit, cursor).await {
+        Ok((foods, next_cursor)) => {
             info!("Foods searched successfully: {} results", foods.len());
             Ok(json!({
                 "statusCode": 200,
@@ -575,7 +649,8 @@ pub async fn handle_search_foods(
                     "foods": foods,
                     "query": query,
                     "count": foods.len(),
-                    "limit": limit
+                    "limit": limit,
+                    "next_cursor": next_cursor
                 })
             }))
         }
@@ -588,6 +663,75 @@ pub async fn handle_search_foods(
                     "error": "Internal Server Error",
                     "message": "Failed to search foods"
                 })
+            }))
+        }
+    }
+}
+
+// Favorites handlers
+pub async fn handle_add_favorite_food(
+    user_id: &str,
+    food_id: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    match nutrition_repo.add_favorite_food(user_id, food_id).await {
+        Ok(_) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": json!({ "message": "Favorite added" })
+        })),
+        Err(e) => {
+            error!("Failed to add favorite: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({ "error": "Internal Server Error", "message": "Failed to add favorite" })
+            }))
+        }
+    }
+}
+
+pub async fn handle_remove_favorite_food(
+    user_id: &str,
+    food_id: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    match nutrition_repo.remove_favorite_food(user_id, food_id).await {
+        Ok(_) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": json!({ "message": "Favorite removed" })
+        })),
+        Err(e) => {
+            error!("Failed to remove favorite: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({ "error": "Internal Server Error", "message": "Failed to remove favorite" })
+            }))
+        }
+    }
+}
+
+pub async fn handle_list_favorite_foods(
+    user_id: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    match nutrition_repo.list_favorite_foods(user_id).await {
+        Ok(foods) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": json!({ "foods": foods, "count": foods.len() })
+        })),
+        Err(e) => {
+            error!("Failed to list favorites: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({ "error": "Internal Server Error", "message": "Failed to get favorites" })
             }))
         }
     }
@@ -644,9 +788,9 @@ pub async fn handle_create_nutrition_plan(
         daily_protein: create_request.daily_protein,
         daily_carbs: create_request.daily_carbs,
         daily_fat: create_request.daily_fat,
-        daily_fiber: create_request.daily_fiber,
-        daily_sugar: create_request.daily_sugar,
-        daily_sodium: create_request.daily_sodium,
+        dietary_fiber: create_request.dietary_fiber,
+        total_sugars: create_request.total_sugars,
+        sodium: create_request.sodium,
         meal_plans: create_request.meal_plans,
         restrictions: create_request.restrictions.unwrap_or_default(),
         preferences: create_request.preferences.unwrap_or_default(),
@@ -741,4 +885,66 @@ pub fn get_cors_headers() -> serde_json::Map<String, Value> {
     headers.insert("Access-Control-Allow-Headers".to_string(), "Content-Type, Authorization".into());
     headers.insert("Access-Control-Allow-Methods".to_string(), "OPTIONS,POST,GET,PUT,DELETE".into());
     headers
+}
+
+// Water intake handlers
+pub async fn handle_get_water(
+    user_id: &str,
+    date: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    match nutrition_repo.get_water_by_date(user_id, date).await {
+        Ok(Some(glasses)) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": json!({ "date": date, "glasses": glasses })
+        })),
+        Ok(None) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": json!({ "date": date, "glasses": 0 })
+        })),
+        Err(e) => {
+            error!("Failed to get water intake: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to get water intake"
+                })
+            }))
+        }
+    }
+}
+
+pub async fn handle_set_water(
+    user_id: &str,
+    date: &str,
+    body: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    let parsed: Value = serde_json::from_str(body).unwrap_or_else(|_| json!({}));
+    let glasses = parsed.get("glasses").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+
+    match nutrition_repo.set_water_by_date(user_id, date, glasses).await {
+        Ok(_) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": json!({ "date": date, "glasses": glasses })
+        })),
+        Err(e) => {
+            error!("Failed to set water intake: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to set water intake"
+                })
+            }))
+        }
+    }
 }

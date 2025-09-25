@@ -53,9 +53,9 @@ impl NutritionRepository {
         item.insert("TotalProtein".to_string(), AttributeValue::N(meal.total_protein.to_string()));
         item.insert("TotalCarbs".to_string(), AttributeValue::N(meal.total_carbs.to_string()));
         item.insert("TotalFat".to_string(), AttributeValue::N(meal.total_fat.to_string()));
-        item.insert("TotalFiber".to_string(), AttributeValue::N(meal.total_fiber.to_string()));
-        item.insert("TotalSugar".to_string(), AttributeValue::N(meal.total_sugar.to_string()));
-        item.insert("TotalSodium".to_string(), AttributeValue::N(meal.total_sodium.to_string()));
+        item.insert("DietaryFiber".to_string(), AttributeValue::N(meal.dietary_fiber.to_string()));
+        item.insert("TotalSugars".to_string(), AttributeValue::N(meal.total_sugars.to_string()));
+        item.insert("Sodium".to_string(), AttributeValue::N(meal.sodium.to_string()));
         
         item.insert("Foods".to_string(), AttributeValue::S(serde_json::to_string(&meal.foods)?));
         
@@ -107,12 +107,49 @@ impl NutritionRepository {
     }
 
     pub async fn get_meals_by_date(&self, user_id: &str, date: &DateTime<Utc>) -> Result<Vec<Meal>> {
+        let gsi2pk = format!("USER#{}#{}", user_id, date.format("%Y-%m-%d"));
+        info!("Querying meals for GSI2PK: {}", gsi2pk);
+        
         let request = self.client
             .query()
             .table_name(&self.table_name)
             .index_name("GSI2")
             .key_condition_expression("GSI2PK = :gsi2pk")
-            .expression_attribute_values(":gsi2pk", AttributeValue::S(format!("USER#{}#{}", user_id, date.format("%Y-%m-%d"))));
+            .expression_attribute_values(":gsi2pk", AttributeValue::S(gsi2pk));
+
+        match request.send().await {
+            Ok(response) => {
+                info!("Query successful, found {} items", response.items().len());
+                let mut meals = Vec::new();
+                for item in response.items() {
+                    match self.item_to_meal(item) {
+                        Ok(meal) => {
+                            info!("Successfully parsed meal: {}", meal.id);
+                            meals.push(meal);
+                        }
+                        Err(e) => {
+                            error!("Failed to parse meal item: {}", e);
+                        }
+                    }
+                }
+                info!("Returning {} meals", meals.len());
+                Ok(meals)
+            }
+            Err(e) => {
+                error!("Failed to get meals by date: {}", e);
+                error!("Error details: {:?}", e);
+                Err(anyhow::anyhow!("Failed to get meals: {}", e))
+            }
+        }
+    }
+
+    pub async fn get_user_meals(&self, user_id: &str) -> Result<Vec<Meal>> {
+        let request = self.client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", user_id)))
+            .expression_attribute_values(":sk", AttributeValue::S("MEAL#".to_string()));
 
         match request.send().await {
             Ok(response) => {
@@ -122,11 +159,13 @@ impl NutritionRepository {
                         meals.push(meal);
                     }
                 }
+                // Sort by meal date descending (most recent first)
+                meals.sort_by(|a, b| b.meal_date.cmp(&a.meal_date));
                 Ok(meals)
             }
             Err(e) => {
-                error!("Failed to get meals by date: {}", e);
-                Err(anyhow::anyhow!("Failed to get meals: {}", e))
+                error!("Failed to get user meals: {}", e);
+                Err(anyhow::anyhow!("Failed to get user meals: {}", e))
             }
         }
     }
@@ -217,6 +256,57 @@ impl NutritionRepository {
         }
     }
 
+    // Water intake operations
+    pub async fn get_water_by_date(&self, user_id: &str, date: &str) -> Result<Option<u32>> {
+        let request = self.client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("WATER#{}", date)));
+
+        match request.send().await {
+            Ok(response) => {
+                if let Some(item) = response.item() {
+                    let glasses = item.get("WaterGlasses")
+                        .and_then(|v| v.as_n().ok())
+                        .and_then(|s| s.parse::<u32>().ok())
+                        .unwrap_or(0);
+                    Ok(Some(glasses))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(e) => {
+                error!("Failed to get water by date: {}", e);
+                Err(anyhow::anyhow!("Failed to get water: {}", e))
+            }
+        }
+    }
+
+    pub async fn set_water_by_date(&self, user_id: &str, date: &str, glasses: u32) -> Result<()> {
+        let mut item = HashMap::new();
+        item.insert("PK".to_string(), AttributeValue::S(format!("USER#{}", user_id)));
+        item.insert("SK".to_string(), AttributeValue::S(format!("WATER#{}", date)));
+        item.insert("EntityType".to_string(), AttributeValue::S("WATER".to_string()));
+        item.insert("UserId".to_string(), AttributeValue::S(user_id.to_string()));
+        item.insert("WaterDate".to_string(), AttributeValue::S(date.to_string()));
+        item.insert("WaterGlasses".to_string(), AttributeValue::N(glasses.to_string()));
+        item.insert("UpdatedAt".to_string(), AttributeValue::S(Utc::now().to_rfc3339()));
+
+        let request = self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item));
+
+        match request.send().await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("Failed to set water by date: {}", e);
+                Err(anyhow::anyhow!("Failed to set water: {}", e))
+            }
+        }
+    }
+
     // Food operations
     pub async fn create_food(&self, food: &Food) -> Result<Food> {
         let mut item = HashMap::new();
@@ -224,8 +314,9 @@ impl NutritionRepository {
         // Primary key
         item.insert("PK".to_string(), AttributeValue::S(format!("FOOD#{}", food.id)));
         item.insert("SK".to_string(), AttributeValue::S(format!("FOOD#{}", food.id)));
-        item.insert("GSI1PK".to_string(), AttributeValue::S(format!("FOOD#{}", food.name.to_lowercase())));
-        item.insert("GSI1SK".to_string(), AttributeValue::S(format!("FOOD#{}", food.id)));
+        // Name index for prefix search: fixed PK and nameLower in SK
+        item.insert("GSI1PK".to_string(), AttributeValue::S("FOOD".to_string()));
+        item.insert("GSI1SK".to_string(), AttributeValue::S(format!("{}#{}", food.name.to_lowercase(), food.id)));
         
         if let Some(barcode) = &food.barcode {
             item.insert("GSI2PK".to_string(), AttributeValue::S(format!("BARCODE#{}", barcode)));
@@ -322,28 +413,49 @@ impl NutritionRepository {
         }
     }
 
-    pub async fn search_foods(&self, query: &str, limit: u32) -> Result<Vec<Food>> {
-        let request = self.client
+    pub async fn search_foods(&self, query: &str, limit: u32, cursor: Option<String>) -> Result<(Vec<Food>, Option<String>)> {
+        // Use GSI1 with fixed PK and nameLower prefix in SK
+        let prefix = query.to_lowercase();
+        info!("Querying foods on GSI1 begins_with: {}", prefix);
+
+        let mut request = self.client
             .query()
             .table_name(&self.table_name)
             .index_name("GSI1")
-            .key_condition_expression("GSI1PK = :gsi1pk")
-            .expression_attribute_values(":gsi1pk", AttributeValue::S(format!("FOOD#{}", query.to_lowercase())))
+            .key_condition_expression("GSI1PK = :pk AND begins_with(GSI1SK, :sk)")
+            .expression_attribute_values(":pk", AttributeValue::S("FOOD".to_string()))
+            .expression_attribute_values(":sk", AttributeValue::S(prefix))
             .limit(limit as i32);
+
+        // Pagination support via ExclusiveStartKey using table PK/SK
+        if let Some(last_food_id) = cursor {
+            let mut eks = std::collections::HashMap::new();
+            eks.insert("PK".to_string(), AttributeValue::S(format!("FOOD#{}", last_food_id)));
+            eks.insert("SK".to_string(), AttributeValue::S(format!("FOOD#{}", last_food_id)));
+            request = request.set_exclusive_start_key(Some(eks));
+        }
 
         match request.send().await {
             Ok(response) => {
+                info!("Query (GSI1) successful, found {} items", response.count());
                 let mut foods = Vec::new();
-                for item in response.items() {
-                    if let Ok(food) = self.item_to_food(item) {
-                        foods.push(food);
+                for (i, item) in response.items().iter().enumerate() {
+                    match self.item_to_food(item) {
+                        Ok(food) => foods.push(food),
+                        Err(e) => error!("Failed to parse food item {}: {}", i, e),
                     }
                 }
-                Ok(foods)
+                // Build next cursor from LastEvaluatedKey (derive FoodId from PK)
+                let next_cursor = response.last_evaluated_key().and_then(|k|
+                    k.get("PK")
+                        .and_then(|v| v.as_s().ok())
+                        .and_then(|s| s.strip_prefix("FOOD#").map(|v| v.to_string()))
+                );
+                Ok((foods, next_cursor))
             }
             Err(e) => {
-                error!("Failed to search foods: {}", e);
-                Err(anyhow::anyhow!("Failed to search foods: {}", e))
+                error!("Failed to search foods (query GSI1): {:?}", e);
+                Ok((Vec::new(), None))
             }
         }
     }
@@ -377,9 +489,9 @@ impl NutritionRepository {
         item.insert("DailyProtein".to_string(), AttributeValue::N(plan.daily_protein.to_string()));
         item.insert("DailyCarbs".to_string(), AttributeValue::N(plan.daily_carbs.to_string()));
         item.insert("DailyFat".to_string(), AttributeValue::N(plan.daily_fat.to_string()));
-        item.insert("DailyFiber".to_string(), AttributeValue::N(plan.daily_fiber.to_string()));
-        item.insert("DailySugar".to_string(), AttributeValue::N(plan.daily_sugar.to_string()));
-        item.insert("DailySodium".to_string(), AttributeValue::N(plan.daily_sodium.to_string()));
+        item.insert("DietaryFiber".to_string(), AttributeValue::N(plan.dietary_fiber.to_string()));
+        item.insert("TotalSugars".to_string(), AttributeValue::N(plan.total_sugars.to_string()));
+        item.insert("Sodium".to_string(), AttributeValue::N(plan.sodium.to_string()));
         
         item.insert("MealPlans".to_string(), AttributeValue::S(serde_json::to_string(&plan.meal_plans)?));
         item.insert("Restrictions".to_string(), AttributeValue::S(serde_json::to_string(&plan.restrictions)?));
@@ -411,6 +523,91 @@ impl NutritionRepository {
                 Err(anyhow::anyhow!("Failed to create nutrition plan: {}", e))
             }
         }
+    }
+
+    // Favorite foods operations
+    pub async fn add_favorite_food(&self, user_id: &str, food_id: &str) -> Result<()> {
+        // Ensure food exists
+        let exists = self.get_food_by_id(food_id).await?.is_some();
+        if !exists {
+            return Err(anyhow::anyhow!("Food not found"));
+        }
+
+        let mut item = HashMap::new();
+        item.insert("PK".to_string(), AttributeValue::S(format!("USER#{}", user_id)));
+        item.insert("SK".to_string(), AttributeValue::S(format!("FAVORITE#FOOD#{}", food_id)));
+        item.insert("EntityType".to_string(), AttributeValue::S("FAVORITE".to_string()));
+        item.insert("UserId".to_string(), AttributeValue::S(user_id.to_string()));
+        item.insert("FoodId".to_string(), AttributeValue::S(food_id.to_string()));
+        item.insert("CreatedAt".to_string(), AttributeValue::S(Utc::now().to_rfc3339()));
+
+        let request = self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .condition_expression("attribute_not_exists(PK) AND attribute_not_exists(SK)");
+
+        match request.send().await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("Failed to add favorite: {}", e);
+                Err(anyhow::anyhow!("Failed to add favorite: {}", e))
+            }
+        }
+    }
+
+    pub async fn remove_favorite_food(&self, user_id: &str, food_id: &str) -> Result<()> {
+        let request = self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("FAVORITE#FOOD#{}", food_id)));
+
+        match request.send().await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("Failed to remove favorite: {}", e);
+                Err(anyhow::anyhow!("Failed to remove favorite: {}", e))
+            }
+        }
+    }
+
+    pub async fn list_favorite_food_ids(&self, user_id: &str) -> Result<Vec<String>> {
+        let request = self.client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", user_id)))
+            .expression_attribute_values(":sk", AttributeValue::S("FAVORITE#FOOD#".to_string()));
+
+        match request.send().await {
+            Ok(response) => {
+                let mut ids = Vec::new();
+                for item in response.items() {
+                    if let Some(fid) = item.get("FoodId").and_then(|v| v.as_s().ok()) {
+                        ids.push(fid.to_string());
+                    } else if let Some(sk) = item.get("SK").and_then(|v| v.as_s().ok()) {
+                        if let Some(fid) = sk.strip_prefix("FAVORITE#FOOD#") { ids.push(fid.to_string()); }
+                    }
+                }
+                Ok(ids)
+            }
+            Err(e) => {
+                error!("Failed to list favorite ids: {}", e);
+                Err(anyhow::anyhow!("Failed to list favorites: {}", e))
+            }
+        }
+    }
+
+    pub async fn list_favorite_foods(&self, user_id: &str) -> Result<Vec<Food>> {
+        let ids = self.list_favorite_food_ids(user_id).await?;
+        let mut foods = Vec::new();
+        for food_id in ids {
+            if let Some(food) = self.get_food_by_id(&food_id).await? {
+                foods.push(food);
+            }
+        }
+        Ok(foods)
     }
 
     pub async fn get_nutrition_plan_by_id(&self, user_id: &str, plan_id: &str) -> Result<Option<NutritionPlan>> {
@@ -492,17 +689,17 @@ impl NutritionRepository {
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(0.0);
 
-        let total_fiber = item.get("TotalFiber")
+        let dietary_fiber = item.get("DietaryFiber")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(0.0);
 
-        let total_sugar = item.get("TotalSugar")
+        let total_sugars = item.get("TotalSugars")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(0.0);
 
-        let total_sodium = item.get("TotalSodium")
+        let sodium = item.get("Sodium")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(0.0);
@@ -540,9 +737,9 @@ impl NutritionRepository {
             total_protein,
             total_carbs,
             total_fat,
-            total_fiber,
-            total_sugar,
-            total_sodium,
+            dietary_fiber,
+            total_sugars,
+            sodium,
             foods,
             notes,
             created_at,
@@ -589,7 +786,44 @@ impl NutritionRepository {
         let nutrition_facts = item.get("NutritionFacts")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<NutritionFacts>(s).ok())
-            .unwrap_or_default();
+            .unwrap_or_else(|| NutritionFacts {
+                calories: 0.0,
+                protein: 0.0,
+                total_carbs: 0.0,
+                dietary_fiber: 0.0,
+                total_sugars: 0.0,
+                added_sugars: 0.0,
+                total_fat: 0.0,
+                saturated_fat: 0.0,
+                trans_fat: 0.0,
+                cholesterol: 0.0,
+                sodium: 0.0,
+                potassium: 0.0,
+                calcium: 0.0,
+                iron: 0.0,
+                vitamin_a: 0.0,
+                vitamin_c: 0.0,
+                vitamin_d: 0.0,
+                vitamin_e: 0.0,
+                vitamin_k: 0.0,
+                thiamin: 0.0,
+                riboflavin: 0.0,
+                niacin: 0.0,
+                vitamin_b6: 0.0,
+                folate: 0.0,
+                vitamin_b12: 0.0,
+                biotin: 0.0,
+                pantothenic_acid: 0.0,
+                phosphorus: 0.0,
+                iodine: 0.0,
+                magnesium: 0.0,
+                zinc: 0.0,
+                selenium: 0.0,
+                copper: 0.0,
+                manganese: 0.0,
+                chromium: 0.0,
+                molybdenum: 0.0,
+            });
 
         let serving_size = item.get("ServingSize")
             .and_then(|v| v.as_n().ok())
@@ -604,17 +838,17 @@ impl NutritionRepository {
         let common_servings = item.get("CommonServings")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<Vec<CommonServing>>(s).ok())
-            .unwrap_or_default();
+            .unwrap_or_else(|| vec![]);
 
         let allergens = item.get("Allergens")
             .and_then(|v| v.as_s().ok())
-            .and_then(|s| serde_json::from_str::<Vec<Allergen>>(s).ok())
-            .unwrap_or_default();
+            .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+            .unwrap_or_else(|| vec![]);
 
         let dietary_tags = item.get("DietaryTags")
             .and_then(|v| v.as_s().ok())
-            .and_then(|s| serde_json::from_str::<Vec<DietaryTag>>(s).ok())
-            .unwrap_or_default();
+            .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+            .unwrap_or_else(|| vec![]);
 
         let verified = item.get("Verified")
             .and_then(|v| v.as_bool().ok())
@@ -715,17 +949,17 @@ impl NutritionRepository {
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(65.0);
 
-        let daily_fiber = item.get("DailyFiber")
+        let dietary_fiber = item.get("DietaryFiber")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(25.0);
 
-        let daily_sugar = item.get("DailySugar")
+        let total_sugars = item.get("TotalSugars")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(50.0);
 
-        let daily_sodium = item.get("DailySodium")
+        let sodium = item.get("Sodium")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(2300.0);
@@ -784,9 +1018,9 @@ impl NutritionRepository {
             daily_protein,
             daily_carbs,
             daily_fat,
-            daily_fiber,
-            daily_sugar,
-            daily_sodium,
+            dietary_fiber,
+            total_sugars,
+            sodium,
             meal_plans,
             restrictions,
             preferences,

@@ -4,16 +4,23 @@ import nextIntl from './next-intl.config';
 const nextConfig: NextConfig = {
   i18n: nextIntl,
   async rewrites() {
-    const base = process.env.NEXT_PUBLIC_CLOUDFRONT_URL;
-    if (!base) {
-      return [];
+    const nutritionUrl = process.env.NEXT_PUBLIC_NUTRITION_URL;
+    const cfBase = process.env.NEXT_PUBLIC_CLOUDFRONT_URL;
+    const rules: any[] = [];
+    // Prefer direct Nutrition service URL in dev if provided
+    if (nutritionUrl) {
+      rules.push({
+        source: '/api/nutrition/:path*',
+        destination: `${nutritionUrl}/api/nutrition/:path*`,
+      });
     }
-    return [
-      {
+    if (cfBase) {
+      rules.push({
         source: '/api/:path*',
-        destination: `${base}/api/:path*`,
-      },
-    ];
+        destination: `${cfBase}/api/:path*`,
+      });
+    }
+    return rules;
   },
 };
 

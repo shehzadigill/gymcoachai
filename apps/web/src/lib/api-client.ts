@@ -106,9 +106,7 @@ export const api = {
   // Workout endpoints
   async getWorkoutSessions(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any[] }>(
-      `/api/workouts/sessions?userId=${id}`
-    );
+    return apiFetch<any[]>(`/api/workouts/sessions?userId=${id}`);
   },
 
   async createWorkoutSession(data: any, userId?: string) {
@@ -135,46 +133,296 @@ export const api = {
     });
   },
 
+  // Workout Plans
+  async getWorkoutPlans(userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any[]>(`/api/workouts/plans?userId=${id}`);
+  },
+
+  async createWorkoutPlan(data: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/plans`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async getWorkoutPlan(planId: string) {
+    return apiFetch<any>(`/api/workouts/plans/${planId}`);
+  },
+
+  async updateWorkoutPlan(data: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/plans`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async deleteWorkoutPlan(planId: string) {
+    return apiFetch<any>(`/api/workouts/plans/${planId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Exercise Library
+  async getExercises(userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any[]>(`/api/workouts/exercises?userId=${id}`);
+  },
+
+  async createExercise(data: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/exercises`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async getExercise(exerciseId: string) {
+    return apiFetch<any>(`/api/workouts/exercises/${exerciseId}`);
+  },
+
+  async updateExercise(data: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/exercises`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async deleteExercise(exerciseId: string) {
+    return apiFetch<any>(`/api/workouts/exercises/${exerciseId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Progress Photos
+  async getProgressPhotos(userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any[]>(`/api/workouts/progress-photos?userId=${id}`);
+  },
+
+  async deleteProgressPhoto(photoId: string) {
+    return apiFetch<any>(`/api/workouts/progress-photos/${photoId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Workout Analytics
+  async getWorkoutAnalytics(userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/analytics?userId=${id}`);
+  },
+
+  // Workout History
+  async getWorkoutHistory(userId?: string, page?: number, limit?: number) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    return apiFetch<any>(`/api/workouts/history?${params}`);
+  },
+
+  async deleteWorkoutSession(sessionId: string) {
+    return apiFetch<any>(`/api/workouts/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async getWorkoutSession(sessionId: string) {
+    return apiFetch<any>(`/api/workouts/sessions/${sessionId}`);
+  },
+
   // Nutrition endpoints
   async getMealsByDate(date: string, userId?: string) {
-    const id = userId || (await getCurrentUserId());
-    return apiFetch<{ statusCode: number; body: any[] }>(
-      `/api/users/${id}/meals/date/${date}`
-    );
+    if (userId) {
+      return apiFetch<any[]>(
+        `/api/nutrition/users/${userId}/meals/date/${date}`
+      );
+    }
+    return apiFetch<any[]>(`/api/nutrition/me/meals/date/${date}`);
   },
 
   async createMeal(data: any, userId?: string) {
-    const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/users/${id}/meals`, {
+    if (userId) {
+      return apiFetch<any>(`/api/nutrition/users/${userId}/meals`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    }
+    return apiFetch<any>(`/api/nutrition/me/meals`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   async updateMeal(mealId: string, data: any, userId?: string) {
-    const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/users/${id}/meals/${mealId}`, {
+    if (userId) {
+      return apiFetch<any>(`/api/nutrition/users/${userId}/meals/${mealId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    }
+    return apiFetch<any>(`/api/nutrition/me/meals/${mealId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
   async deleteMeal(mealId: string, userId?: string) {
-    const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/users/${id}/meals/${mealId}`, {
+    if (userId) {
+      return apiFetch<any>(`/api/nutrition/users/${userId}/meals/${mealId}`, {
+        method: 'DELETE',
+      });
+    }
+    return apiFetch<any>(`/api/nutrition/me/meals/${mealId}`, {
       method: 'DELETE',
     });
   },
 
+  async getUserMeals(userId?: string) {
+    if (userId) {
+      return apiFetch<any[]>(`/api/nutrition/users/${userId}/meals`);
+    }
+    return apiFetch<any[]>(`/api/nutrition/me/meals`);
+  },
+
   // Food search endpoints
-  async searchFoods(query: string) {
-    return apiFetch<{ statusCode: number; body: any[] }>(
-      `/api/foods/search?q=${encodeURIComponent(query)}`
-    );
+  async searchFoods(query: string, cursor?: string) {
+    const url = `/api/nutrition/foods/search?q=${encodeURIComponent(query)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const res = await apiFetch<any>(url);
+
+    // Backend returns: { body: { foods: [...], next_cursor: "..." } }
+    const bodyData = res.body || res;
+    const rawFoods = Array.isArray(bodyData.foods)
+      ? bodyData.foods
+      : Array.isArray(bodyData)
+        ? bodyData
+        : [];
+
+    const mapped = (rawFoods as any[]).map((f) => {
+      const nf = f.nutrition_facts || f.nutritionFacts || {};
+      const topFacts = {
+        calories: nf.calories ?? 0,
+        protein: nf.protein ?? 0,
+        carbs: nf.total_carbs ?? nf.carbs ?? 0,
+        fat: nf.total_fat ?? nf.fat ?? 0,
+        fiber: nf.dietary_fiber ?? nf.fiber ?? 0,
+        sugar: nf.total_sugars ?? nf.sugar ?? 0,
+        sodium: nf.sodium ?? 0,
+      };
+
+      const common = (f.common_servings || f.commonServings || []) as any[];
+      let commonServings = common
+        .map((s) => {
+          const sNF = s.nutrition_facts || s.nutritionFacts || {};
+          return {
+            name: s.name || `${s.quantity ?? 1} ${s.unit ?? 'serving'}`,
+            weight: s.weight ?? 100,
+            nutritionFacts: {
+              calories: sNF.calories ?? topFacts.calories,
+              protein: sNF.protein ?? topFacts.protein,
+              carbs: sNF.total_carbs ?? sNF.carbs ?? topFacts.carbs,
+              fat: sNF.total_fat ?? sNF.fat ?? topFacts.fat,
+              fiber: sNF.dietary_fiber ?? sNF.fiber ?? topFacts.fiber,
+              sugar: sNF.total_sugars ?? sNF.sugar ?? topFacts.sugar,
+              sodium: sNF.sodium ?? topFacts.sodium,
+            },
+          };
+        })
+        .filter((s) => typeof s.name === 'string' && s.name.length > 0);
+      if (commonServings.length === 0) {
+        commonServings = [
+          { name: '100 g', weight: 100, nutritionFacts: topFacts },
+        ];
+      }
+
+      return {
+        id: f.id || f.FoodId || f.food_id,
+        name: f.name || f.Name,
+        brand: f.brand || f.Brand || '',
+        category: f.category || f.Category || 'Other',
+        subcategory: f.subcategory || f.Subcategory || '',
+        nutritionFacts: topFacts,
+        commonServings,
+        allergens: f.allergens || f.Allergens || [],
+        dietaryTags: f.dietary_tags || f.dietaryTags || [],
+        verified: Boolean(f.verified ?? f.Verified ?? false),
+        isActive: Boolean(f.is_active ?? f.IsActive ?? true),
+      };
+    });
+
+    const nextCursor = bodyData?.next_cursor || null;
+    return { foods: mapped as any[], nextCursor };
   },
 
   async getFood(foodId: string) {
-    return apiFetch<any>(`/api/foods/${foodId}`);
+    return apiFetch<any>(`/api/nutrition/foods/${foodId}`);
+  },
+
+  // Nutrition statistics
+  async getNutritionStats(userId?: string) {
+    if (userId) {
+      return apiFetch<any>(`/api/nutrition/users/${userId}/stats`);
+    }
+    return apiFetch<any>(`/api/nutrition/me/stats`);
+  },
+
+  // Water intake endpoints
+  async getWater(date: string, userId?: string) {
+    if (userId) {
+      return apiFetch<any>(`/api/nutrition/users/${userId}/water/date/${date}`);
+    }
+    return apiFetch<any>(`/api/nutrition/me/water/date/${date}`);
+  },
+
+  async setWater(date: string, glasses: number, userId?: string) {
+    if (userId) {
+      return apiFetch<any>(
+        `/api/nutrition/users/${userId}/water/date/${date}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ glasses }),
+        }
+      );
+    }
+    return apiFetch<any>(`/api/nutrition/me/water/date/${date}`, {
+      method: 'POST',
+      body: JSON.stringify({ glasses }),
+    });
+  },
+
+  // Favorites endpoints
+  async listFavoriteFoods(userId?: string) {
+    if (userId) {
+      return apiFetch<any>(`/api/nutrition/users/${userId}/favorites/foods`);
+    }
+    return apiFetch<any>(`/api/nutrition/me/favorites/foods`);
+  },
+
+  async addFavoriteFood(foodId: string, userId?: string) {
+    if (userId) {
+      return apiFetch<any>(
+        `/api/nutrition/users/${userId}/favorites/foods/${foodId}`,
+        { method: 'POST' }
+      );
+    }
+    return apiFetch<any>(`/api/nutrition/me/favorites/foods/${foodId}`, {
+      method: 'POST',
+    });
+  },
+
+  async removeFavoriteFood(foodId: string, userId?: string) {
+    if (userId) {
+      return apiFetch<any>(
+        `/api/nutrition/users/${userId}/favorites/foods/${foodId}`,
+        { method: 'DELETE' }
+      );
+    }
+    return apiFetch<any>(`/api/nutrition/me/favorites/foods/${foodId}`, {
+      method: 'DELETE',
+    });
   },
 
   // Image upload endpoints

@@ -118,65 +118,86 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         .as_str()
         .unwrap_or("{}");
     
+    // Parse the body JSON and inject it back into the event for handlers
+    let mut modified_event = event.clone();
+    if !body.is_empty() && body != "{}" {
+        match serde_json::from_str::<Value>(body) {
+            Ok(parsed_body) => {
+                modified_event["body"] = parsed_body;
+            }
+            Err(e) => {
+                error!("Failed to parse request body: {}", e);
+                return Ok(json!({
+                    "statusCode": 400,
+                    "headers": get_cors_headers(),
+                    "body": json!({
+                        "error": "Bad Request",
+                        "message": "Invalid JSON in request body"
+                    })
+                }));
+            }
+        }
+    }
+    
     let response = match (http_method, path) {
         // Workout Plans
         ("GET", "/api/workouts/plans") => {
-            get_workout_plans_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_workout_plans_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("POST", "/api/workouts/plans") => {
-            create_workout_plan_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            create_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", path) if path.starts_with("/api/workouts/plans/") => {
-            get_workout_plan_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("PUT", "/api/workouts/plans") => {
-            update_workout_plan_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            update_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/plans/") => {
-            delete_workout_plan_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            delete_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
         // Workout Sessions
         ("GET", "/api/workouts/sessions") => {
-            get_workout_sessions_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_workout_sessions_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("POST", "/api/workouts/sessions") => {
-            create_workout_session_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            create_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", path) if path.starts_with("/api/workouts/sessions/") => {
-            get_workout_session_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("PUT", "/api/workouts/sessions") => {
-            update_workout_session_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            update_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/sessions/") => {
-            delete_workout_session_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            delete_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
         // Exercise Library
         ("GET", "/api/workouts/exercises") => {
-            get_exercises_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_exercises_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("POST", "/api/workouts/exercises") => {
-            create_exercise_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            create_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", path) if path.starts_with("/api/workouts/exercises/") => {
-            get_exercise_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("PUT", "/api/workouts/exercises") => {
-            update_exercise_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            update_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/exercises/") => {
-            delete_exercise_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            delete_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
         // Progress Photos
         ("GET", "/api/workouts/progress-photos") => {
-            get_progress_photos_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_progress_photos_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/progress-photos/") => {
             delete_progress_photo_handler(
-                event,
+                modified_event,
                 DYNAMODB_CLIENT.get().expect("DynamoDB not initialized"),
                 S3_CLIENT.get().expect("S3 not initialized"),
             ).await
@@ -184,15 +205,15 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         
         // Analytics
         ("GET", "/api/workouts/analytics") => {
-            get_workout_analytics_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_workout_analytics_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", "/api/workouts/history") => {
-            get_workout_history_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            get_workout_history_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
         // Log Activity
         ("POST", "/api/workouts/log-activity") => {
-            log_activity_handler(event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+            log_activity_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
         _ => {

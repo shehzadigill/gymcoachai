@@ -114,6 +114,8 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         .as_str()
         .unwrap_or("/");
 
+    info!("Processing path: {}", path);
+
     let body = event["body"]
         .as_str()
         .unwrap_or("{}");
@@ -123,11 +125,26 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
     // Extract user ID and other parameters from path
     let path_parts: Vec<&str> = path.split('/').collect();
-    let user_id = if path_parts.len() >= 4 && path_parts[2] == "users" {
+    info!("Path parts: {:?}", path_parts);
+    
+    let user_id = if path_parts.len() >= 3 && path_parts[1] == "users" {
+        Some(path_parts[2].to_string())
+    } else if path_parts.len() >= 4 && path_parts[2] == "users" {
         Some(path_parts[3].to_string())
+    } else if path_parts.len() >= 2 && path_parts[1] == "me" {
+        // Handle /me endpoints - get user ID from auth context
+        Some(auth_context.user_id.clone())
+    } else if path_parts.len() >= 4 && path_parts[1] == "api" && path_parts[2] == "nutrition" && path_parts[3] == "me" {
+        // Handle /api/nutrition/me endpoints - get user ID from auth context
+        Some(auth_context.user_id.clone())
+    } else if path_parts.len() >= 5 && path_parts[1] == "api" && path_parts[2] == "nutrition" && path_parts[3] == "users" {
+        // Handle /api/nutrition/users/{userId} endpoints
+        Some(path_parts[4].to_string())
     } else {
         None
     };
+    
+    info!("Extracted user_id: {:?}", user_id);
 
     // Initialize nutrition repository
     let table_name = std::env::var("DYNAMODB_TABLE").unwrap_or_else(|_| "gymcoach-ai".to_string());
@@ -135,51 +152,78 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
     let response = match (http_method, path) {
         // Meal endpoints
-        ("POST", path) if path.starts_with("/api/users/") && path.ends_with("/meals") => {
+        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/meals") => {
             handle_create_meal(&user_id.unwrap_or_default(), body, &nutrition_repo, &auth_context).await
         }
-        ("GET", path) if path.starts_with("/api/users/") && path.contains("/meals/") && !path.contains("/date") => {
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/") && !path.contains("/date") => {
             let meal_id = path_parts.last().map_or("", |v| v);
             handle_get_meal(&user_id.unwrap_or_default(), meal_id, &nutrition_repo, &auth_context).await
         }
-        ("GET", path) if path.starts_with("/api/users/") && path.contains("/meals/date/") => {
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/date/") => {
             let date = path_parts.last().map_or("", |v| v);
             handle_get_meals_by_date(&user_id.unwrap_or_default(), date, &nutrition_repo, &auth_context).await
         }
-        ("PUT", path) if path.starts_with("/api/users/") && path.contains("/meals/") => {
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/meals") => {
+            handle_get_user_meals(&user_id.unwrap_or_default(), &nutrition_repo, &auth_context).await
+        }
+        ("PUT", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/") && !path.contains("/date") => {
             let meal_id = path_parts.last().map_or("", |v| v);
             handle_update_meal(&user_id.unwrap_or_default(), meal_id, body, &nutrition_repo, &auth_context).await
         }
-        ("DELETE", path) if path.starts_with("/api/users/") && path.contains("/meals/") => {
+        ("DELETE", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/") && !path.contains("/date") => {
             let meal_id = path_parts.last().map_or("", |v| v);
             handle_delete_meal(&user_id.unwrap_or_default(), meal_id, &nutrition_repo, &auth_context).await
         }
         
         // Food endpoints
-        ("POST", "/api/foods") => {
+        ("POST", path) if path == "/api/foods" || path == "/foods" || path == "/api/nutrition/foods" => {
             handle_create_food(body, &nutrition_repo, &auth_context).await
         }
-        ("GET", path) if path.starts_with("/api/foods/") && !path.contains("/search") => {
+        ("GET", path) if (path.starts_with("/api/foods/") || path.starts_with("/foods/") || path.starts_with("/api/nutrition/foods/")) && !path.contains("/search") => {
             let food_id = path_parts.last().map_or("", |v| v);
             handle_get_food(food_id, &nutrition_repo, &auth_context).await
         }
-        ("GET", "/api/foods/search") => {
+        ("GET", path) if path == "/api/foods/search" || path == "/foods/search" || path == "/api/nutrition/foods/search" => {
             let query = query_params.get("q")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             let limit = query_params.get("limit")
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<u32>().ok());
-            handle_search_foods(query, limit, &nutrition_repo, &auth_context).await
+            let cursor = query_params.get("cursor").and_then(|v| v.as_str()).map(|s| s.to_string());
+            handle_search_foods(query, limit, &nutrition_repo, &auth_context, cursor).await
+        }
+
+        // Favorite food endpoints
+        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/favorites/foods/") => {
+            let food_id = path_parts.last().map_or("", |v| v);
+            handle_add_favorite_food(&user_id.unwrap_or_default(), food_id, &nutrition_repo, &auth_context).await
+        }
+        ("DELETE", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/favorites/foods/") => {
+            let food_id = path_parts.last().map_or("", |v| v);
+            handle_remove_favorite_food(&user_id.unwrap_or_default(), food_id, &nutrition_repo, &auth_context).await
+        }
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/favorites/foods") => {
+            handle_list_favorite_foods(&user_id.unwrap_or_default(), &nutrition_repo, &auth_context).await
         }
         
         // Nutrition plan endpoints
-        ("POST", path) if path.starts_with("/api/users/") && path.ends_with("/nutrition-plans") => {
+        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/nutrition-plans") => {
             handle_create_nutrition_plan(&user_id.unwrap_or_default(), body, &nutrition_repo, &auth_context).await
         }
-        ("GET", path) if path.starts_with("/api/users/") && path.contains("/nutrition-plans/") => {
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/nutrition-plans/") => {
             let plan_id = path_parts.last().map_or("", |v| v);
             handle_get_nutrition_plan(&user_id.unwrap_or_default(), plan_id, &nutrition_repo, &auth_context).await
+        }
+
+        // Water intake endpoints
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/water/date/") => {
+            let date = path_parts.last().map_or("", |v| v);
+            handle_get_water(&user_id.unwrap_or_default(), date, &nutrition_repo, &auth_context).await
+        }
+        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/water/date/") => {
+            let date = path_parts.last().map_or("", |v| v);
+            handle_set_water(&user_id.unwrap_or_default(), date, body, &nutrition_repo, &auth_context).await
         }
         
         _ => {

@@ -1,13 +1,13 @@
 @import 'tailwindcss';
 
-@theme {
+:root {
   --color-background: #ffffff;
   --color-foreground: #171717;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@theme dark {
+.dark {
   --color-background: #0a0a0a;
   --color-foreground: #ededed;
 }
@@ -21,7 +21,78 @@ body {
     color 0.3s ease;
 }
 
-/* Force dark mode styles to be more visible */
+/* Enhanced Light Mode Styles - Clean and bright appearance */
+body {
+  background-color: #fefefe !important;
+  color: #1e293b !important;
+}
+
+/* Light mode background improvements - brighter and cleaner */
+.bg-gray-50 {
+  background-color: #f8fafc !important;
+}
+
+.bg-gray-100 {
+  background-color: #f1f5f9 !important;
+}
+
+.bg-gray-200 {
+  background-color: #e2e8f0 !important;
+}
+
+.bg-white {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Light mode text improvements - better contrast and readability */
+.text-gray-900 {
+  color: #0f172a !important;
+}
+
+.text-gray-700 {
+  color: #334155 !important;
+}
+
+.text-gray-600 {
+  color: #475569 !important;
+}
+
+.text-gray-500 {
+  color: #64748b !important;
+}
+
+/* Light mode border improvements - more visible but subtle */
+.border-gray-200 {
+  border-color: #e2e8f0 !important;
+}
+
+.border-gray-300 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Light mode hover states - responsive and pleasant */
+.hover\:bg-gray-50:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.hover\:bg-gray-100:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.hover\:bg-gray-200:hover {
+  background-color: #cbd5e1 !important;
+}
+
+.hover\:text-gray-600:hover {
+  color: #334155 !important;
+}
+
+.hover\:text-gray-900:hover {
+  color: #0f172a !important;
+}
+
+/* Dark Mode Styles */
 .dark body {
   background-color: #0a0a0a !important;
   color: #ededed !important;
@@ -29,6 +100,14 @@ body {
 
 .dark .bg-gray-50 {
   background-color: #1f2937 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-gray-200 {
+  background-color: #374151 !important;
 }
 
 .dark .bg-white {
@@ -63,32 +142,20 @@ body {
   background-color: #374151 !important;
 }
 
-.dark .hover\:bg-gray-700:hover {
+.dark .hover\:bg-gray-100:hover {
+  background-color: #374151 !important;
+}
+
+.dark .hover\:bg-gray-200:hover {
   background-color: #4b5563 !important;
 }
 
-/* Additional dark mode styles for better visibility */
-.dark {
-  background-color: #0a0a0a !important;
-}
-
-.dark * {
-  border-color: #4b5563 !important;
-}
-
-.dark h1,
-.dark h2,
-.dark h3,
-.dark h4,
-.dark h5,
-.dark h6 {
-  color: #f9fafb !important;
-}
-
-.dark p,
-.dark span,
-.dark div {
+.dark .hover\:text-gray-600:hover {
   color: #d1d5db !important;
+}
+
+.dark .hover\:text-gray-900:hover {
+  color: #f9fafb !important;
 }
 
 .dark button {
@@ -109,22 +176,43 @@ body {
   border-color: #4b5563 !important;
 }
 
-.dark .bg-gray-100 {
-  background-color: #1f2937 !important;
-}
-
-.dark .bg-gray-200 {
-  background-color: #374151 !important;
-}
-
-.dark .text-gray-800 {
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
   color: #f9fafb !important;
 }
 
-.dark .text-gray-600 {
-  color: #9ca3af !important;
+.dark p,
+.dark span,
+.dark div {
+  color: #d1d5db !important;
 }
 
-.dark .text-gray-500 {
-  color: #6b7280 !important;
+/* Enhanced form elements for light mode */
+input,
+textarea,
+select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #d1d5db !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #3b82f6 !important;
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+}
+
+/* Typography improvements for light mode */
+h1, h2, h3, h4, h5, h6 {
+  color: #0f172a !important;
+}
+
+p, span {
+  color: #334155 !important;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
@@ -36,7 +37,8 @@ interface Exercise {
 }
 
 export default function WorkoutsPage() {
-  const { user } = useCurrentUser();
+  const router = useRouter();
+  const user = useCurrentUser();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,128 +57,28 @@ export default function WorkoutsPage() {
       // Fetch workout sessions from API
       const response = await api.getWorkoutSessions();
 
-      if (response.statusCode === 200) {
+      if (response && Array.isArray(response)) {
         // Transform API response to frontend format
-        const apiWorkouts: Workout[] = response.body.map((session: any) => ({
-          id: session.id,
-          name: session.workout_plan?.name || 'Workout Session',
-          description: session.workout_plan?.description || 'No description',
-          duration: session.duration_minutes || 0,
-          difficulty: session.workout_plan?.difficulty || 'beginner',
-          completed: session.status === 'completed',
-          completedAt: session.completed_at,
-          exercises: session.exercises || [],
+        const apiWorkouts: Workout[] = response.map((session: any) => ({
+          id: session.id || session.WorkoutSessionId,
+          name: session.name || session.Name || 'Workout Session',
+          description:
+            session.description || session.Description || 'No description',
+          duration: session.duration_minutes || session.DurationMinutes || 0,
+          difficulty: session.difficulty || session.Difficulty || 'beginner',
+          completed: session.completed_at || session.CompletedAt ? true : false,
+          completedAt: session.completed_at || session.CompletedAt,
+          exercises: session.exercises || session.Exercises || [],
         }));
         setWorkouts(apiWorkouts);
       } else {
-        // Fallback to mock data if API fails
-        const mockWorkouts: Workout[] = [
-          {
-            id: '1',
-            name: 'Upper Body Strength',
-            description: 'Focus on chest, shoulders, and arms',
-            duration: 45,
-            difficulty: 'intermediate',
-            completed: false,
-            exercises: [
-              {
-                id: '1',
-                name: 'Bench Press',
-                sets: 3,
-                reps: 10,
-                weight: 135,
-                restTime: 90,
-                instructions: 'Lie flat on bench, lower bar to chest, press up',
-              },
-              {
-                id: '2',
-                name: 'Shoulder Press',
-                sets: 3,
-                reps: 12,
-                weight: 50,
-                restTime: 60,
-                instructions: 'Press dumbbells overhead from shoulder height',
-              },
-            ],
-          },
-          {
-            id: '2',
-            name: 'Lower Body Power',
-            description: 'Squats, deadlifts, and leg exercises',
-            duration: 60,
-            difficulty: 'advanced',
-            completed: true,
-            completedAt: '2024-01-15T10:30:00Z',
-            exercises: [
-              {
-                id: '3',
-                name: 'Back Squat',
-                sets: 4,
-                reps: 8,
-                weight: 185,
-                restTime: 120,
-                instructions: 'Squat down until thighs parallel to floor',
-              },
-            ],
-          },
-        ];
-
-        setWorkouts(mockWorkouts);
+        setError('No workouts found');
+        setWorkouts([]);
       }
     } catch (e: any) {
       console.error('Failed to fetch workouts:', e);
-      // Use mock data as fallback
-      const mockWorkouts: Workout[] = [
-        {
-          id: '1',
-          name: 'Upper Body Strength',
-          description: 'Focus on chest, shoulders, and arms',
-          duration: 45,
-          difficulty: 'intermediate',
-          completed: false,
-          exercises: [
-            {
-              id: '1',
-              name: 'Bench Press',
-              sets: 3,
-              reps: 10,
-              weight: 135,
-              restTime: 90,
-              instructions: 'Lie flat on bench, lower bar to chest, press up',
-            },
-            {
-              id: '2',
-              name: 'Shoulder Press',
-              sets: 3,
-              reps: 12,
-              weight: 50,
-              restTime: 60,
-              instructions: 'Press dumbbells overhead from shoulder height',
-            },
-          ],
-        },
-        {
-          id: '2',
-          name: 'Lower Body Power',
-          description: 'Squats, deadlifts, and leg exercises',
-          duration: 60,
-          difficulty: 'advanced',
-          completed: true,
-          completedAt: '2024-01-15T10:30:00Z',
-          exercises: [
-            {
-              id: '3',
-              name: 'Back Squat',
-              sets: 4,
-              reps: 8,
-              weight: 185,
-              restTime: 120,
-              instructions: 'Squat down until thighs parallel to floor',
-            },
-          ],
-        },
-      ];
-      setWorkouts(mockWorkouts);
+      setError(e.message || 'Failed to fetch workouts');
+      setWorkouts([]);
     } finally {
       setLoading(false);
     }
@@ -188,17 +90,74 @@ export default function WorkoutsPage() {
 
   const completeWorkout = async (workoutId: string) => {
     try {
-      // API call to update workout session status
-      await api.updateWorkoutSession(workoutId, {
-        status: 'completed',
-        completed_at: new Date().toISOString(),
+      // Find the workout to get its name and other details
+      const workout = workouts.find((w) => w.id === workoutId);
+      if (!workout) {
+        throw new Error('Workout not found');
+      }
+
+      const now = new Date().toISOString();
+      const sessionData = {
+        name: workout.name,
+        startedAt: now,
+        completedAt: now,
+        durationMinutes: workout.duration,
+        exercises: workout.exercises.map((ex, index) => ({
+          exerciseId: ex.id,
+          name: ex.name,
+          sets: Array.from({ length: ex.sets }, (_, i) => ({
+            setNumber: i + 1,
+            reps: ex.reps,
+            weight: ex.weight,
+            completed: true,
+          })),
+          order: index,
+        })),
+      };
+
+      // Try to create a new completed workout session
+      console.log('Creating completed workout session:', {
+        workoutId,
+        workout: workout.name,
+        userId: user.id,
+        sessionData,
       });
+
+      try {
+        // First create the session
+        const createResponse = await api.createWorkoutSession(sessionData);
+        console.log('Session create response:', createResponse);
+
+        // Extract the created session ID from the response
+        let createdSessionId = null;
+        if (createResponse.statusCode === 201) {
+          const responseBody =
+            typeof createResponse.body === 'string'
+              ? JSON.parse(createResponse.body)
+              : createResponse.body;
+          createdSessionId = responseBody?.id;
+        }
+
+        // If we got a session ID, update it to mark as completed
+        if (createdSessionId) {
+          console.log('Updating session to completed:', createdSessionId);
+          const updateResponse = await api.updateWorkoutSession(
+            createdSessionId,
+            {
+              ...sessionData,
+              completedAt: now,
+            }
+          );
+          console.log('Session update response:', updateResponse);
+        }
+      } catch (sessionError: any) {
+        console.error('Failed to create/update session:', sessionError.message);
+        // Continue anyway - we'll still update the UI
+      }
 
       setWorkouts(
         workouts.map((w) =>
-          w.id === workoutId
-            ? { ...w, completed: true, completedAt: new Date().toISOString() }
-            : w
+          w.id === workoutId ? { ...w, completed: true, completedAt: now } : w
         )
       );
       setSelectedWorkout(null);
@@ -241,16 +200,91 @@ export default function WorkoutsPage() {
             Workouts
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage your workout routines
+            Manage your workout routines and track your progress
           </p>
         </div>
-        <button
-          onClick={() => (window.location.href = '/workouts/create')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Workout</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => router.push('/workouts/create')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Workout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Navigation */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Workout Tools
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <button
+            onClick={() => router.push('/workouts/plans')}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <Calendar className="h-8 w-8 text-blue-600 mb-2" />
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              Workout Plans
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Create and manage structured workout routines
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push('/workouts/exercises')}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <Dumbbell className="h-8 w-8 text-green-600 mb-2" />
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              Exercise Library
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Browse and manage your exercise database
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push('/workouts/analytics')}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <TrendingUp className="h-8 w-8 text-purple-600 mb-2" />
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              Analytics
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Track your fitness progress and achievements
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push('/workouts/history')}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <Clock className="h-8 w-8 text-orange-600 mb-2" />
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              Workout History
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              View and manage your past workout sessions
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push('/workouts/progress-photos')}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <Target className="h-8 w-8 text-pink-600 mb-2" />
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              Progress Photos
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Document your fitness transformation journey
+            </p>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

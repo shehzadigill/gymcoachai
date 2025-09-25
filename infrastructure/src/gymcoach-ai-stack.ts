@@ -546,6 +546,18 @@ export class GymCoachAIStack extends cdk.Stack {
     this.mainTable.grantWriteData(workoutServiceLambda);
     this.mainTable.grantWriteData(coachingServiceLambda);
 
+    // Ensure nutrition service can Query GSIs explicitly
+    nutritionServiceLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['dynamodb:Query', 'dynamodb:GetItem'],
+        resources: [
+          this.mainTable.tableArn,
+          `${this.mainTable.tableArn}/index/*`,
+        ],
+      })
+    );
+
     // Removed CloudWatch Log Groups to avoid costs
     // Lambda functions will use default log groups (free tier: 5GB/month)
 
@@ -641,6 +653,7 @@ export class GymCoachAIStack extends cdk.Stack {
       ),
       environment: {
         TABLE_NAME: this.mainTable.tableName,
+        DYNAMODB_TABLE: this.mainTable.tableName,
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
         USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,

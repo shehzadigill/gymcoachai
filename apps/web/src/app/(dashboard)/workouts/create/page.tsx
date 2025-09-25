@@ -15,6 +15,7 @@ import {
   Play,
   Pause,
   RotateCcw,
+  Edit,
 } from 'lucide-react';
 
 interface Exercise {
@@ -39,7 +40,7 @@ interface WorkoutPlan {
 
 export default function CreateWorkoutPage() {
   const router = useRouter();
-  const { user } = useCurrentUser();
+  const user = useCurrentUser();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -127,13 +128,11 @@ export default function CreateWorkoutPage() {
         exercises: workout.exercises.map(({ id, completed, ...ex }) => ex),
       });
 
-      if (response.statusCode === 200 || response.statusCode === 201) {
+      if (response) {
         setSuccess('Workout created successfully!');
         setTimeout(() => {
           router.push('/workouts');
         }, 1500);
-      } else {
-        setError('Failed to create workout');
       }
     } catch (e: any) {
       console.error('Failed to create workout:', e);

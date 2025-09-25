@@ -1,0 +1,13 @@
+{
+  "name": "gymcoach-populate-scripts",
+  "version": "1.0.0",
+  "description": "Scripts to populate GymCoach AI database",
+  "main": "populate-foods.js",
+  "scripts": {
+    "populate-foods": "node populate-foods.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  }
+}

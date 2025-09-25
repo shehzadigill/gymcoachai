@@ -13,15 +13,17 @@ pub async fn get_workout_plans_from_db(
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
+    // Use GSI1 to query all workout plans
     let mut query = dynamodb_client
         .query()
         .table_name(&table_name)
-        .key_condition_expression("PK = :pk")
-        .expression_attribute_values(":pk", AttributeValue::S("WORKOUT_PLANS".to_string()));
+        .index_name("GSI1")
+        .key_condition_expression("GSI1PK = :gsi1pk")
+        .expression_attribute_values(":gsi1pk", AttributeValue::S("WORKOUT_PLAN".to_string()));
     
     if let Some(uid) = user_id {
         query = query
-            .filter_expression("userId = :userId")
+            .filter_expression("UserId = :userId")
             .expression_attribute_values(":userId", AttributeValue::S(uid));
     }
     
@@ -33,33 +35,20 @@ pub async fn get_workout_plans_from_db(
         .into_iter()
         .filter_map(|item| {
             Some(WorkoutPlan {
-                id: item.get("id")?.as_s().ok()?.clone(),
-                user_id: item.get("userId")?.as_s().ok()?.clone(),
-                name: item.get("name")?.as_s().ok()?.clone(),
-                description: item.get("description").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                difficulty: item.get("difficulty")?.as_s().ok()?.clone(),
-                duration_weeks: item.get("durationWeeks")?.as_n().ok()?.parse().ok()?,
-                frequency_per_week: item.get("frequencyPerWeek")?.as_n().ok()?.parse().ok()?,
-                exercises: item.get("exercises")
-                    .and_then(|v| v.as_l().ok())
-                    .map(|list| list.iter().filter_map(|v| {
-                        let obj = v.as_m().ok()?;
-                        Some(WorkoutExercise {
-                            exercise_id: obj.get("exerciseId")?.as_s().ok()?.clone(),
-                            name: obj.get("name")?.as_s().ok()?.clone(),
-                            sets: obj.get("sets")?.as_n().ok()?.parse().ok()?,
-                            reps: obj.get("reps").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                            duration_seconds: obj.get("durationSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                            weight: obj.get("weight").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                            rest_seconds: obj.get("restSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                            notes: obj.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                            order: obj.get("order")?.as_n().ok()?.parse().ok()?,
-                        })
-                    }).collect())
+                id: item.get("WorkoutPlanId")?.as_s().ok()?.clone(),
+                user_id: item.get("UserId")?.as_s().ok()?.clone(),
+                name: item.get("Name")?.as_s().ok()?.clone(),
+                description: item.get("Description").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                difficulty: item.get("Difficulty")?.as_s().ok()?.clone(),
+                duration_weeks: item.get("DurationWeeks")?.as_n().ok()?.parse().ok()?,
+                frequency_per_week: item.get("FrequencyPerWeek")?.as_n().ok()?.parse().ok()?,
+                exercises: item.get("Exercises")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| serde_json::from_str::<Vec<WorkoutExercise>>(s).ok())
                     .unwrap_or_default(),
-                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
-                updated_at: item.get("updatedAt")?.as_s().ok()?.clone(),
-                is_active: *item.get("isActive")?.as_bool().ok()?,
+                created_at: item.get("CreatedAt")?.as_s().ok()?.clone(),
+                updated_at: item.get("UpdatedAt")?.as_s().ok()?.clone(),
+                is_active: item.get("IsActive").and_then(|v| v.as_bool().ok()).copied().unwrap_or(true),
             })
         })
         .collect();
@@ -74,52 +63,29 @@ pub async fn create_workout_plan_in_db(
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
     let mut item = std::collections::HashMap::new();
-    item.insert("PK".to_string(), AttributeValue::S("WORKOUT_PLANS".to_string()));
-    item.insert("SK".to_string(), AttributeValue::S(format!("PLAN#{}", plan.id)));
-    item.insert("id".to_string(), AttributeValue::S(plan.id.clone()));
-    item.insert("userId".to_string(), AttributeValue::S(plan.user_id.clone()));
-    item.insert("name".to_string(), AttributeValue::S(plan.name.clone()));
-    item.insert("difficulty".to_string(), AttributeValue::S(plan.difficulty.clone()));
-    item.insert("durationWeeks".to_string(), AttributeValue::N(plan.duration_weeks.to_string()));
-    item.insert("frequencyPerWeek".to_string(), AttributeValue::N(plan.frequency_per_week.to_string()));
-    item.insert("isActive".to_string(), AttributeValue::Bool(plan.is_active));
-    item.insert("createdAt".to_string(), AttributeValue::S(plan.created_at.clone()));
-    item.insert("updatedAt".to_string(), AttributeValue::S(plan.updated_at.clone()));
+    item.insert("PK".to_string(), AttributeValue::S(format!("WORKOUT_PLAN#{}", plan.id)));
+    item.insert("SK".to_string(), AttributeValue::S(format!("WORKOUT_PLAN#{}", plan.id)));
+    item.insert("GSI1PK".to_string(), AttributeValue::S("WORKOUT_PLAN".to_string()));
+    item.insert("GSI1SK".to_string(), AttributeValue::S(format!("{}#{}", plan.name.to_lowercase(), plan.id)));
+    item.insert("EntityType".to_string(), AttributeValue::S("WORKOUT_PLAN".to_string()));
+    item.insert("WorkoutPlanId".to_string(), AttributeValue::S(plan.id.clone()));
+    item.insert("UserId".to_string(), AttributeValue::S(plan.user_id.clone()));
+    item.insert("Name".to_string(), AttributeValue::S(plan.name.clone()));
+    item.insert("NameLower".to_string(), AttributeValue::S(plan.name.to_lowercase()));
+    item.insert("Difficulty".to_string(), AttributeValue::S(plan.difficulty.clone()));
+    item.insert("DurationWeeks".to_string(), AttributeValue::N(plan.duration_weeks.to_string()));
+    item.insert("FrequencyPerWeek".to_string(), AttributeValue::N(plan.frequency_per_week.to_string()));
+    item.insert("IsActive".to_string(), AttributeValue::Bool(plan.is_active));
+    item.insert("CreatedAt".to_string(), AttributeValue::S(plan.created_at.clone()));
+    item.insert("UpdatedAt".to_string(), AttributeValue::S(plan.updated_at.clone()));
     
     if let Some(description) = &plan.description {
-        item.insert("description".to_string(), AttributeValue::S(description.clone()));
+        item.insert("Description".to_string(), AttributeValue::S(description.clone()));
     }
     
-    // Add exercises as a list of maps
-    let exercises: Vec<AttributeValue> = plan.exercises
-        .iter()
-        .map(|exercise| {
-            let mut exercise_map = std::collections::HashMap::new();
-            exercise_map.insert("exerciseId".to_string(), AttributeValue::S(exercise.exercise_id.clone()));
-            exercise_map.insert("name".to_string(), AttributeValue::S(exercise.name.clone()));
-            exercise_map.insert("sets".to_string(), AttributeValue::N(exercise.sets.to_string()));
-            exercise_map.insert("order".to_string(), AttributeValue::N(exercise.order.to_string()));
-            
-            if let Some(reps) = exercise.reps {
-                exercise_map.insert("reps".to_string(), AttributeValue::N(reps.to_string()));
-            }
-            if let Some(duration) = exercise.duration_seconds {
-                exercise_map.insert("durationSeconds".to_string(), AttributeValue::N(duration.to_string()));
-            }
-            if let Some(weight) = exercise.weight {
-                exercise_map.insert("weight".to_string(), AttributeValue::N(weight.to_string()));
-            }
-            if let Some(rest) = exercise.rest_seconds {
-                exercise_map.insert("restSeconds".to_string(), AttributeValue::N(rest.to_string()));
-            }
-            if let Some(notes) = &exercise.notes {
-                exercise_map.insert("notes".to_string(), AttributeValue::S(notes.clone()));
-            }
-            
-            AttributeValue::M(exercise_map)
-        })
-        .collect();
-    item.insert("exercises".to_string(), AttributeValue::L(exercises));
+    // Add exercises as JSON string to match populate script
+    let exercises_json = serde_json::to_string(&plan.exercises).unwrap_or_default();
+    item.insert("Exercises".to_string(), AttributeValue::S(exercises_json));
     
     dynamodb_client
         .put_item()
@@ -463,8 +429,9 @@ pub async fn get_exercises_from_db(
     let result = dynamodb_client
         .query()
         .table_name(&table_name)
-        .key_condition_expression("PK = :pk")
-        .expression_attribute_values(":pk", AttributeValue::S("EXERCISES".to_string()))
+        .index_name("GSI1")
+        .key_condition_expression("GSI1PK = :gsi1pk")
+        .expression_attribute_values(":gsi1pk", AttributeValue::S("EXERCISE".to_string()))
         .send()
         .await?;
     
@@ -474,28 +441,28 @@ pub async fn get_exercises_from_db(
         .into_iter()
         .filter_map(|item| {
             Some(Exercise {
-                id: item.get("id")?.as_s().ok()?.clone(),
-                name: item.get("name")?.as_s().ok()?.clone(),
-                description: item.get("description").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                category: item.get("category")?.as_s().ok()?.clone(),
-                muscle_groups: item.get("muscleGroups")
-                    .and_then(|v| v.as_l().ok())
-                    .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
+                id: item.get("ExerciseId")?.as_s().ok()?.clone(),
+                name: item.get("Name")?.as_s().ok()?.clone(),
+                description: item.get("Description").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                category: item.get("Category")?.as_s().ok()?.clone(),
+                muscle_groups: item.get("MuscleGroups")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
                     .unwrap_or_default(),
-                equipment: item.get("equipment")
-                    .and_then(|v| v.as_l().ok())
-                    .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
+                equipment: item.get("Equipment")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
                     .unwrap_or_default(),
-                difficulty: item.get("difficulty")?.as_s().ok()?.clone(),
-                instructions: item.get("instructions")
-                    .and_then(|v| v.as_l().ok())
-                    .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
+                difficulty: item.get("Difficulty")?.as_s().ok()?.clone(),
+                instructions: item.get("Instructions")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
                     .unwrap_or_default(),
-                tips: item.get("tips").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                video_url: item.get("videoUrl").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                image_url: item.get("imageUrl").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
-                updated_at: item.get("updatedAt")?.as_s().ok()?.clone(),
+                tips: item.get("Tips").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                video_url: item.get("VideoUrl").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                image_url: item.get("ImageUrl").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                created_at: item.get("CreatedAt")?.as_s().ok()?.clone(),
+                updated_at: item.get("UpdatedAt")?.as_s().ok()?.clone(),
             })
         })
         .collect();

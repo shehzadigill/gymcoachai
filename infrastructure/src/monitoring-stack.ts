@@ -93,7 +93,10 @@ export class MonitoringStack extends cdk.Stack {
       const memoryWidget = new cloudwatch.GraphWidget({
         title: `${func.functionName} - Memory Usage`,
         left: [
-          func.metricMemoryUtilization({
+          new cloudwatch.Metric({
+            namespace: 'AWS/Lambda',
+            metricName: 'MaxMemoryUsed',
+            dimensionsMap: { FunctionName: func.functionName },
             period: cdk.Duration.minutes(5),
             statistic: 'Average',
           }),
@@ -155,7 +158,10 @@ export class MonitoringStack extends cdk.Stack {
     const itemCountWidget = new cloudwatch.GraphWidget({
       title: 'DynamoDB - Item Count',
       left: [
-        table.metricItemCount({
+        new cloudwatch.Metric({
+          namespace: 'AWS/DynamoDB',
+          metricName: 'ItemCount',
+          dimensionsMap: { TableName: table.tableName },
           period: cdk.Duration.minutes(5),
           statistic: 'Average',
         }),
@@ -179,13 +185,25 @@ export class MonitoringStack extends cdk.Stack {
       const widget = new cloudwatch.GraphWidget({
         title: `${bucket.bucketName} - Storage & Requests`,
         left: [
-          bucket.metricBucketSizeBytes({
+          new cloudwatch.Metric({
+            namespace: 'AWS/S3',
+            metricName: 'BucketSizeBytes',
+            dimensionsMap: {
+              BucketName: bucket.bucketName,
+              StorageType: 'StandardStorage',
+            },
             period: cdk.Duration.hours(1),
             statistic: 'Average',
           }),
         ],
         right: [
-          bucket.metricNumberOfObjects({
+          new cloudwatch.Metric({
+            namespace: 'AWS/S3',
+            metricName: 'NumberOfObjects',
+            dimensionsMap: {
+              BucketName: bucket.bucketName,
+              StorageType: 'AllStorageTypes',
+            },
             period: cdk.Duration.hours(1),
             statistic: 'Average',
           }),
@@ -303,7 +321,10 @@ export class MonitoringStack extends cdk.Stack {
         `${func.functionName}MemoryAlarm`,
         {
           alarmName: `${func.functionName}-High-Memory-Usage`,
-          metric: func.metricMemoryUtilization({
+          metric: new cloudwatch.Metric({
+            namespace: 'AWS/Lambda',
+            metricName: 'MaxMemoryUsed',
+            dimensionsMap: { FunctionName: func.functionName },
             period: cdk.Duration.minutes(5),
             statistic: 'Average',
           }),
@@ -409,7 +430,13 @@ export class MonitoringStack extends cdk.Stack {
         `${bucket.bucketName}StorageAlarm`,
         {
           alarmName: `${bucket.bucketName}-High-Storage-Usage`,
-          metric: bucket.metricBucketSizeBytes({
+          metric: new cloudwatch.Metric({
+            namespace: 'AWS/S3',
+            metricName: 'BucketSizeBytes',
+            dimensionsMap: {
+              BucketName: bucket.bucketName,
+              StorageType: 'StandardStorage',
+            },
             period: cdk.Duration.hours(1),
             statistic: 'Average',
           }),

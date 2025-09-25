@@ -22,9 +22,9 @@ pub struct Meal {
     pub total_protein: f32,
     pub total_carbs: f32,
     pub total_fat: f32,
-    pub total_fiber: f32,
-    pub total_sugar: f32,
-    pub total_sodium: f32,
+    pub dietary_fiber: f32,
+    pub total_sugars: f32,
+    pub sodium: f32,
     
     pub foods: Vec<FoodItem>,
     pub notes: Option<String>,
@@ -63,10 +63,10 @@ pub struct FoodItem {
     
     pub calories: f32,
     pub protein: f32,
-    pub carbs: f32,
-    pub fat: f32,
-    pub fiber: f32,
-    pub sugar: f32,
+    pub total_carbs: f32,
+    pub total_fat: f32,
+    pub dietary_fiber: f32,
+    pub total_sugars: f32,
     pub sodium: f32,
     
     pub barcode: Option<String>,
@@ -80,36 +80,65 @@ pub struct NutritionFacts {
     pub total_carbs: f32,
     pub dietary_fiber: f32,
     pub total_sugars: f32,
+    #[serde(default)]
     pub added_sugars: f32,
     pub total_fat: f32,
+    #[serde(default)]
     pub saturated_fat: f32,
+    #[serde(default)]
     pub trans_fat: f32,
+    #[serde(default)]
     pub cholesterol: f32,
     pub sodium: f32,
+    #[serde(default)]
     pub potassium: f32,
+    #[serde(default)]
     pub calcium: f32,
+    #[serde(default)]
     pub iron: f32,
+    #[serde(default)]
     pub vitamin_a: f32,
+    #[serde(default)]
     pub vitamin_c: f32,
+    #[serde(default)]
     pub vitamin_d: f32,
+    #[serde(default)]
     pub vitamin_e: f32,
+    #[serde(default)]
     pub vitamin_k: f32,
+    #[serde(default)]
     pub thiamin: f32,
+    #[serde(default)]
     pub riboflavin: f32,
+    #[serde(default)]
     pub niacin: f32,
+    #[serde(default)]
     pub vitamin_b6: f32,
+    #[serde(default)]
     pub folate: f32,
+    #[serde(default)]
     pub vitamin_b12: f32,
+    #[serde(default)]
     pub biotin: f32,
+    #[serde(default)]
     pub pantothenic_acid: f32,
+    #[serde(default)]
     pub phosphorus: f32,
+    #[serde(default)]
     pub iodine: f32,
+    #[serde(default)]
     pub magnesium: f32,
+    #[serde(default)]
     pub zinc: f32,
+    #[serde(default)]
     pub selenium: f32,
+    #[serde(default)]
     pub copper: f32,
+    #[serde(default)]
     pub manganese: f32,
+    #[serde(default)]
     pub chromium: f32,
+    #[serde(default)]
     pub molybdenum: f32,
 }
 
@@ -128,14 +157,16 @@ pub struct Food {
     
     pub barcode: Option<String>,
     pub upc: Option<String>,
+    #[serde(rename = "nutritionFacts")]
     pub nutrition_facts: NutritionFacts,
     
     pub serving_size: f32,
     pub serving_unit: String,
+    #[serde(rename = "commonServings")]
     pub common_servings: Vec<CommonServing>,
     
-    pub allergens: Vec<Allergen>,
-    pub dietary_tags: Vec<DietaryTag>,
+    pub allergens: Vec<String>,
+    pub dietary_tags: Vec<String>,
     
     pub verified: bool,
     pub verified_by: Option<String>,
@@ -163,9 +194,9 @@ pub enum FoodCategory {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommonServing {
     pub name: String,
-    pub quantity: f32,
-    pub unit: String,
-    pub calories: f32,
+    pub weight: f32,
+    #[serde(rename = "nutritionFacts")]
+    pub nutrition_facts: NutritionFacts,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,6 +210,22 @@ pub enum Allergen {
     Wheat,
     Soybeans,
     Sesame,
+}
+
+impl std::fmt::Display for Allergen {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Allergen::Milk => write!(f, "milk"),
+            Allergen::Eggs => write!(f, "eggs"),
+            Allergen::Fish => write!(f, "fish"),
+            Allergen::Shellfish => write!(f, "shellfish"),
+            Allergen::TreeNuts => write!(f, "tree-nuts"),
+            Allergen::Peanuts => write!(f, "peanuts"),
+            Allergen::Wheat => write!(f, "wheat"),
+            Allergen::Soybeans => write!(f, "soybeans"),
+            Allergen::Sesame => write!(f, "sesame"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,6 +244,27 @@ pub enum DietaryTag {
     SugarFree,
     LowSodium,
     HighFiber,
+}
+
+impl std::fmt::Display for DietaryTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DietaryTag::Vegetarian => write!(f, "vegetarian"),
+            DietaryTag::Vegan => write!(f, "vegan"),
+            DietaryTag::GlutenFree => write!(f, "gluten-free"),
+            DietaryTag::DairyFree => write!(f, "dairy-free"),
+            DietaryTag::NutFree => write!(f, "nut-free"),
+            DietaryTag::Keto => write!(f, "keto"),
+            DietaryTag::Paleo => write!(f, "paleo"),
+            DietaryTag::LowCarb => write!(f, "low-carb"),
+            DietaryTag::HighProtein => write!(f, "high-protein"),
+            DietaryTag::Organic => write!(f, "organic"),
+            DietaryTag::NonGMO => write!(f, "non-gmo"),
+            DietaryTag::SugarFree => write!(f, "sugar-free"),
+            DietaryTag::LowSodium => write!(f, "low-sodium"),
+            DietaryTag::HighFiber => write!(f, "high-fiber"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -218,9 +286,9 @@ pub struct NutritionPlan {
     pub daily_protein: f32,
     pub daily_carbs: f32,
     pub daily_fat: f32,
-    pub daily_fiber: f32,
-    pub daily_sugar: f32,
-    pub daily_sodium: f32,
+    pub dietary_fiber: f32,
+    pub total_sugars: f32,
+    pub sodium: f32,
     
     pub meal_plans: Vec<MealPlan>,
     pub restrictions: Vec<DietaryRestriction>,
@@ -371,6 +439,20 @@ pub struct CreateMealRequest {
     
     pub foods: Vec<CreateFoodItemRequest>,
     pub notes: Option<String>,
+    
+    // Optional custom nutrition values for when foods array is empty
+    pub custom_nutrition: Option<CustomNutrition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomNutrition {
+    pub calories: f32,
+    pub protein: f32,
+    pub total_carbs: f32,
+    pub total_fat: f32,
+    pub dietary_fiber: f32,
+    pub total_sugars: f32,
+    pub sodium: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -447,9 +529,9 @@ pub struct CreateNutritionPlanRequest {
     pub daily_protein: f32,
     pub daily_carbs: f32,
     pub daily_fat: f32,
-    pub daily_fiber: f32,
-    pub daily_sugar: f32,
-    pub daily_sodium: f32,
+    pub dietary_fiber: f32,
+    pub total_sugars: f32,
+    pub sodium: f32,
     
     pub meal_plans: Vec<MealPlan>,
     pub restrictions: Option<Vec<DietaryRestriction>>,
@@ -470,9 +552,9 @@ pub struct UpdateNutritionPlanRequest {
     pub daily_protein: Option<f32>,
     pub daily_carbs: Option<f32>,
     pub daily_fat: Option<f32>,
-    pub daily_fiber: Option<f32>,
-    pub daily_sugar: Option<f32>,
-    pub daily_sodium: Option<f32>,
+    pub dietary_fiber: Option<f32>,
+    pub total_sugars: Option<f32>,
+    pub sodium: Option<f32>,
     
     pub meal_plans: Option<Vec<MealPlan>>,
     pub restrictions: Option<Vec<DietaryRestriction>>,
@@ -490,9 +572,9 @@ pub struct NutritionStats {
     pub average_daily_protein: f32,
     pub average_daily_carbs: f32,
     pub average_daily_fat: f32,
-    pub average_daily_fiber: f32,
-    pub average_daily_sugar: f32,
-    pub average_daily_sodium: f32,
+    pub average_dietary_fiber: f32,
+    pub average_total_sugars: f32,
+    pub average_sodium: f32,
     pub average_water_intake: f32,
     pub most_consumed_foods: Vec<FoodConsumptionStats>,
     pub nutrition_goals_met: f32, // percentage
