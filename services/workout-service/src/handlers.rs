@@ -102,7 +102,15 @@ pub async fn get_workout_plan_handler(
         return create_response(400, json!({"message": "Plan ID is required"}));
     }
 
-    match get_workout_plan_from_db(plan_id, dynamodb_client).await {
+    let user_id = payload["queryStringParameters"]["userId"]
+        .as_str()
+        .unwrap_or("");
+
+    if user_id.is_empty() {
+        return create_response(400, json!({"message": "User ID is required"}));
+    }
+
+    match get_workout_plan_from_db(user_id, plan_id, dynamodb_client).await {
         Ok(plan) => create_response(200, plan),
         Err(e) => create_response(404, json!({"message": format!("Workout plan not found: {}", e)})),
     }
@@ -173,7 +181,15 @@ pub async fn delete_workout_plan_handler(
         return create_response(400, json!({"message": "Plan ID is required"}));
     }
 
-    match delete_workout_plan_from_db(plan_id, dynamodb_client).await {
+    let user_id = payload["queryStringParameters"]["userId"]
+        .as_str()
+        .unwrap_or("");
+
+    if user_id.is_empty() {
+        return create_response(400, json!({"message": "User ID is required"}));
+    }
+
+    match delete_workout_plan_from_db(user_id, plan_id, dynamodb_client).await {
         Ok(_) => create_response(200, json!({"message": "Workout plan deleted successfully"})),
         Err(e) => create_response(500, json!({"message": format!("Failed to delete workout plan: {}", e)})),
     }

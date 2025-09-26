@@ -17,15 +17,8 @@ pub async fn get_workout_plans_from_db(
     let mut query = dynamodb_client
         .query()
         .table_name(&table_name)
-        .index_name("GSI1")
-        .key_condition_expression("GSI1PK = :gsi1pk")
-        .expression_attribute_values(":gsi1pk", AttributeValue::S("WORKOUT_PLAN".to_string()));
-    
-    if let Some(uid) = user_id {
-        query = query
-            .filter_expression("UserId = :userId")
-            .expression_attribute_values(":userId", AttributeValue::S(uid));
-    }
+        .key_condition_expression("PK = :pk")
+        .expression_attribute_values(":pk", AttributeValue::S(format!("WORKOUT_PLAN#{}", user_id.unwrap_or_default())));
     
     let result = query.send().await?;
     
@@ -63,7 +56,7 @@ pub async fn create_workout_plan_in_db(
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
     let mut item = std::collections::HashMap::new();
-    item.insert("PK".to_string(), AttributeValue::S(format!("WORKOUT_PLAN#{}", plan.id)));
+    item.insert("PK".to_string(), AttributeValue::S(format!("WORKOUT_PLAN#{}", plan.user_id)));
     item.insert("SK".to_string(), AttributeValue::S(format!("WORKOUT_PLAN#{}", plan.id)));
     item.insert("GSI1PK".to_string(), AttributeValue::S("WORKOUT_PLAN".to_string()));
     item.insert("GSI1SK".to_string(), AttributeValue::S(format!("{}#{}", plan.name.to_lowercase(), plan.id)));
@@ -98,16 +91,16 @@ pub async fn create_workout_plan_in_db(
 }
 
 pub async fn get_workout_plan_from_db(
+    user_id: &str,
     plan_id: &str,
     dynamodb_client: &DynamoDbClient,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
-    
     let result = dynamodb_client
         .get_item()
         .table_name(&table_name)
-        .key("PK", AttributeValue::S("WORKOUT_PLANS".to_string()))
-        .key("SK", AttributeValue::S(format!("PLAN#{}", plan_id)))
+        .key("PK", AttributeValue::S(format!("WORKOUT_PLAN#{}", user_id)))
+        .key("SK", AttributeValue::S(format!("WORKOUT_PLAN#{}", plan_id)))
         .send()
         .await?;
 
@@ -157,6 +150,7 @@ pub async fn update_workout_plan_in_db(
 }
 
 pub async fn delete_workout_plan_from_db(
+    user_id: &str,
     plan_id: &str,
     dynamodb_client: &DynamoDbClient,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -165,8 +159,8 @@ pub async fn delete_workout_plan_from_db(
     dynamodb_client
         .delete_item()
         .table_name(&table_name)
-        .key("PK", AttributeValue::S("WORKOUT_PLANS".to_string()))
-        .key("SK", AttributeValue::S(format!("PLAN#{}", plan_id)))
+        .key("PK", AttributeValue::S(format!("WORKOUT_PLAN#{}", user_id)))
+        .key("SK", AttributeValue::S(format!("WORKOUT_PLAN#{}", plan_id)))
         .send()
         .await?;
     

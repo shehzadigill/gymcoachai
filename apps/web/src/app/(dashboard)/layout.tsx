@@ -212,50 +212,67 @@ function SidebarContent({
 }
 
 function ThemeToggle() {
-  const [isDark, setIsDark] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isManualTheme, setIsManualTheme] = useState(false);
 
   // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
     setMounted(true);
-    // Check if dark mode is already applied
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    setIsDark(isDarkMode);
+    // Check if theme is manually set
+    setIsManualTheme(localStorage.getItem('gymcoach-theme-manual') === 'true');
   }, []);
 
   const handleThemeToggle = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
+    // When user manually toggles, set explicit theme (not system)
+    const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
 
-    if (newIsDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('gymcoach-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('gymcoach-theme', 'light');
-    }
+    // Also set a flag to indicate manual override
+    localStorage.setItem('gymcoach-theme-manual', 'true');
+    setIsManualTheme(true);
 
-    console.log('Theme toggled to:', newIsDark ? 'dark' : 'light');
-    console.log('HTML classes:', document.documentElement.className);
+    console.log('Theme manually toggled to:', newTheme);
+  };
+
+  const handleUseSystem = () => {
+    // Remove manual flag and set theme to system
+    localStorage.removeItem('gymcoach-theme-manual');
+    setTheme('system');
+    setIsManualTheme(false);
+    console.log('Theme set to follow system preference');
   };
 
   if (!mounted) {
     return (
-      <button
-        className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-        disabled
-      >
-        Loading...
-      </button>
+      <div className="flex space-x-2">
+        <button
+          className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+          disabled
+        >
+          Loading...
+        </button>
+      </div>
     );
   }
 
   return (
-    <button
-      className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-      onClick={handleThemeToggle}
-    >
-      {isDark ? 'Light' : 'Dark'} mode
-    </button>
+    <div className="flex space-x-2">
+      <button
+        className="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        onClick={handleThemeToggle}
+      >
+        {resolvedTheme === 'dark' ? 'Light' : 'Dark'} mode
+      </button>
+      {isManualTheme && (
+        <button
+          className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          onClick={handleUseSystem}
+          title="Follow system theme preference"
+        >
+          Auto
+        </button>
+      )}
+    </div>
   );
 }

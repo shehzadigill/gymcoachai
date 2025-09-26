@@ -148,12 +148,40 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             create_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", path) if path.starts_with("/api/workouts/plans/") => {
+            // Extract plan ID from path
+            let plan_id = path.strip_prefix("/api/workouts/plans/").unwrap_or("");
+            
+            // Inject plan ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("planId".to_string(), json!(plan_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("planId".to_string(), json!(plan_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             get_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("PUT", "/api/workouts/plans") => {
             update_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/plans/") => {
+            // Extract plan ID from path
+            let plan_id = path.strip_prefix("/api/workouts/plans/").unwrap_or("");
+            
+            // Inject plan ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("planId".to_string(), json!(plan_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("planId".to_string(), json!(plan_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             delete_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
@@ -165,12 +193,40 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             create_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", path) if path.starts_with("/api/workouts/sessions/") => {
+            // Extract session ID from path
+            let session_id = path.strip_prefix("/api/workouts/sessions/").unwrap_or("");
+            
+            // Inject session ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("sessionId".to_string(), json!(session_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("sessionId".to_string(), json!(session_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             get_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("PUT", "/api/workouts/sessions") => {
             update_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/sessions/") => {
+            // Extract session ID from path
+            let session_id = path.strip_prefix("/api/workouts/sessions/").unwrap_or("");
+            
+            // Inject session ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("sessionId".to_string(), json!(session_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("sessionId".to_string(), json!(session_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             delete_workout_session_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
@@ -182,12 +238,40 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             create_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", path) if path.starts_with("/api/workouts/exercises/") => {
+            // Extract exercise ID from path
+            let exercise_id = path.strip_prefix("/api/workouts/exercises/").unwrap_or("");
+            
+            // Inject exercise ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("exerciseId".to_string(), json!(exercise_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("exerciseId".to_string(), json!(exercise_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             get_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("PUT", "/api/workouts/exercises") => {
             update_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/exercises/") => {
+            // Extract exercise ID from path
+            let exercise_id = path.strip_prefix("/api/workouts/exercises/").unwrap_or("");
+            
+            // Inject exercise ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("exerciseId".to_string(), json!(exercise_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("exerciseId".to_string(), json!(exercise_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             delete_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
@@ -196,6 +280,20 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             get_progress_photos_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("DELETE", path) if path.starts_with("/api/workouts/progress-photos/") => {
+            // Extract photo ID from path
+            let photo_id = path.strip_prefix("/api/workouts/progress-photos/").unwrap_or("");
+            
+            // Inject photo ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("photoId".to_string(), json!(photo_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("photoId".to_string(), json!(photo_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
             delete_progress_photo_handler(
                 modified_event,
                 DYNAMODB_CLIENT.get().expect("DynamoDB not initialized"),

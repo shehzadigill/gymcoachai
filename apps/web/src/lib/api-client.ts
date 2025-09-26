@@ -147,8 +147,10 @@ export const api = {
     });
   },
 
-  async getWorkoutPlan(planId: string) {
-    return apiFetch<any>(`/api/workouts/plans/${planId}`);
+  async getWorkoutPlan(userId: string, planId: string) {
+    return apiFetch<any>(
+      `/api/workouts/plans/${planId}?userId=${encodeURIComponent(userId)}`
+    );
   },
 
   async updateWorkoutPlan(data: any, userId?: string) {
@@ -159,10 +161,13 @@ export const api = {
     });
   },
 
-  async deleteWorkoutPlan(planId: string) {
-    return apiFetch<any>(`/api/workouts/plans/${planId}`, {
-      method: 'DELETE',
-    });
+  async deleteWorkoutPlan(userId: string, planId: string) {
+    return apiFetch<any>(
+      `/api/workouts/plans/${planId}?userId=${encodeURIComponent(userId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
   },
 
   // Exercise Library

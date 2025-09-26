@@ -39,3 +39,122 @@ AuthGuard { isAuthenticated: false, isLoading: true, error: null }
 AuthGuard { isAuthenticated: false, isLoading: true, error: null }
  GET /workouts 200 in 479ms
  GET /.well-known/appspecific/com.chrome.devtools.json 404 in 697ms
+ ✓ Compiled in 80ms
+ ✓ Compiled in 212ms
+ ✓ Compiled /workouts in 47ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /workouts 200 in 458ms
+ ✓ Compiled /_not-found/page in 112ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 570ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 541ms
+ ✓ Compiled /nutrition in 23ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /nutrition 200 in 298ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 430ms
+ ✓ Compiled /analytics in 326ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /analytics 200 in 599ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 375ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /nutrition 200 in 275ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 402ms
+ ✓ Compiled /profile in 267ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /profile 200 in 535ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 401ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /nutrition 200 in 276ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 373ms
+ ✓ Compiled in 199ms
+ ✓ Compiled /nutrition in 75ms
+ GET /nutrition 200 in 388ms
+ GET /nutrition 200 in 262ms
+ GET /nutrition 200 in 252ms
+ GET /nutrition 200 in 243ms
+ GET /nutrition 200 in 240ms
+ GET /nutrition 200 in 246ms
+ GET /nutrition 200 in 241ms
+ ✓ Compiled in 154ms
+ ✓ Compiled /nutrition in 26ms
+ GET /nutrition 200 in 346ms
+ GET /nutrition 200 in 258ms
+ GET /nutrition 200 in 248ms
+ GET /nutrition 200 in 245ms
+ GET /nutrition 200 in 250ms
+ GET /nutrition 200 in 241ms
+ GET /nutrition 200 in 251ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /nutrition 200 in 391ms
+ ✓ Compiled /_not-found/page in 92ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 935ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 573ms
+ ✓ Compiled in 94ms
+ ✓ Compiled in 158ms
+ ✓ Compiled /workouts in 32ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /workouts 200 in 502ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 823ms
+ ✓ Compiled /dashboard in 29ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /dashboard 200 in 297ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 454ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /workouts 200 in 303ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 464ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /dashboard 200 in 276ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 370ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /workouts 200 in 315ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 439ms
+ ✓ Compiled /analytics in 15ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /analytics 200 in 287ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 371ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /nutrition 200 in 292ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 387ms
+ ✓ Compiled /profile in 24ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /profile 200 in 291ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 357ms
+ ✓ Compiled in 215ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /profile 200 in 283ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 621ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 545ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /profile 200 in 301ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 379ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 510ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /dashboard 200 in 295ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 366ms
+ ✓ Compiled in 118ms
+ ✓ Compiled in 91ms
+ ✓ Compiled in 89ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /workouts 200 in 296ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 540ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /analytics 200 in 279ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 455ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /workouts 200 in 278ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 419ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /nutrition 200 in 287ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 378ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /profile 200 in 293ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 373ms
+AuthGuard { isAuthenticated: false, isLoading: true, error: null }
+ GET /profile 200 in 321ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 545ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 521ms
+ ✓ Compiled in 224ms
+ ✓ Compiled in 87ms
+ ✓ Compiled in 63ms
+ ✓ Compiled in 154ms
+ ✓ Compiled in 91ms
+ ✓ Compiled in 94ms
