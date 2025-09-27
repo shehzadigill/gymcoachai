@@ -55,23 +55,37 @@ export default function EditWorkoutPage() {
       setLoading(true);
       setError(null);
       const response = await api.getWorkoutSession(sessionId);
-      
+
       // Transform API response to match our interface
       const workoutData: Workout = {
         id: response.id || response.WorkoutSessionId,
         name: response.name || response.Name || 'Workout Session',
-        description: response.description || response.Description || response.notes || '',
+        description:
+          response.description || response.Description || response.notes || '',
         duration: response.durationMinutes || response.DurationMinutes || 60,
         difficulty: response.difficulty || response.Difficulty || 'beginner',
-        exercises: (response.exercises || response.Exercises || []).map((exercise: any) => ({
-          id: exercise.exerciseId || exercise.exercise_id,
-          name: exercise.name,
-          sets: exercise.sets ? exercise.sets.length : 3, // Count of sets
-          reps: exercise.sets && exercise.sets[0] ? exercise.sets[0].reps || 10 : 10, // First set's reps
-          weight: exercise.sets && exercise.sets[0] ? exercise.sets[0].weight : undefined,
-          restTime: exercise.sets && exercise.sets[0] ? exercise.sets[0].restSeconds || exercise.sets[0].rest_seconds || 60 : 60,
-          instructions: exercise.notes || '',
-        })),
+        exercises: (response.exercises || response.Exercises || []).map(
+          (exercise: any) => ({
+            id: exercise.exerciseId || exercise.exercise_id,
+            name: exercise.name,
+            sets: exercise.sets ? exercise.sets.length : 3, // Count of sets
+            reps:
+              exercise.sets && exercise.sets[0]
+                ? exercise.sets[0].reps || 10
+                : 10, // First set's reps
+            weight:
+              exercise.sets && exercise.sets[0]
+                ? exercise.sets[0].weight
+                : undefined,
+            restTime:
+              exercise.sets && exercise.sets[0]
+                ? exercise.sets[0].restSeconds ||
+                  exercise.sets[0].rest_seconds ||
+                  60
+                : 60,
+            instructions: exercise.notes || '',
+          })
+        ),
         completed: response.completed || response.Completed || false,
         completedAt: response.completedAt || response.CompletedAt,
       };
@@ -116,7 +130,9 @@ export default function EditWorkoutPage() {
         difficulty: workout.difficulty,
         exercises: transformedExercises,
         startedAt: workout.completedAt || new Date().toISOString(),
-        completedAt: workout.completed ? (workout.completedAt || new Date().toISOString()) : null,
+        completedAt: workout.completed
+          ? workout.completedAt || new Date().toISOString()
+          : null,
         notes: workout.description,
       };
 
@@ -250,7 +266,9 @@ export default function EditWorkoutPage() {
               <input
                 type="text"
                 value={workout.name}
-                onChange={(e) => setWorkout({ ...workout, name: e.target.value })}
+                onChange={(e) =>
+                  setWorkout({ ...workout, name: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Enter workout name"
               />
@@ -262,7 +280,12 @@ export default function EditWorkoutPage() {
               <input
                 type="number"
                 value={workout.duration}
-                onChange={(e) => setWorkout({ ...workout, duration: parseInt(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setWorkout({
+                    ...workout,
+                    duration: parseInt(e.target.value) || 0,
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="60"
               />
@@ -276,7 +299,9 @@ export default function EditWorkoutPage() {
               </label>
               <select
                 value={workout.difficulty}
-                onChange={(e) => setWorkout({ ...workout, difficulty: e.target.value as any })}
+                onChange={(e) =>
+                  setWorkout({ ...workout, difficulty: e.target.value as any })
+                }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               >
                 <option value="beginner">Beginner</option>
@@ -291,7 +316,9 @@ export default function EditWorkoutPage() {
               <input
                 type="text"
                 value={workout.description}
-                onChange={(e) => setWorkout({ ...workout, description: e.target.value })}
+                onChange={(e) =>
+                  setWorkout({ ...workout, description: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Workout description"
               />
@@ -339,7 +366,9 @@ export default function EditWorkoutPage() {
                       <input
                         type="text"
                         value={exercise.name}
-                        onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                        onChange={(e) =>
+                          updateExercise(index, 'name', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white text-sm"
                         placeholder="Exercise name"
                       />
@@ -351,7 +380,13 @@ export default function EditWorkoutPage() {
                       <input
                         type="number"
                         value={exercise.sets}
-                        onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateExercise(
+                            index,
+                            'sets',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white text-sm"
                         min="1"
                       />
@@ -363,7 +398,13 @@ export default function EditWorkoutPage() {
                       <input
                         type="number"
                         value={exercise.reps}
-                        onChange={(e) => updateExercise(index, 'reps', parseInt(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateExercise(
+                            index,
+                            'reps',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white text-sm"
                         min="1"
                       />
@@ -375,7 +416,13 @@ export default function EditWorkoutPage() {
                       <input
                         type="number"
                         value={exercise.weight || 0}
-                        onChange={(e) => updateExercise(index, 'weight', parseInt(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateExercise(
+                            index,
+                            'weight',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white text-sm"
                         min="0"
                       />
@@ -388,7 +435,9 @@ export default function EditWorkoutPage() {
                     </label>
                     <textarea
                       value={exercise.instructions}
-                      onChange={(e) => updateExercise(index, 'instructions', e.target.value)}
+                      onChange={(e) =>
+                        updateExercise(index, 'instructions', e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white text-sm"
                       rows={2}
                       placeholder="Exercise instructions"

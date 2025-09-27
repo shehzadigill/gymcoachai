@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
@@ -39,6 +39,20 @@ interface Exercise {
   instructions: string;
 }
 
+interface ExerciseLibraryItem {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  muscleGroups: string[];
+  equipment: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  instructions: string[];
+  tips?: string;
+  videoUrl?: string;
+  imageUrl?: string;
+}
+
 interface WorkoutPlan {
   id: string;
   userId: string;
@@ -67,6 +81,7 @@ interface WorkoutPlanExercise {
 
 export default function WorkoutsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useCurrentUser();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
@@ -79,14 +94,28 @@ export default function WorkoutsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
-  const [activeView, setActiveView] = useState<'sessions' | 'plans'>(
-    'sessions'
+  const [activeView, setActiveView] = useState<
+    'sessions' | 'plans' | 'exercises'
+  >(
+    (searchParams.get('view') as 'sessions' | 'plans' | 'exercises') ||
+      'sessions'
   );
+
+  // Exercises state
+  const [exercises, setExercises] = useState<ExerciseLibraryItem[]>([]);
+  const [exercisesLoading, setExercisesLoading] = useState(false);
+  const [exercisesError, setExercisesError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>('all');
+  const [exerciseSearchTerm, setExerciseSearchTerm] = useState<string>('');
 
   useEffect(() => {
     fetchWorkouts();
     fetchWorkoutPlans();
-  }, []);
+    if (activeView === 'exercises') {
+      fetchExercises();
+    }
+  }, [activeView]);
 
   const fetchWorkouts = async () => {
     try {
@@ -159,6 +188,77 @@ export default function WorkoutsPage() {
       setWorkoutPlans([]);
     } finally {
       setPlansLoading(false);
+    }
+  };
+
+  const fetchExercises = async () => {
+    try {
+      setExercisesLoading(true);
+      setExercisesError(null);
+
+      const response = await api.getExercises();
+
+      if (response && Array.isArray(response)) {
+        const exerciseItems: ExerciseLibraryItem[] = response.map(
+          (exercise: any) => ({
+            id: exercise.id,
+            name: exercise.name,
+            description: exercise.description,
+            category: exercise.category,
+            muscleGroups: exercise.muscle_groups || exercise.muscleGroups || [],
+            equipment: exercise.equipment || [],
+            difficulty: exercise.difficulty || 'beginner',
+            instructions: exercise.instructions || [],
+            tips: exercise.tips,
+            videoUrl: exercise.video_url || exercise.videoUrl,
+            imageUrl: exercise.image_url || exercise.imageUrl,
+          })
+        );
+        setExercises(exerciseItems);
+      } else {
+        setExercises([]);
+      }
+    } catch (e: any) {
+      console.error('Failed to fetch exercises:', e);
+      setExercisesError(e.message || 'Failed to fetch exercises');
+      setExercises([]);
+    } finally {
+      setExercisesLoading(false);
+    }
+  };
+
+  const createExercise = async (exerciseData: Partial<ExerciseLibraryItem>) => {
+    try {
+      await api.createExercise({
+        name: exerciseData.name,
+        description: exerciseData.description,
+        category: exerciseData.category,
+        muscleGroups: exerciseData.muscleGroups,
+        equipment: exerciseData.equipment,
+        difficulty: exerciseData.difficulty,
+        instructions: exerciseData.instructions,
+        tips: exerciseData.tips,
+        videoUrl: exerciseData.videoUrl,
+        imageUrl: exerciseData.imageUrl,
+      });
+      await fetchExercises(); // Refresh the list
+    } catch (e: any) {
+      console.error('Failed to create exercise:', e);
+      setExercisesError(e.message || 'Failed to create exercise');
+    }
+  };
+
+  const deleteExercise = async (exerciseId: string) => {
+    if (!confirm('Are you sure you want to delete this exercise?')) {
+      return;
+    }
+
+    try {
+      await api.deleteExercise(exerciseId);
+      await fetchExercises(); // Refresh the list
+    } catch (e: any) {
+      console.error('Failed to delete exercise:', e);
+      setExercisesError(e.message || 'Failed to delete exercise');
     }
   };
 
@@ -449,6 +549,16 @@ export default function WorkoutsPage() {
         >
           Workout Plans
         </button>
+        <button
+          onClick={() => setActiveView('exercises')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeView === 'exercises'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+          }`}
+        >
+          Exercise Library
+        </button>
       </div>
 
       {/* Quick Navigation */}
@@ -471,7 +581,7 @@ export default function WorkoutsPage() {
           </button>
 
           <button
-            onClick={() => router.push('/workouts/exercises')}
+            onClick={() => setActiveView('exercises')}
             className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
           >
             <Dumbbell className="h-8 w-8 text-green-600 mb-2" />
@@ -589,7 +699,7 @@ export default function WorkoutsPage() {
       </div>
 
       {/* Content based on active view */}
-      {activeView === 'sessions' ? (
+      {activeView === 'sessions' && (
         <>
           {/* Workouts Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -686,7 +796,9 @@ export default function WorkoutsPage() {
             )}
           </div>
         </>
-      ) : (
+      )}
+
+      {activeView === 'plans' && (
         /* Workout Plans View */
         <>
           {/* Plans Error Display */}
@@ -818,6 +930,242 @@ export default function WorkoutsPage() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </>
+      )}
+
+      {activeView === 'exercises' && (
+        /* Exercise Library View */
+        <>
+          {/* Exercises Error Display */}
+          {exercisesError && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+              <div className="text-red-600 dark:text-red-400">
+                {exercisesError}
+              </div>
+            </div>
+          )}
+
+          {/* Exercise Filters */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Search Exercises
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search by name..."
+                  value={exerciseSearchTerm}
+                  onChange={(e) => setExerciseSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Category
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="strength">Strength</option>
+                  <option value="cardio">Cardio</option>
+                  <option value="flexibility">Flexibility</option>
+                  <option value="sports">Sports</option>
+                </select>
+              </div>
+
+              {/* Muscle Group Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Muscle Group
+                </label>
+                <select
+                  value={selectedMuscleGroup}
+                  onChange={(e) => setSelectedMuscleGroup(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Muscle Groups</option>
+                  <option value="chest">Chest</option>
+                  <option value="back">Back</option>
+                  <option value="shoulders">Shoulders</option>
+                  <option value="arms">Arms</option>
+                  <option value="legs">Legs</option>
+                  <option value="core">Core</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Exercises Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {exercisesLoading ? (
+              <div className="col-span-full flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : exercises.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <Dumbbell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No exercises found
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Try adjusting your filters or create a new exercise.
+                </p>
+                <button
+                  onClick={() => {
+                    /* TODO: Add create exercise modal */
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create Exercise</span>
+                </button>
+              </div>
+            ) : (
+              exercises
+                .filter((exercise) => {
+                  const matchesSearch =
+                    exerciseSearchTerm === '' ||
+                    exercise.name
+                      .toLowerCase()
+                      .includes(exerciseSearchTerm.toLowerCase());
+                  const matchesCategory =
+                    selectedCategory === 'all' ||
+                    exercise.category === selectedCategory;
+                  const matchesMuscleGroup =
+                    selectedMuscleGroup === 'all' ||
+                    exercise.muscleGroups.includes(selectedMuscleGroup);
+                  return matchesSearch && matchesCategory && matchesMuscleGroup;
+                })
+                .map((exercise: ExerciseLibraryItem) => (
+                  <div
+                    key={exercise.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow"
+                  >
+                    {exercise.imageUrl && (
+                      <div className="h-48 bg-gray-100 dark:bg-gray-700">
+                        <img
+                          src={exercise.imageUrl}
+                          alt={exercise.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {exercise.name}
+                          </h3>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+                              {exercise.category}
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                exercise.difficulty === 'beginner'
+                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                                  : exercise.difficulty === 'intermediate'
+                                    ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                                    : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                              }`}
+                            >
+                              {exercise.difficulty}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => {
+                              /* TODO: Add edit exercise modal */
+                            }}
+                            className="text-gray-400 hover:text-blue-600 p-2"
+                            title="Edit Exercise"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteExercise(exercise.id)}
+                            className="text-gray-400 hover:text-red-600 p-2"
+                            title="Delete Exercise"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {exercise.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          {exercise.description}
+                        </p>
+                      )}
+
+                      {/* Muscle Groups */}
+                      {exercise.muscleGroups.length > 0 && (
+                        <div className="mb-3">
+                          <div className="flex flex-wrap gap-1">
+                            {exercise.muscleGroups.map((muscle, index) => (
+                              <span
+                                key={index}
+                                className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded"
+                              >
+                                {muscle}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Equipment */}
+                      {exercise.equipment.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Equipment:
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {exercise.equipment.map((item, index) => (
+                              <span
+                                key={index}
+                                className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            /* TODO: Add exercise to workout */
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          Add to Workout
+                        </button>
+                        {exercise.videoUrl && (
+                          <button
+                            onClick={() =>
+                              window.open(exercise.videoUrl, '_blank')
+                            }
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                          >
+                            Watch
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
             )}
           </div>
         </>
