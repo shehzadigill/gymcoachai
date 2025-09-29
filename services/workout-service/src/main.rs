@@ -257,6 +257,25 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         ("PUT", "/api/workouts/exercises") => {
             update_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
+        ("POST", path) if path.starts_with("/api/workouts/exercises/") && path.ends_with("/clone") => {
+            // Extract exercise ID from path (e.g., /api/workouts/exercises/123/clone)
+            let exercise_id = path.strip_prefix("/api/workouts/exercises/")
+                .and_then(|s| s.strip_suffix("/clone"))
+                .unwrap_or("");
+            
+            // Inject exercise ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("exerciseId".to_string(), json!(exercise_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("exerciseId".to_string(), json!(exercise_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
+            clone_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
         ("DELETE", path) if path.starts_with("/api/workouts/exercises/") => {
             // Extract exercise ID from path
             let exercise_id = path.strip_prefix("/api/workouts/exercises/").unwrap_or("");
@@ -312,6 +331,64 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         // Log Activity
         ("POST", "/api/workouts/log-activity") => {
             log_activity_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
+        
+        // Scheduling Routes
+        ("POST", path) if path.starts_with("/api/workouts/plans/") && path.contains("/schedule") => {
+            // Extract plan ID from path (e.g., /api/workouts/plans/123/schedule)
+            let plan_id = path.strip_prefix("/api/workouts/plans/")
+                .and_then(|s| s.strip_suffix("/schedule"))
+                .unwrap_or("");
+            
+            // Inject plan ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("planId".to_string(), json!(plan_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("planId".to_string(), json!(plan_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
+            schedule_workout_plan_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
+        ("GET", "/api/workouts/schedules") => {
+            get_scheduled_workouts_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
+        ("PUT", path) if path.starts_with("/api/workouts/schedules/") => {
+            // Extract schedule ID from path
+            let schedule_id = path.strip_prefix("/api/workouts/schedules/").unwrap_or("");
+            
+            // Inject schedule ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("scheduleId".to_string(), json!(schedule_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("scheduleId".to_string(), json!(schedule_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
+            update_scheduled_workout_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
+        ("DELETE", path) if path.starts_with("/api/workouts/schedules/") => {
+            // Extract schedule ID from path
+            let schedule_id = path.strip_prefix("/api/workouts/schedules/").unwrap_or("");
+            
+            // Inject schedule ID into pathParameters
+            if let Some(path_params) = modified_event.get_mut("pathParameters") {
+                if let Some(params_obj) = path_params.as_object_mut() {
+                    params_obj.insert("scheduleId".to_string(), json!(schedule_id));
+                }
+            } else {
+                let mut params = serde_json::Map::new();
+                params.insert("scheduleId".to_string(), json!(schedule_id));
+                modified_event["pathParameters"] = json!(params);
+            }
+            
+            delete_scheduled_workout_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
         _ => {

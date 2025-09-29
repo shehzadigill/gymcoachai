@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import {
   useCurrentUser,
@@ -17,8 +18,15 @@ import {
   Menu,
   X,
   Settings,
+  Calendar,
+  TrendingUp,
+  Clock,
+  Target,
+  ChevronDown,
+  ChevronRight,
+  Play,
+  BookOpen,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
@@ -32,7 +40,27 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Workouts', href: '/workouts', icon: Dumbbell },
+    {
+      name: 'Workouts',
+      href: '/workouts',
+      icon: Dumbbell,
+      children: [
+        { name: 'Workout Sessions', href: '/workouts/sessions', icon: Play },
+        { name: 'Workout Plans', href: '/workouts/plans', icon: Calendar },
+        {
+          name: 'Exercise Library',
+          href: '/workouts/exercises',
+          icon: BookOpen,
+        },
+        { name: 'Analytics', href: '/workouts/analytics', icon: TrendingUp },
+        { name: 'History', href: '/workouts/history', icon: Clock },
+        {
+          name: 'Progress Photos',
+          href: '/workouts/progress-photos',
+          icon: Target,
+        },
+      ],
+    },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Nutrition', href: '/nutrition', icon: Apple },
     { name: 'Profile', href: '/profile', icon: User },
@@ -144,11 +172,27 @@ function SidebarContent({
   user,
   onSignOut,
 }: {
-  navigation: Array<{ name: string; href: string; icon: any }>;
+  navigation: Array<{
+    name: string;
+    href: string;
+    icon: any;
+    children?: Array<{ name: string; href: string; icon: any }>;
+  }>;
   pathname: string;
   user: any;
   onSignOut: () => void;
 }) {
+  const [expandedItems, setExpandedItems] = useState<{
+    [key: string]: boolean;
+  }>({});
+
+  const toggleExpanded = (itemName: string) => {
+    setExpandedItems((prev) => ({
+      ...prev,
+      [itemName]: !prev[itemName],
+    }));
+  };
+
   return (
     <div className="flex flex-col h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
@@ -163,25 +207,87 @@ function SidebarContent({
         <nav className="mt-5 flex-1 px-2 space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
+            const isParentActive = item.children?.some(
+              (child) => pathname === child.href
+            );
+            const shouldExpand = expandedItems[item.name] || isParentActive;
+
             return (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                  isActive
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <item.icon
-                  className={`mr-3 flex-shrink-0 h-5 w-5 ${
-                    isActive
-                      ? 'text-blue-500 dark:text-blue-400'
-                      : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
-                  }`}
-                />
-                {item.name}
-              </a>
+              <div key={item.name}>
+                {item.children ? (
+                  <>
+                    <button
+                      onClick={() => toggleExpanded(item.name)}
+                      className={`w-full group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md ${
+                        isActive || isParentActive
+                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <item.icon
+                          className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                            isActive || isParentActive
+                              ? 'text-blue-500 dark:text-blue-400'
+                              : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                          }`}
+                        />
+                        {item.name}
+                      </div>
+                      {shouldExpand ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    {shouldExpand && (
+                      <div className="ml-6 mt-1 space-y-1">
+                        {item.children.map((child) => {
+                          const isChildActive = pathname === child.href;
+                          return (
+                            <a
+                              key={child.name}
+                              href={child.href}
+                              className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                                isChildActive
+                                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                              }`}
+                            >
+                              <child.icon
+                                className={`mr-3 flex-shrink-0 h-4 w-4 ${
+                                  isChildActive
+                                    ? 'text-blue-500 dark:text-blue-400'
+                                    : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                }`}
+                              />
+                              {child.name}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <a
+                    href={item.href}
+                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                      isActive
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <item.icon
+                      className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                        isActive
+                          ? 'text-blue-500 dark:text-blue-400'
+                          : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                      }`}
+                    />
+                    {item.name}
+                  </a>
+                )}
+              </div>
             );
           })}
         </nav>

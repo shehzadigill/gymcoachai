@@ -17,6 +17,8 @@ import {
   Trash2,
   MoreVertical,
 } from 'lucide-react';
+import ExerciseFormModal from '../../../components/modals/ExerciseFormModal';
+import ExerciseSelectionModal from '../../../components/modals/ExerciseSelectionModal';
 
 interface Workout {
   id: string;
@@ -51,6 +53,18 @@ interface ExerciseLibraryItem {
   tips?: string;
   videoUrl?: string;
   imageUrl?: string;
+  createdBy?: string;
+  isSystem: boolean;
+  tags: string[];
+}
+
+interface LibraryExercise {
+  id: string;
+  name: string;
+  muscle_group: string;
+  description?: string;
+  equipment?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
 }
 
 interface WorkoutPlan {
@@ -101,6 +115,14 @@ export default function WorkoutsPage() {
       'sessions'
   );
 
+  // Function to update view and persist in URL
+  const updateActiveView = (view: 'sessions' | 'plans' | 'exercises') => {
+    setActiveView(view);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('view', view);
+    router.push(`/workouts?${params.toString()}`);
+  };
+
   // Exercises state
   const [exercises, setExercises] = useState<ExerciseLibraryItem[]>([]);
   const [exercisesLoading, setExercisesLoading] = useState(false);
@@ -108,6 +130,16 @@ export default function WorkoutsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>('all');
   const [exerciseSearchTerm, setExerciseSearchTerm] = useState<string>('');
+  const [showExerciseForm, setShowExerciseForm] = useState(false);
+  const [editingExercise, setEditingExercise] =
+    useState<ExerciseLibraryItem | null>(null);
+  const [showExerciseSelection, setShowExerciseSelection] = useState(false);
+  const [workoutExercises, setWorkoutExercises] = useState<
+    WorkoutPlanExercise[]
+  >([]);
+  const [creatingWorkout, setCreatingWorkout] = useState<
+    'session' | 'plan' | null
+  >(null);
 
   useEffect(() => {
     fetchWorkouts();
@@ -138,7 +170,14 @@ export default function WorkoutsPage() {
           completedAt: session.completed_at || session.CompletedAt,
           exercises: session.exercises || session.Exercises || [],
         }));
-        setWorkouts(apiWorkouts);
+
+        // Remove duplicates based on ID (in case of any backend issues)
+        const uniqueWorkouts = apiWorkouts.filter(
+          (workout, index, self) =>
+            index === self.findIndex((w) => w.id === workout.id)
+        );
+
+        setWorkouts(uniqueWorkouts);
       } else {
         setError('No workouts found');
         setWorkouts([]);
@@ -212,6 +251,9 @@ export default function WorkoutsPage() {
             tips: exercise.tips,
             videoUrl: exercise.video_url || exercise.videoUrl,
             imageUrl: exercise.image_url || exercise.imageUrl,
+            createdBy: exercise.created_by || exercise.createdBy,
+            isSystem: exercise.is_system || exercise.isSystem || false,
+            tags: exercise.tags || [],
           })
         );
         setExercises(exerciseItems);
@@ -240,12 +282,58 @@ export default function WorkoutsPage() {
         tips: exerciseData.tips,
         videoUrl: exerciseData.videoUrl,
         imageUrl: exerciseData.imageUrl,
+        tags: exerciseData.tags,
       });
       await fetchExercises(); // Refresh the list
     } catch (e: any) {
       console.error('Failed to create exercise:', e);
       setExercisesError(e.message || 'Failed to create exercise');
     }
+  };
+
+  const updateExercise = async (exerciseData: Partial<ExerciseLibraryItem>) => {
+    try {
+      await api.updateExercise(exerciseData);
+      await fetchExercises(); // Refresh the list
+    } catch (e: any) {
+      console.error('Failed to update exercise:', e);
+      setExercisesError(e.message || 'Failed to update exercise');
+    }
+  };
+
+  const handleAddToWorkout = (exercise: ExerciseLibraryItem) => {
+    // Create a new workout exercise with default values
+    const newWorkoutExercise: WorkoutPlanExercise = {
+      exerciseId: exercise.id,
+      name: exercise.name,
+      sets: 3,
+      reps: 10,
+      restSeconds: 60,
+      order: workoutExercises.length,
+    };
+
+    setWorkoutExercises((prev) => [...prev, newWorkoutExercise]);
+
+    // Show success message and open workout plan form
+    alert(
+      `${exercise.name} added to workout! Create or edit your workout plan now.`
+    );
+
+    // Open the workout plan form to create/edit the plan
+    setShowPlanForm(true);
+  };
+
+  const handleExerciseFromLibrary = (exercise: ExerciseLibraryItem) => {
+    const newWorkoutExercise: WorkoutPlanExercise = {
+      exerciseId: exercise.id,
+      name: exercise.name,
+      sets: 3,
+      reps: 10,
+      restSeconds: 60,
+      order: workoutExercises.length,
+    };
+
+    setWorkoutExercises((prev) => [...prev, newWorkoutExercise]);
   };
 
   const deleteExercise = async (exerciseId: string) => {
@@ -262,94 +350,107 @@ export default function WorkoutsPage() {
     }
   };
 
+  const cloneExercise = async (exerciseId: string) => {
+    if (
+      !confirm(
+        'This will create a custom copy of this exercise that you can edit. Continue?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.cloneExercise(exerciseId);
+      await fetchExercises(); // Refresh the list
+      alert(
+        'Exercise cloned successfully! You can now edit your custom version.'
+      );
+    } catch (e: any) {
+      console.error('Failed to clone exercise:', e);
+      setExercisesError(e.message || 'Failed to clone exercise');
+    }
+  };
+
   const startWorkout = (workout: Workout) => {
     setSelectedWorkout(workout);
   };
 
   const completeWorkout = async (workoutId: string) => {
     try {
-      // Find the workout to get its name and other details
+      // Find the workout session to complete
       const workout = workouts.find((w) => w.id === workoutId);
       if (!workout) {
-        throw new Error('Workout not found');
+        throw new Error('Workout session not found');
+      }
+
+      // Check if already completed to prevent duplicate operations
+      if (workout.completed) {
+        console.log('Workout already completed');
+        setSelectedWorkout(null);
+        return;
       }
 
       const now = new Date().toISOString();
-      const sessionData = {
-        name: workout.name,
-        startedAt: now,
-        completedAt: now,
-        durationMinutes: workout.duration,
-        exercises: workout.exercises.map((ex, index) => ({
-          exerciseId: ex.id,
-          name: ex.name,
-          sets: Array.from({ length: ex.sets }, (_, i) => ({
-            setNumber: i + 1,
-            reps: ex.reps,
-            weight: ex.weight,
-            completed: true,
-          })),
-          order: index,
-        })),
-      };
 
-      // Try to create a new completed workout session
-      console.log('Creating completed workout session:', {
-        workoutId,
-        workout: workout.name,
-        userId: user.id,
-        sessionData,
-      });
+      // Update the existing workout session to mark as completed
+      console.log('Updating workout session to completed:', workoutId);
 
       try {
-        // First create the session
-        const createResponse = await api.createWorkoutSession(sessionData);
-        console.log('Session create response:', createResponse);
+        // Transform exercises to match backend expected format
+        const transformedExercises =
+          workout.exercises?.map((exercise, index) => ({
+            exerciseId: exercise.id,
+            name: exercise.name,
+            notes: exercise.instructions || null,
+            order: index,
+            sets: Array.from({ length: exercise.sets }, (_, setIndex) => ({
+              setNumber: setIndex + 1,
+              reps: exercise.reps,
+              weight: exercise.weight || null,
+              durationSeconds: null,
+              restSeconds: exercise.restTime || null,
+              completed: true, // Mark all sets as completed when completing workout
+              notes: null,
+            })),
+          })) || [];
 
-        // Extract the created session ID from the response
-        let createdSessionId = null;
-        if (createResponse.statusCode === 201) {
-          const responseBody =
-            typeof createResponse.body === 'string'
-              ? JSON.parse(createResponse.body)
-              : createResponse.body;
-          createdSessionId = responseBody?.id;
-        }
+        const updateResponse = await api.updateWorkoutSession(workoutId, {
+          name: workout.name, // Required by backend
+          completedAt: now,
+          completed: true,
+          exercises: transformedExercises, // Properly formatted exercises data
+        });
+        console.log('Session completion response:', updateResponse);
 
-        // If we got a session ID, update it to mark as completed
-        if (createdSessionId) {
-          console.log('Updating session to completed:', createdSessionId);
-          const updateResponse = await api.updateWorkoutSession(
-            createdSessionId,
-            {
-              ...sessionData,
-              completedAt: now,
-            }
-          );
-          console.log('Session update response:', updateResponse);
-        }
-      } catch (sessionError: any) {
-        console.error('Failed to create/update session:', sessionError.message);
-        // Continue anyway - we'll still update the UI
+        // Update the local state to reflect completion
+        setWorkouts(
+          workouts.map((w) =>
+            w.id === workoutId ? { ...w, completed: true, completedAt: now } : w
+          )
+        );
+
+        // Refresh the workouts list to ensure backend sync
+        setTimeout(() => {
+          fetchWorkouts();
+        }, 1000);
+
+        // Show success message
+        alert('Workout completed successfully!');
+      } catch (apiError: any) {
+        console.error('Failed to update session via API:', apiError.message);
+        // Still update UI optimistically for better UX
+        setWorkouts(
+          workouts.map((w) =>
+            w.id === workoutId ? { ...w, completed: true, completedAt: now } : w
+          )
+        );
+        alert('Workout marked as complete (offline mode)');
       }
 
-      setWorkouts(
-        workouts.map((w) =>
-          w.id === workoutId ? { ...w, completed: true, completedAt: now } : w
-        )
-      );
       setSelectedWorkout(null);
     } catch (e: any) {
       console.error('Failed to complete workout:', e);
-      // Still update UI even if API call fails
-      setWorkouts(
-        workouts.map((w) =>
-          w.id === workoutId
-            ? { ...w, completed: true, completedAt: new Date().toISOString() }
-            : w
-        )
-      );
-      setSelectedWorkout(null);
+      alert('Failed to complete workout. Please try again.');
     }
   };
 
@@ -466,7 +567,7 @@ export default function WorkoutsPage() {
       await fetchWorkouts();
 
       // Switch to sessions view
-      setActiveView('sessions');
+      updateActiveView('sessions');
     } catch (e: any) {
       console.error('Failed to start workout from plan:', e);
       setError(e.message || 'Failed to start workout from plan');
@@ -508,11 +609,11 @@ export default function WorkoutsPage() {
         <div className="flex space-x-3">
           {activeView === 'sessions' ? (
             <button
-              onClick={() => router.push('/workouts/create')}
+              onClick={() => setCreatingWorkout('session')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
-              <span>New Workout</span>
+              <span>New Session</span>
             </button>
           ) : (
             <button
@@ -527,111 +628,29 @@ export default function WorkoutsPage() {
         </div>
       </div>
 
-      {/* View Toggle */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1 inline-flex">
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
         <button
-          onClick={() => setActiveView('sessions')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeView === 'sessions'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
+          onClick={() => router.push('/workouts/sessions/create')}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
-          Workout Sessions
+          <Play className="h-4 w-4" />
+          <span>Quick Workout</span>
         </button>
         <button
-          onClick={() => setActiveView('plans')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeView === 'plans'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
+          onClick={() => router.push('/workouts/plans')}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
-          Workout Plans
+          <Calendar className="h-4 w-4" />
+          <span>Browse Plans</span>
         </button>
         <button
-          onClick={() => setActiveView('exercises')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeView === 'exercises'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
+          onClick={() => router.push('/workouts/exercises')}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
-          Exercise Library
+          <Dumbbell className="h-4 w-4" />
+          <span>Exercise Library</span>
         </button>
-      </div>
-
-      {/* Quick Navigation */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Workout Tools
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <button
-            onClick={() => setActiveView('plans')}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-          >
-            <Calendar className="h-8 w-8 text-blue-600 mb-2" />
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              Workout Plans
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Create and manage structured workout routines
-            </p>
-          </button>
-
-          <button
-            onClick={() => setActiveView('exercises')}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-          >
-            <Dumbbell className="h-8 w-8 text-green-600 mb-2" />
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              Exercise Library
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Browse and manage your exercise database
-            </p>
-          </button>
-
-          <button
-            onClick={() => router.push('/workouts/analytics')}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-          >
-            <TrendingUp className="h-8 w-8 text-purple-600 mb-2" />
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              Analytics
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Track your fitness progress and achievements
-            </p>
-          </button>
-
-          <button
-            onClick={() => router.push('/workouts/history')}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-          >
-            <Clock className="h-8 w-8 text-orange-600 mb-2" />
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              Workout History
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              View and manage your past workout sessions
-            </p>
-          </button>
-
-          <button
-            onClick={() => router.push('/workouts/progress-photos')}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-          >
-            <Target className="h-8 w-8 text-pink-600 mb-2" />
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              Progress Photos
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Document your fitness transformation journey
-            </p>
-          </button>
-        </div>
       </div>
 
       {/* Stats */}
@@ -713,7 +732,7 @@ export default function WorkoutsPage() {
                   Start by creating a new workout or using a workout plan.
                 </p>
                 <button
-                  onClick={() => setActiveView('plans')}
+                  onClick={() => updateActiveView('plans')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                 >
                   View Workout Plans
@@ -936,8 +955,31 @@ export default function WorkoutsPage() {
       )}
 
       {activeView === 'exercises' && (
-        /* Exercise Library View */
         <>
+          {/* Exercise Library Header */}
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Exercise Library
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Browse and manage your exercise collection
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setEditingExercise(null);
+                  setShowExerciseForm(true);
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add New Exercise</span>
+              </button>
+            </div>
+          </div>
+
           {/* Exercises Error Display */}
           {exercisesError && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
@@ -1004,7 +1046,7 @@ export default function WorkoutsPage() {
             </div>
           </div>
 
-          {/* Exercises Grid */}
+          {/* Exercises Display */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {exercisesLoading ? (
               <div className="col-span-full flex items-center justify-center py-12">
@@ -1021,7 +1063,8 @@ export default function WorkoutsPage() {
                 </p>
                 <button
                   onClick={() => {
-                    /* TODO: Add create exercise modal */
+                    setEditingExercise(null);
+                    setShowExerciseForm(true);
                   }}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto"
                 >
@@ -1080,25 +1123,56 @@ export default function WorkoutsPage() {
                             >
                               {exercise.difficulty}
                             </span>
+                            {exercise.isSystem ? (
+                              <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">
+                                System
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded-full">
+                                Custom
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex space-x-1">
                           <button
-                            onClick={() => {
-                              /* TODO: Add edit exercise modal */
-                            }}
+                            onClick={() => handleAddToWorkout(exercise)}
                             className="text-gray-400 hover:text-blue-600 p-2"
-                            title="Edit Exercise"
+                            title="Add to Workout Plan"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Plus className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => deleteExercise(exercise.id)}
-                            className="text-gray-400 hover:text-red-600 p-2"
-                            title="Delete Exercise"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {exercise.isSystem ? (
+                            // System exercise - show clone button instead of edit/delete
+                            <button
+                              onClick={() => cloneExercise(exercise.id)}
+                              className="text-gray-400 hover:text-green-600 p-2"
+                              title="Clone Exercise (Create Custom Version)"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            // User exercise - show edit and delete buttons
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingExercise(exercise);
+                                  setShowExerciseForm(true);
+                                }}
+                                className="text-gray-400 hover:text-blue-600 p-2"
+                                title="Edit Exercise"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteExercise(exercise.id)}
+                                className="text-gray-400 hover:text-red-600 p-2"
+                                title="Delete Exercise"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -1145,9 +1219,7 @@ export default function WorkoutsPage() {
 
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => {
-                            /* TODO: Add exercise to workout */
-                          }}
+                          onClick={() => handleAddToWorkout(exercise)}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium"
                         >
                           Add to Workout
@@ -1222,12 +1294,21 @@ export default function WorkoutsPage() {
               </div>
 
               <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={() => completeWorkout(selectedWorkout.id)}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-                >
-                  Mark as Complete
-                </button>
+                {selectedWorkout.completed ? (
+                  <div className="flex-1 bg-gray-400 text-white px-4 py-2 rounded-lg text-center">
+                    ✓ Completed on{' '}
+                    {new Date(
+                      selectedWorkout.completedAt!
+                    ).toLocaleDateString()}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => completeWorkout(selectedWorkout.id)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                  >
+                    Mark as Complete
+                  </button>
+                )}
                 <button
                   onClick={() => setSelectedWorkout(null)}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -1240,14 +1321,143 @@ export default function WorkoutsPage() {
         </div>
       )}
 
+      {/* Exercise Form Modal */}
+      {showExerciseForm && (
+        <ExerciseFormModal
+          exercise={editingExercise || undefined}
+          onSave={editingExercise ? updateExercise : createExercise}
+          onClose={() => {
+            setShowExerciseForm(false);
+            setEditingExercise(null);
+          }}
+        />
+      )}
+
+      {/* Exercise Selection Modal */}
+      {showExerciseSelection && (
+        <ExerciseSelectionModal
+          onClose={() => {
+            setShowExerciseSelection(false);
+            setCreatingWorkout(null);
+          }}
+          onExerciseAdd={handleAddToWorkout}
+          onCreateNew={() => {
+            setShowExerciseSelection(false);
+            setEditingExercise(null);
+            setShowExerciseForm(true);
+          }}
+          selectedExercises={workoutExercises}
+        />
+      )}
+
+      {/* Session Creation Modal */}
+      {creatingWorkout === 'session' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Create New Session
+              </h3>
+              <button
+                onClick={() => setCreatingWorkout(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const sessionData = {
+                  name: formData.get('name') as string,
+                  notes: formData.get('notes') as string,
+                  difficulty: formData.get('difficulty') as
+                    | 'beginner'
+                    | 'intermediate'
+                    | 'advanced',
+                  exercises: [],
+                };
+
+                try {
+                  await api.createWorkoutSession(sessionData);
+                  setCreatingWorkout(null);
+                  fetchWorkouts();
+                } catch (error) {
+                  console.error('Error creating session:', error);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Session Name
+                </label>
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter session name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Difficulty
+                </label>
+                <select
+                  name="difficulty"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Add any notes about this session..."
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setCreatingWorkout(null)}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Session
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Workout Plan Form Modal */}
       {showPlanForm && (
         <WorkoutPlanFormModal
           plan={editingPlan}
+          initialExercises={workoutExercises}
           onSave={editingPlan ? updateWorkoutPlan : createWorkoutPlan}
           onClose={() => {
             setShowPlanForm(false);
             setEditingPlan(null);
+            setWorkoutExercises([]); // Clear exercises after closing
           }}
         />
       )}
@@ -1272,10 +1482,12 @@ export default function WorkoutsPage() {
 // Workout Plan Form Modal Component
 function WorkoutPlanFormModal({
   plan,
+  initialExercises = [],
   onSave,
   onClose,
 }: {
   plan?: WorkoutPlan | null;
+  initialExercises?: WorkoutPlanExercise[];
   onSave: (planData: Partial<WorkoutPlan>) => void;
   onClose: () => void;
 }) {
@@ -1287,8 +1499,22 @@ function WorkoutPlanFormModal({
       ('beginner' as 'beginner' | 'intermediate' | 'advanced'),
     durationWeeks: plan?.durationWeeks || 4,
     frequencyPerWeek: plan?.frequencyPerWeek || 3,
-    exercises: plan?.exercises || ([] as WorkoutPlanExercise[]),
+    exercises:
+      plan?.exercises || initialExercises || ([] as WorkoutPlanExercise[]),
   });
+
+  // Exercise library state
+  const [availableExercises, setAvailableExercises] = useState<
+    LibraryExercise[]
+  >([]);
+  const [exercisesLoading, setExercisesLoading] = useState(false);
+  const [showExerciseSelection, setShowExerciseSelection] = useState(false);
+  const [showCustomExerciseForm, setShowCustomExerciseForm] = useState(false);
+
+  // Track selected exercise IDs for UI state management
+  const selectedExerciseIds = formData.exercises
+    .map((ex) => ex.exerciseId)
+    .filter(Boolean);
 
   const [newExercise, setNewExercise] = useState({
     name: '',
@@ -1298,6 +1524,63 @@ function WorkoutPlanFormModal({
     restSeconds: 60,
     notes: '',
   });
+
+  // Fetch exercises from library
+  const fetchExercises = async () => {
+    try {
+      setExercisesLoading(true);
+      const exercises = await api.getExercises();
+      setAvailableExercises(exercises || []);
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
+    } finally {
+      setExercisesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExercises();
+  }, []);
+
+  // Add exercise from library
+  const addExerciseFromLibrary = (exercise: LibraryExercise) => {
+    const workoutExercise: WorkoutPlanExercise = {
+      exerciseId: exercise.id,
+      name: exercise.name,
+      sets: 3,
+      reps: 10,
+      weight: undefined,
+      restSeconds: 60,
+      notes: exercise.description,
+      order: formData.exercises.length,
+    };
+
+    setFormData({
+      ...formData,
+      exercises: [...formData.exercises, workoutExercise],
+    });
+    setShowExerciseSelection(false);
+  };
+
+  // Add custom exercise
+  const addCustomExercise = (exercise: Omit<LibraryExercise, 'id'>) => {
+    const workoutExercise: WorkoutPlanExercise = {
+      exerciseId: `custom-${Date.now()}`,
+      name: exercise.name,
+      sets: 3,
+      reps: 10,
+      weight: undefined,
+      restSeconds: 60,
+      notes: exercise.description,
+      order: formData.exercises.length,
+    };
+
+    setFormData({
+      ...formData,
+      exercises: [...formData.exercises, workoutExercise],
+    });
+    setShowCustomExerciseForm(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1508,88 +1791,39 @@ function WorkoutPlanFormModal({
                 ))}
               </div>
 
-              {/* Add Exercise Form */}
+              {/* Add Exercise Section */}
               <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                  Add Exercise
+                <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+                  Add Exercises
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                  <input
-                    type="text"
-                    placeholder="Exercise name"
-                    value={newExercise.name}
-                    onChange={(e) =>
-                      setNewExercise({ ...newExercise, name: e.target.value })
-                    }
-                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Sets"
-                    value={newExercise.sets}
-                    onChange={(e) =>
-                      setNewExercise({
-                        ...newExercise,
-                        sets: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Reps"
-                    value={newExercise.reps}
-                    onChange={(e) =>
-                      setNewExercise({
-                        ...newExercise,
-                        reps: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Weight (lbs)"
-                    value={newExercise.weight}
-                    onChange={(e) =>
-                      setNewExercise({
-                        ...newExercise,
-                        weight: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowExerciseSelection(true)}
+                    disabled={exercisesLoading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {exercisesLoading ? 'Loading...' : 'From Exercise Library'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomExerciseForm(true)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Custom Exercise
+                  </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                  <input
-                    type="number"
-                    placeholder="Rest time (seconds)"
-                    value={newExercise.restSeconds}
-                    onChange={(e) =>
-                      setNewExercise({
-                        ...newExercise,
-                        restSeconds: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Notes (optional)"
-                    value={newExercise.notes}
-                    onChange={(e) =>
-                      setNewExercise({ ...newExercise, notes: e.target.value })
-                    }
-                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={addExercise}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
-                >
-                  Add Exercise
-                </button>
+
+                {formData.exercises.length === 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
+                    No exercises added yet. Add exercises from the library or
+                    create custom ones.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1611,6 +1845,24 @@ function WorkoutPlanFormModal({
           </form>
         </div>
       </div>
+
+      {/* Exercise Selection Modal */}
+      {showExerciseSelection && (
+        <PlanExerciseSelectionModal
+          exercises={availableExercises}
+          selectedExerciseIds={selectedExerciseIds}
+          onSelect={addExerciseFromLibrary}
+          onClose={() => setShowExerciseSelection(false)}
+        />
+      )}
+
+      {/* Custom Exercise Modal */}
+      {showCustomExerciseForm && (
+        <PlanCustomExerciseModal
+          onSave={addCustomExercise}
+          onClose={() => setShowCustomExerciseForm(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1734,6 +1986,400 @@ function WorkoutPlanDetailModal({
               Close
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Exercise Selection Modal for Workout Plans
+function PlanExerciseSelectionModal({
+  exercises,
+  onSelect,
+  onClose,
+  selectedExerciseIds = [],
+}: {
+  exercises: LibraryExercise[];
+  onSelect: (exercise: LibraryExercise) => void;
+  onClose: () => void;
+  selectedExerciseIds?: string[];
+}) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredExercises = exercises.filter(
+    (exercise) =>
+      exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exercise.muscle_group.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Select Exercise
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            ✕
+          </button>
+        </div>
+
+        <input
+          type="text"
+          placeholder="Search exercises..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        />
+
+        <div className="overflow-y-auto max-h-96">
+          {filteredExercises.map((exercise) => {
+            const isSelected = selectedExerciseIds.includes(exercise.id);
+            return (
+              <div
+                key={exercise.id}
+                className={`p-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer relative ${
+                  isSelected
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => !isSelected && onSelect(exercise)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div
+                      className={`font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}
+                    >
+                      {exercise.name}
+                    </div>
+                    <div
+                      className={`text-sm ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      {exercise.muscle_group}
+                    </div>
+                    {exercise.description && (
+                      <div
+                        className={`text-sm mt-1 ${isSelected ? 'text-blue-500 dark:text-blue-500' : 'text-gray-500 dark:text-gray-500'}`}
+                      >
+                        {exercise.description}
+                      </div>
+                    )}
+                  </div>
+                  {isSelected && (
+                    <div className="text-blue-600 dark:text-blue-400 text-sm font-medium ml-2">
+                      ✓ Selected
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {filteredExercises.length === 0 && (
+            <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+              No exercises found matching your search.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Custom Exercise Modal for Workout Plans
+function PlanCustomExerciseModal({
+  onSave,
+  onClose,
+}: {
+  onSave: (exercise: Omit<LibraryExercise, 'id'>) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [difficulty, setDifficulty] = useState<
+    'beginner' | 'intermediate' | 'advanced'
+  >('beginner');
+  const [muscleGroups, setMuscleGroups] = useState<string[]>([]);
+  const [equipment, setEquipment] = useState<string[]>([]);
+  const [instructions, setInstructions] = useState('');
+  const [tips, setTips] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+
+  const availableCategories = [
+    'strength',
+    'cardio',
+    'flexibility',
+    'balance',
+    'endurance',
+    'power',
+    'agility',
+  ];
+
+  const availableMuscleGroups = [
+    'chest',
+    'back',
+    'shoulders',
+    'biceps',
+    'triceps',
+    'forearms',
+    'abs',
+    'obliques',
+    'glutes',
+    'quadriceps',
+    'hamstrings',
+    'calves',
+    'full-body',
+    'core',
+  ];
+
+  const availableEquipment = [
+    'bodyweight',
+    'dumbbells',
+    'barbell',
+    'kettlebell',
+    'resistance-bands',
+    'pull-up-bar',
+    'bench',
+    'cable-machine',
+    'smith-machine',
+    'plates',
+  ];
+
+  const handleMuscleGroupToggle = (group: string) => {
+    setMuscleGroups((prev) =>
+      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]
+    );
+  };
+
+  const handleEquipmentToggle = (item: string) => {
+    setEquipment((prev) =>
+      prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]
+    );
+  };
+
+  const handleSave = () => {
+    if (!name.trim() || !category.trim() || muscleGroups.length === 0) return;
+
+    onSave({
+      name: name.trim(),
+      muscle_group: muscleGroups.join(', '),
+      description: instructions.trim(),
+      equipment: equipment.join(', '),
+      difficulty: difficulty,
+      // Additional fields that match backend structure
+      category: category.trim(),
+      muscle_groups: muscleGroups,
+      instructions: instructions.trim(),
+      tips: tips.trim(),
+      video_url: videoUrl.trim(),
+      image_url: imageUrl.trim(),
+    } as any);
+
+    // Reset form
+    setName('');
+    setCategory('');
+    setDifficulty('beginner');
+    setMuscleGroups([]);
+    setEquipment([]);
+    setInstructions('');
+    setTips('');
+    setVideoUrl('');
+    setImageUrl('');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Create Custom Exercise
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Exercise Name *
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Barbell Bench Press"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Category *
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select category</option>
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Difficulty Level
+              </label>
+              <select
+                value={difficulty}
+                onChange={(e) =>
+                  setDifficulty(
+                    e.target.value as 'beginner' | 'intermediate' | 'advanced'
+                  )
+                }
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Muscle Groups *
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+                {availableMuscleGroups.map((group) => (
+                  <label
+                    key={group}
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={muscleGroups.includes(group)}
+                      onChange={() => handleMuscleGroupToggle(group)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                      {group.replace('-', ' ')}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Equipment
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+                {availableEquipment.map((item) => (
+                  <label
+                    key={item}
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={equipment.includes(item)}
+                      onChange={() => handleEquipmentToggle(item)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                      {item.replace('-', ' ')}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Instructions
+              </label>
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={4}
+                placeholder="Step-by-step instructions for performing this exercise..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Tips & Form Cues
+              </label>
+              <textarea
+                value={tips}
+                onChange={(e) => setTips(e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+                placeholder="Helpful tips and form cues..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Video URL
+              </label>
+              <input
+                type="url"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Image URL
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={
+              !name.trim() || !category.trim() || muscleGroups.length === 0
+            }
+            className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+          >
+            Create Exercise
+          </button>
         </div>
       </div>
     </div>

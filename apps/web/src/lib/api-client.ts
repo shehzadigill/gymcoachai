@@ -109,6 +109,11 @@ export const api = {
     return apiFetch<any[]>(`/api/workouts/sessions?userId=${id}`);
   },
 
+  async getWorkoutSession(sessionId: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/sessions/${sessionId}?userId=${id}`);
+  },
+
   async createWorkoutSession(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
     return apiFetch<any>(`/api/workouts/sessions`, {
@@ -202,6 +207,14 @@ export const api = {
     });
   },
 
+  async cloneExercise(exerciseId: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/exercises/${exerciseId}/clone`, {
+      method: 'POST',
+      body: JSON.stringify({ userId: id }),
+    });
+  },
+
   // Progress Photos
   async getProgressPhotos(userId?: string) {
     const id = userId || (await getCurrentUserId());
@@ -235,8 +248,38 @@ export const api = {
     });
   },
 
-  async getWorkoutSession(sessionId: string) {
-    return apiFetch<any>(`/api/workouts/sessions/${sessionId}`);
+  async completeWorkoutSession(sessionId: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    // First get the session to preserve existing data
+    const session = await this.getWorkoutSession(sessionId, id);
+    let sessionData = session;
+    if (session && typeof session === 'object' && 'body' in session) {
+      sessionData =
+        typeof session.body === 'string'
+          ? JSON.parse(session.body)
+          : session.body;
+    }
+
+    return apiFetch<any>(`/api/workouts/sessions`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        id: sessionId,
+        userId: id,
+        name: sessionData.name,
+        startedAt:
+          sessionData.started_at ||
+          sessionData.created_at ||
+          new Date().toISOString(),
+        completedAt: new Date().toISOString(), // This marks the session as completed
+        completed: true, // Explicitly mark as completed for clarity
+        exercises: sessionData.exercises || [],
+        notes: sessionData.notes || null,
+        rating: sessionData.rating || null,
+        createdAt: sessionData.created_at || new Date().toISOString(),
+        workoutPlanId: sessionData.workout_plan_id || null,
+        durationMinutes: sessionData.duration_minutes || null,
+      }),
+    });
   },
 
   // Nutrition endpoints
@@ -458,5 +501,40 @@ export const api = {
       const errorText = await response.text().catch(() => 'Unknown error');
       throw new Error(`Upload failed: ${response.status} - ${errorText}`);
     }
+  },
+
+  // Scheduling methods
+  async scheduleWorkoutPlan(
+    planId: string,
+    schedule: {
+      startDate: string;
+      times: string[];
+      userId?: string;
+    }
+  ) {
+    const userId = schedule.userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/plans/${planId}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify({ ...schedule, userId }),
+    });
+  },
+
+  async getScheduledWorkouts(userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any[]>(`/api/workouts/schedules?userId=${id}`);
+  },
+
+  async updateScheduledWorkout(scheduleId: string, data: any) {
+    return apiFetch<any>(`/api/workouts/schedules/${scheduleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async cancelScheduledWorkout(scheduleId: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/schedules/${scheduleId}?userId=${id}`, {
+      method: 'DELETE',
+    });
   },
 };

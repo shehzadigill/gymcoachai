@@ -14,6 +14,13 @@ pub struct WorkoutPlan {
     pub created_at: String,
     pub updated_at: String,
     pub is_active: bool,
+    // Enhanced features
+    pub tags: Option<Vec<String>>,           // Plan tags for categorization
+    pub rating: Option<f32>,                 // User rating (1-5)
+    pub is_template: Option<bool>,           // Template flag
+    pub total_sessions: Option<i32>,         // Calculated field
+    pub completed_sessions: Option<i32>,     // Progress tracking
+    pub next_scheduled_date: Option<String>, // Next workout date
 }
 
 #[derive(Deserialize, Serialize, Validate, Debug, Clone)]
@@ -78,6 +85,9 @@ pub struct Exercise {
     pub tips: Option<String>,
     pub video_url: Option<String>,
     pub image_url: Option<String>,
+    pub created_by: Option<String>, // user_id if user-created, None for system exercises
+    pub is_system: bool, // true for system exercises, false for user-created
+    pub tags: Vec<String>, // additional tags like "system", "favorite", "custom"
     pub created_at: String,
     pub updated_at: String,
 }
@@ -93,6 +103,23 @@ pub struct ProgressPhoto {
     pub taken_at: String,
     pub notes: Option<String>,
     pub created_at: String,
+}
+
+#[derive(Deserialize, Serialize, Validate, Debug, Clone)]
+pub struct ScheduledWorkout {
+    pub id: String,
+    pub plan_id: String,
+    pub user_id: String,
+    pub plan_name: String,
+    pub scheduled_date: String,      // ISO date string (YYYY-MM-DD)
+    pub scheduled_time: String,      // Time in HH:MM format
+    pub status: String,              // "scheduled", "completed", "missed", "cancelled"
+    pub week: i32,                   // Week number in plan
+    pub day: i32,                    // Day number in week
+    pub notes: Option<String>,
+    pub completed_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -85,30 +85,68 @@ export default function WorkoutHistoryPage() {
         currentPage,
         pageLimit
       );
+      console.log('Raw history response:', response);
+
       if (response) {
-        // Transform API response if needed
-        const data = response;
+        // Handle nested response structure
+        let data = response;
+        if (response.body) {
+          data =
+            typeof response.body === 'string'
+              ? JSON.parse(response.body)
+              : response.body;
+        }
+
+        console.log('Processed history data:', data);
+
         const transformedHistory: WorkoutHistory = {
-          sessions: (data.sessions || data.Sessions || []).map(
-            (session: any) => ({
-              id: session.id || session.WorkoutSessionId,
-              name: session.name || session.Name,
-              started_at: session.started_at || session.StartedAt,
-              completed_at: session.completed_at || session.CompletedAt,
-              duration_minutes:
-                session.duration_minutes || session.DurationMinutes,
-              rating: session.rating || session.Rating,
-              notes: session.notes || session.Notes,
-              exercises: session.exercises || session.Exercises || [],
-            })
-          ),
+          sessions: (
+            data.sessions ||
+            data.Sessions ||
+            data.workoutSessions ||
+            []
+          ).map((session: any) => ({
+            id:
+              session.id ||
+              session.WorkoutSessionId ||
+              session.workoutSessionId,
+            name:
+              session.name ||
+              session.Name ||
+              session.workoutName ||
+              'Workout Session',
+            started_at:
+              session.started_at || session.StartedAt || session.startedAt,
+            completed_at:
+              session.completed_at ||
+              session.CompletedAt ||
+              session.completedAt,
+            duration_minutes:
+              session.duration_minutes ||
+              session.DurationMinutes ||
+              session.durationMinutes,
+            rating: session.rating || session.Rating,
+            notes: session.notes || session.Notes,
+            exercises:
+              session.exercises ||
+              session.Exercises ||
+              session.workoutExercises ||
+              [],
+          })),
           pagination: {
-            page: data.pagination?.page || currentPage,
-            limit: data.pagination?.limit || pageLimit,
-            total: data.pagination?.total || 0,
-            total_pages: data.pagination?.total_pages || 0,
+            page: data.pagination?.page || data.page || currentPage,
+            limit: data.pagination?.limit || data.limit || pageLimit,
+            total: data.pagination?.total || data.total || 0,
+            total_pages:
+              data.pagination?.total_pages ||
+              data.totalPages ||
+              Math.ceil(
+                (data.pagination?.total || data.total || 0) / pageLimit
+              ),
           },
         };
+
+        console.log('Final transformed history:', transformedHistory);
         setHistory(transformedHistory);
       } else {
         setError('No workout history found');

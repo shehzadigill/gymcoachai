@@ -144,6 +144,23 @@ async function addExerciseToDynamoDB(exercise) {
   const item = {
     PK: 'EXERCISES',
     SK: `EXERCISE#${exerciseId}`,
+    GSI1PK: 'EXERCISE',
+    GSI1SK: `SYSTEM#${exercise.name.toLowerCase()}`, // System exercises use SYSTEM# prefix
+    EntityType: 'EXERCISE',
+    ExerciseId: exerciseId,
+    Name: exercise.name,
+    Description: exercise.description,
+    Category: exercise.category,
+    MuscleGroups: JSON.stringify(exercise.muscle_groups),
+    Equipment: JSON.stringify(exercise.equipment),
+    Difficulty: exercise.difficulty,
+    Instructions: JSON.stringify(exercise.instructions),
+    Tips: exercise.tips,
+    IsSystem: true,
+    Tags: JSON.stringify(['system']),
+    CreatedAt: now,
+    UpdatedAt: now,
+    // Legacy fields for backward compatibility
     id: exerciseId,
     name: exercise.name,
     description: exercise.description,

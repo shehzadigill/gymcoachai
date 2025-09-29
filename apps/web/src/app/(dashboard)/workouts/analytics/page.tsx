@@ -59,29 +59,78 @@ export default function WorkoutAnalyticsPage() {
       setError(null);
 
       const response = await api.getWorkoutAnalytics();
+      console.log('Raw analytics response:', response);
+
       if (response) {
-        // Use the response which contains the actual data
-        const data = response;
+        // Handle nested response structure
+        let data = response;
+        if (response.body) {
+          data =
+            typeof response.body === 'string'
+              ? JSON.parse(response.body)
+              : response.body;
+        }
+
+        console.log('Processed analytics data:', data);
+
         const transformedAnalytics: WorkoutAnalytics = {
-          total_workouts: data.total_workouts || data.TotalWorkouts || 0,
+          total_workouts:
+            data.total_workouts ||
+            data.TotalWorkouts ||
+            data.totalWorkouts ||
+            0,
           total_duration_minutes:
-            data.total_duration_minutes || data.TotalDurationMinutes || 0,
-          current_streak: data.current_streak || data.CurrentStreak || 0,
-          longest_streak: data.longest_streak || data.LongestStreak || 0,
+            data.total_duration_minutes ||
+            data.TotalDurationMinutes ||
+            data.totalDurationMinutes ||
+            0,
+          current_streak:
+            data.current_streak ||
+            data.CurrentStreak ||
+            data.currentStreak ||
+            0,
+          longest_streak:
+            data.longest_streak ||
+            data.LongestStreak ||
+            data.longestStreak ||
+            0,
           favorite_exercises:
-            data.favorite_exercises || data.FavoriteExercises || [],
+            data.favorite_exercises ||
+            data.FavoriteExercises ||
+            data.favoriteExercises ||
+            [],
           average_workout_duration:
-            data.average_workout_duration || data.AverageWorkoutDuration || 0,
+            data.average_workout_duration ||
+            data.AverageWorkoutDuration ||
+            data.averageWorkoutDuration ||
+            0,
           workouts_this_week:
-            data.workouts_this_week || data.WorkoutsThisWeek || 0,
+            data.workouts_this_week ||
+            data.WorkoutsThisWeek ||
+            data.workoutsThisWeek ||
+            0,
           workouts_this_month:
-            data.workouts_this_month || data.WorkoutsThisMonth || 0,
-          last_workout_date: data.last_workout_date || data.LastWorkoutDate,
+            data.workouts_this_month ||
+            data.WorkoutsThisMonth ||
+            data.workoutsThisMonth ||
+            0,
+          last_workout_date:
+            data.last_workout_date ||
+            data.LastWorkoutDate ||
+            data.lastWorkoutDate,
           strength_progress:
-            data.strength_progress || data.StrengthProgress || [],
+            data.strength_progress ||
+            data.StrengthProgress ||
+            data.strengthProgress ||
+            [],
           body_measurements:
-            data.body_measurements || data.BodyMeasurements || [],
+            data.body_measurements ||
+            data.BodyMeasurements ||
+            data.bodyMeasurements ||
+            [],
         };
+
+        console.log('Final transformed analytics:', transformedAnalytics);
         setAnalytics(transformedAnalytics);
       } else {
         setError('No analytics data available');
