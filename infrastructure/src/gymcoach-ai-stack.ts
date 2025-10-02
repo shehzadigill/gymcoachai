@@ -20,6 +20,7 @@ export class GymCoachAIStack extends cdk.Stack {
   public readonly userUploadsBucket: s3.Bucket;
   public readonly staticAssetsBucket: s3.Bucket;
   public readonly processedImagesBucket: s3.Bucket;
+  public readonly progressPhotosBucket: s3.Bucket;
   private authLayer?: lambda.LayerVersion;
   private pythonAuthLayer?: lambda.LayerVersion;
 
@@ -251,6 +252,72 @@ export class GymCoachAIStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
+
+    // Create dedicated Progress Photos S3 Bucket with enhanced security
+    this.progressPhotosBucket = new s3.Bucket(this, 'ProgressPhotosBucket', {
+      bucketName: `gymcoach-ai-progress-photos-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      cors: [
+        {
+          allowedHeaders: ['*'],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD,
+          ],
+          allowedOrigins: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000,
+        },
+      ],
+      lifecycleRules: [
+        {
+          id: 'DeleteIncompleteMultipartUploads',
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
+        },
+        {
+          id: 'TransitionProgressPhotosToIA',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+        },
+        {
+          id: 'ArchiveOldProgressPhotos',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(365),
+            },
+          ],
+        },
+      ],
+    });
+
+    // Create CloudFront Origin Access Identity for secure S3 access
+    const progressPhotosOAI = new cloudfront.OriginAccessIdentity(
+      this,
+      'ProgressPhotosOAI',
+      {
+        comment: 'Origin Access Identity for Progress Photos bucket',
+      }
+    );
+
+    // Grant CloudFront OAI access to progress photos bucket
+    this.progressPhotosBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [progressPhotosOAI.grantPrincipal],
+        actions: ['s3:GetObject'],
+        resources: [`${this.progressPhotosBucket.bucketArn}/*`],
+      })
+    );
 
     // Create Lambda Authorizer
     const authorizerLambda = new lambda.Function(this, 'AuthorizerLambda', {
@@ -512,6 +579,29 @@ export class GymCoachAIStack extends cdk.Stack {
             originRequestPolicy:
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
+          '/progress-photos/*': {
+            origin: new origins.S3Origin(this.progressPhotosBucket, {
+              originAccessIdentity: progressPhotosOAI,
+            }),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+            cachePolicy: new cloudfront.CachePolicy(
+              this,
+              'ProgressPhotosCachePolicy',
+              {
+                cachePolicyName: 'progress-photos-cache-policy',
+                defaultTtl: cdk.Duration.hours(24),
+                maxTtl: cdk.Duration.days(365),
+                minTtl: cdk.Duration.seconds(0),
+                headerBehavior: cloudfront.CacheHeaderBehavior.allowList(
+                  'CloudFront-Viewer-Country'
+                ),
+                queryStringBehavior: cloudfront.CacheQueryStringBehavior.none(),
+                cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+              }
+            ),
+          },
           // '/api/ai/*': {
           //   origin: new origins.HttpOrigin(aiServiceUrl.url),
           //   viewerProtocolPolicy:
@@ -534,6 +624,9 @@ export class GymCoachAIStack extends cdk.Stack {
     this.processedImagesBucket.grantReadWrite(userProfileServiceLambda);
     this.processedImagesBucket.grantReadWrite(workoutServiceLambda);
     this.processedImagesBucket.grantReadWrite(analyticsServiceLambda);
+
+    // Grant analytics service full access to progress photos bucket
+    this.progressPhotosBucket.grantReadWrite(analyticsServiceLambda);
     // Allow service to read from the main DynamoDB table
     this.mainTable.grantReadData(analyticsServiceLambda);
     this.mainTable.grantReadData(nutritionServiceLambda);
@@ -659,6 +752,7 @@ export class GymCoachAIStack extends cdk.Stack {
         USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,
         STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
         PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
+        PROGRESS_PHOTOS_BUCKET: this.progressPhotosBucket.bucketName,
         JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
         COGNITO_REGION: this.region,
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
@@ -689,6 +783,7 @@ export class GymCoachAIStack extends cdk.Stack {
         USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,
         STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
         PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
+        PROGRESS_PHOTOS_BUCKET: this.progressPhotosBucket.bucketName,
         JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
         COGNITO_REGION: this.region,
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,

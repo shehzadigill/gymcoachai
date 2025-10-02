@@ -69,14 +69,54 @@ function parseJwtPayload(token: string): any {
 // API endpoints with proper user ID resolution
 export const api = {
   // Analytics endpoints
-  async getStrengthProgress(userId?: string) {
+  async getStrengthProgress(
+    userId?: string,
+    startDate?: string,
+    endDate?: string
+  ) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/analytics/strength-progress/${id}`);
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiFetch<any>(`/api/analytics/strength-progress/${id}${query}`);
   },
 
-  async getBodyMeasurements(userId?: string) {
+  async createStrengthProgress(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/analytics/body-measurements/${id}`);
+    return apiFetch<any>(`/api/analytics/strength-progress`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async getBodyMeasurements(
+    userId?: string,
+    startDate?: string,
+    endDate?: string
+  ) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiFetch<any>(`/api/analytics/body-measurements/${id}${query}`);
+  },
+
+  async createBodyMeasurement(data: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/analytics/body-measurements`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async getProgressCharts(userId?: string, timeRange?: string) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams();
+    if (timeRange) params.append('timeRange', timeRange);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiFetch<any>(`/api/analytics/charts/${id}${query}`);
   },
 
   async getMilestones(userId?: string) {
@@ -84,9 +124,67 @@ export const api = {
     return apiFetch<any>(`/api/analytics/milestones/${id}`);
   },
 
+  // Enhanced Analytics endpoints
+  // Enhanced Analytics endpoints\n  async getEnhancedWorkoutAnalytics(userId?: string, period?: string) {\n    const id = userId || (await getCurrentUserId());\n    const params = new URLSearchParams({ userId: id });\n    if (period) params.append('period', period);\n    return apiFetch<any>(`/api/analytics/enhanced/workout-analytics?${params}`);\n  },
+
+  async getEnhancedWorkoutInsights(userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/analytics/enhanced/workout-insights/${id}`);
+  },
+
+  async getWorkoutHistoryDetailed(
+    userId?: string,
+    startDate?: string,
+    endDate?: string,
+    limit?: number
+  ) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (limit) params.append('limit', limit.toString());
+    return apiFetch<any>(`/api/analytics/enhanced/workout-history?${params}`);
+  },
+
+  async createMilestone(data: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/analytics/milestones`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+  },
+
+  async updateMilestone(milestoneId: string, data: any) {
+    return apiFetch<any>(`/api/analytics/milestones/${milestoneId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteMilestone(milestoneId: string) {
+    return apiFetch<any>(`/api/analytics/milestones/${milestoneId}`, {
+      method: 'DELETE',
+    });
+  },
+
   async getAchievements(userId?: string) {
     const id = userId || (await getCurrentUserId());
     return apiFetch<any>(`/api/analytics/achievements/${id}`);
+  },
+
+  async getPerformanceTrends(
+    userId?: string,
+    timeRange?: string,
+    metrics?: string[]
+  ) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams();
+    if (timeRange) params.append('timeRange', timeRange);
+    if (metrics && metrics.length > 0) {
+      metrics.forEach((metric) => params.append('metrics', metric));
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiFetch<any>(`/api/analytics/trends/${id}${query}`);
   },
 
   // User profile endpoints
@@ -216,31 +314,217 @@ export const api = {
   },
 
   // Progress Photos
-  async getProgressPhotos(userId?: string) {
+  async getProgressPhotos(
+    userId?: string,
+    filters?: {
+      photo_type?: string;
+      start_date?: string;
+      end_date?: string;
+      limit?: number;
+    }
+  ) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any[]>(`/api/workouts/progress-photos?userId=${id}`);
+    const params = new URLSearchParams();
+    if (filters?.photo_type) params.append('photo_type', filters.photo_type);
+    if (filters?.start_date) params.append('start_date', filters.start_date);
+    if (filters?.end_date) params.append('end_date', filters.end_date);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const queryString = params.toString() ? `?${params}` : '';
+    return apiFetch<any[]>(
+      `/api/analytics/progress-photos/${id}${queryString}`
+    );
   },
 
-  async deleteProgressPhoto(photoId: string) {
-    return apiFetch<any>(`/api/workouts/progress-photos/${photoId}`, {
-      method: 'DELETE',
+  async uploadProgressPhoto(
+    data: {
+      photo_type: string;
+      file: File;
+      notes?: string;
+      workout_session_id?: string;
+    },
+    userId?: string
+  ) {
+    const id = userId || (await getCurrentUserId());
+
+    // Convert file to base64
+    const fileBuffer = await data.file.arrayBuffer();
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+
+    const requestBody = {
+      imageData: base64Data,
+      contentType: data.file.type,
+      photoType: data.photo_type,
+      notes: data.notes,
+      workoutSessionId: data.workout_session_id,
+    };
+
+    return apiFetch<any>(`/api/analytics/progress-photos/${id}/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
     });
   },
 
-  // Workout Analytics
-  async getWorkoutAnalytics(userId?: string) {
+  async updateProgressPhoto(
+    photoId: string,
+    takenAt: string,
+    data: {
+      photo_type?: string;
+      notes?: string;
+    },
+    userId?: string
+  ) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/workouts/analytics?userId=${id}`);
+    const params = new URLSearchParams({ taken_at: takenAt });
+
+    return apiFetch<any>(
+      `/api/analytics/progress-photos/${id}/${photoId}?${params}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  async deleteProgressPhoto(photoId: string, takenAt: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ taken_at: takenAt });
+
+    return apiFetch<any>(
+      `/api/analytics/progress-photos/${id}/${photoId}?${params}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  },
+
+  async getProgressPhotoAnalytics(userId?: string, timeRange?: string) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams();
+    if (timeRange) params.append('time_range', timeRange);
+
+    const queryString = params.toString() ? `?${params}` : '';
+    return apiFetch<any>(
+      `/api/analytics/progress-photos/${id}/analytics${queryString}`
+    );
+  },
+
+  async getProgressPhotoComparison(photoIds: string[], userId?: string) {
+    const id = userId || (await getCurrentUserId());
+
+    return apiFetch<any>(`/api/analytics/progress-photos/${id}/compare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoIds }),
+    });
+  },
+
+  async getProgressPhotoTimeline(userId?: string, photo_type?: string) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams();
+    if (photo_type) params.append('photo_type', photo_type);
+
+    const queryString = params.toString() ? `?${params}` : '';
+    return apiFetch<any[]>(
+      `/api/analytics/progress-photos/${id}/timeline${queryString}`
+    );
+  },
+
+  // Workout Analytics
+  async getWorkoutAnalytics(
+    userId?: string,
+    startDate?: string,
+    endDate?: string
+  ) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return apiFetch<any>(`/api/workouts/analytics?${params}`);
   },
 
   // Workout History
-  async getWorkoutHistory(userId?: string, page?: number, limit?: number) {
+  async getWorkoutHistory(
+    userId?: string,
+    page?: number,
+    limit?: number,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      completed?: boolean;
+      planId?: string;
+      exerciseId?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    }
+  ) {
     const id = userId || (await getCurrentUserId());
     const params = new URLSearchParams({ userId: id });
     if (page) params.append('page', page.toString());
     if (limit) params.append('limit', limit.toString());
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, value.toString());
+        }
+      });
+    }
     return apiFetch<any>(`/api/workouts/history?${params}`);
   },
+
+  async getDetailedWorkoutHistory(userId?: string, sessionIds?: string[]) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (sessionIds && sessionIds.length > 0) {
+      sessionIds.forEach((sessionId) => params.append('sessionIds', sessionId));
+    }
+    return apiFetch<any>(`/api/workouts/history/detailed?${params}`);
+  },
+
+  async getWorkoutInsights(userId?: string, timeRange?: string) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (timeRange) params.append('timeRange', timeRange);
+    return apiFetch<any>(`/api/workouts/insights?${params}`);
+  },
+
+  async compareWorkoutPeriods(
+    period1: { start: string; end: string },
+    period2: { start: string; end: string },
+    userId?: string
+  ) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/workouts/compare-periods`, {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: id,
+        period1,
+        period2,
+      }),
+    });
+  },
+
+  // Note: Export functionality moved to client-side in analytics page
+  // This endpoint doesn't exist in the current backend implementation
+  // async exportWorkoutData(
+  //   userId?: string,
+  //   format?: 'json' | 'csv',
+  //   filters?: any
+  // ) {
+  //   const id = userId || (await getCurrentUserId());
+  //   const params = new URLSearchParams({ userId: id });
+  //   if (format) params.append('format', format);
+  //   if (filters) {
+  //     Object.entries(filters).forEach(([key, value]) => {
+  //       if (value !== undefined && value !== null) {
+  //         params.append(key, value.toString());
+  //       }
+  //     });
+  //   }
+  //   return apiFetch<any>(`/api/workouts/export?${params}`);
+  // },
 
   async deleteWorkoutSession(sessionId: string) {
     return apiFetch<any>(`/api/workouts/sessions/${sessionId}`, {

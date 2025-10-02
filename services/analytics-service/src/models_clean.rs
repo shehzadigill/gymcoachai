@@ -2,72 +2,6 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
-// Types from workout-service for compatibility
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WorkoutSession {
-    pub id: String,
-    pub user_id: String,
-    pub workout_plan_id: Option<String>,
-    pub name: String,
-    pub started_at: String,
-    pub completed_at: Option<String>,
-    pub duration_minutes: Option<i32>,
-    pub exercises: Vec<SessionExercise>,
-    pub notes: Option<String>,
-    pub rating: Option<i32>, // 1-5 scale
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SessionExercise {
-    pub exercise_id: String,
-    pub name: String,
-    pub sets: Vec<ExerciseSet>,
-    pub notes: Option<String>,
-    pub order: i32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExerciseSet {
-    pub set_number: i32,
-    pub reps: Option<i32>,
-    pub weight: Option<f32>,
-    pub duration_seconds: Option<i32>,
-    pub rest_seconds: Option<i32>,
-    pub completed: bool,
-    pub notes: Option<String>,
-}
-
-// Analytics-specific types
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PerformanceTrend {
-    pub metric: String,
-    pub trend_type: String,
-    pub period: String,
-    pub data_points: Vec<TrendDataPoint>,
-    pub slope: f32,
-    pub r_squared: f32,
-    pub prediction: Option<f32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TrendDataPoint {
-    pub date: String,
-    pub value: f32,
-    pub context: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProgressSummary {
-    pub total_workouts: u32,
-    pub total_exercises: u32,
-    pub total_volume: u64,
-    pub strength_improvement: f32,
-    pub consistency_score: f32,
-    pub achievements_count: u32,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StrengthProgress {
     pub user_id: String,
@@ -125,19 +59,12 @@ pub struct WorkoutAnalytics {
     pub total_reps: u32,
     pub total_volume: u64, // weight * reps for all exercises
     pub avg_workout_duration: u32, // in minutes
-    pub total_duration_minutes: u32,
-    pub average_workout_duration: f32,
     pub consistency_score: f32, // 0.0 to 1.0
-    pub strength_trend: Vec<StrengthProgress>,
-    pub strength_gains: Vec<StrengthProgress>,
+    pub strength_trend: String, // "improving", "stable", "declining"
     pub most_trained_muscle_groups: Vec<String>,
-    pub favorite_exercises: Vec<String>,
     pub weekly_frequency: f32,
     pub personal_records_count: u32,
     pub achievement_count: u32,
-    pub body_measurements: Vec<BodyMeasurement>,
-    pub milestones_achieved: Vec<Milestone>,
-    pub performance_trends: Vec<PerformanceTrend>,
     pub generated_at: String,
 }
 
@@ -188,8 +115,6 @@ pub struct Achievement {
     pub rarity: String, // "common", "rare", "epic", "legendary"
     pub points: i32,
     pub earned_date: String,
-    pub achieved_at: String,
-    pub created_at: String,
     pub requirements: serde_json::Value,
     pub metadata: Option<serde_json::Value>,
 }
@@ -267,8 +192,6 @@ pub struct Milestone {
     pub created_at: String,
     pub status: String, // "active", "completed", "paused", "failed"
     pub progress_percentage: f32,
-    pub achieved: bool,
-    pub achieved_at: Option<String>,
     pub metadata: Option<serde_json::Value>,
 }
 
@@ -305,10 +228,8 @@ pub struct ExerciseStats {
     pub total_reps: u32,
     pub total_volume: u64,
     pub avg_weight: f32,
-    pub average_weight: f32,
     pub max_weight: f32,
     pub progression_rate: f32,
-    pub improvement_rate: f32,
     pub last_performed: String,
 }
 
@@ -320,14 +241,12 @@ pub struct ProgressReport {
     pub period_start: String,
     pub period_end: String,
     pub generated_at: String,
-    pub summary: ProgressSummary,
-    pub detailed_analytics: WorkoutAnalytics,
+    pub summary: String,
     pub key_achievements: Vec<Achievement>,
     pub strength_progress: Vec<StrengthProgress>,
     pub body_measurements: Vec<BodyMeasurement>,
     pub workout_analytics: WorkoutAnalytics,
     pub insights: WorkoutInsights,
-    pub milestones: Vec<Milestone>,
     pub recommendations: Vec<String>,
     pub charts: Vec<ProgressChart>,
     pub export_formats: Vec<String>, // "pdf", "json", "csv"
@@ -532,119 +451,4 @@ pub struct PeriodData {
     pub end_date: String,
     pub value: f32,
     pub sample_size: u32,
-}
-
-// Progress Photos Models
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProgressPhoto {
-    pub id: String,
-    pub user_id: String,
-    pub photo_type: String, // 'before', 'after', 'progress', 'front', 'side', 'back'
-    pub photo_url: String,
-    pub s3_key: String,
-    pub taken_at: String,
-    pub notes: Option<String>,
-    pub workout_session_id: Option<String>,
-    pub tags: Vec<String>,
-    pub metadata: Option<PhotoMetadata>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PhotoMetadata {
-    pub file_size: Option<u64>,
-    pub dimensions: Option<PhotoDimensions>,
-    pub device_info: Option<String>,
-    pub location: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PhotoDimensions {
-    pub width: u32,
-    pub height: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProgressPhotoAnalytics {
-    pub total_photos: u32,
-    pub photos_by_type: HashMap<String, u32>,
-    pub photos_by_month: Vec<MonthlyPhotoCount>,
-    pub upload_frequency: PhotoUploadFrequency,
-    pub consistency_score: f32, // 0-100 based on regularity of uploads
-    pub transformation_insights: TransformationInsights,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MonthlyPhotoCount {
-    pub month: String,
-    pub count: u32,
-    pub types: HashMap<String, u32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PhotoUploadFrequency {
-    pub daily_average: f32,
-    pub weekly_average: f32,
-    pub monthly_average: f32,
-    pub longest_streak: u32,
-    pub current_streak: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TransformationInsights {
-    pub total_duration_days: u32,
-    pub milestone_photos: Vec<MilestonePhoto>,
-    pub progress_indicators: Vec<ProgressIndicator>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MilestonePhoto {
-    pub photo_id: String,
-    pub milestone_type: String, // 'first', '30_days', '90_days', '6_months', '1_year'
-    pub date: String,
-    pub significance: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProgressIndicator {
-    pub indicator_type: String, // 'visual_change', 'consistency', 'milestone'
-    pub value: f32,
-    pub description: String,
-    pub trend: String, // 'improving', 'stable', 'declining'
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PhotoComparison {
-    pub comparison_id: String,
-    pub photos: Vec<ProgressPhoto>,
-    pub time_span_days: u32,
-    pub comparison_type: String, // 'before_after', 'progress_timeline', 'side_by_side'
-    pub insights: Vec<ComparisonInsight>,
-    pub created_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComparisonInsight {
-    pub insight_type: String,
-    pub confidence: f32,
-    pub description: String,
-    pub supporting_data: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PhotoTimelineEntry {
-    pub date: String,
-    pub photos: Vec<ProgressPhoto>,
-    pub week_number: u32,
-    pub month_name: String,
-    pub days_since_start: u32,
-    pub workout_context: Option<WorkoutContext>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WorkoutContext {
-    pub sessions_that_week: u32,
-    pub primary_focus: Option<String>,
-    pub achievements: Vec<String>,
 }

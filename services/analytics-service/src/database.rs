@@ -276,11 +276,14 @@ pub async fn get_milestones_from_db(
                 description: item.get("description")?.as_s().ok()?.clone(),
                 target_value: item.get("targetValue")?.as_n().ok()?.parse().ok()?,
                 current_value: item.get("currentValue")?.as_n().ok()?.parse().ok()?,
+                unit: item.get("unit").and_then(|v| v.as_s().ok()).map_or("kg", |v| v).to_string(),
+                target_date: item.get("targetDate").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
+                status: item.get("status").and_then(|v| v.as_s().ok()).map_or("active", |v| v).to_string(),
                 progress_percentage: item.get("progressPercentage")?.as_n().ok()?.parse().ok()?,
                 achieved: *item.get("achieved")?.as_bool().ok()?,
                 achieved_at: item.get("achievedAt").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
-                target_date: item.get("targetDate").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                metadata: None,
             })
         })
         .collect();
@@ -350,13 +353,9 @@ pub async fn get_performance_trends_from_db(
         .into_iter()
         .filter_map(|item| {
             Some(PerformanceTrend {
-                user_id: item.get("userId")?.as_s().ok()?.clone(),
-                metric_type: item.get("metricType")?.as_s().ok()?.clone(),
+                metric: item.get("metric")?.as_s().ok()?.clone(),
+                trend_type: item.get("trendType")?.as_s().ok()?.clone(),
                 period: item.get("period")?.as_s().ok()?.clone(),
-                start_date: item.get("startDate")?.as_s().ok()?.clone(),
-                end_date: item.get("endDate")?.as_s().ok()?.clone(),
-                trend_direction: item.get("trendDirection")?.as_s().ok()?.clone(),
-                trend_strength: item.get("trendStrength")?.as_n().ok()?.parse().ok()?,
                 data_points: item.get("dataPoints")
                     .and_then(|v| v.as_l().ok())
                     .map(|list| list.iter().filter_map(|v| {
@@ -368,14 +367,9 @@ pub async fn get_performance_trends_from_db(
                         })
                     }).collect())
                     .unwrap_or_default(),
-                insights: item.get("insights")
-                    .and_then(|v| v.as_l().ok())
-                    .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
-                    .unwrap_or_default(),
-                recommendations: item.get("recommendations")
-                    .and_then(|v| v.as_l().ok())
-                    .map(|list| list.iter().filter_map(|v| v.as_s().ok().map(|s| s.clone())).collect())
-                    .unwrap_or_default(),
+                slope: item.get("slope")?.as_n().ok()?.parse().ok()?,
+                r_squared: item.get("rSquared")?.as_n().ok()?.parse().ok()?,
+                prediction: item.get("prediction").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
             })
         })
         .collect();
@@ -417,6 +411,8 @@ pub async fn get_workout_sessions_for_analytics(
                 started_at: item.get("startedAt")?.as_s().ok()?.clone(),
                 completed_at: item.get("completedAt").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
                 duration_minutes: item.get("durationMinutes").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
+                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
+                updated_at: item.get("updatedAt")?.as_s().ok()?.clone(),
                 exercises: item.get("exercises")
                     .and_then(|v| v.as_l().ok())
                     .map(|list| list.iter().filter_map(|v| {
@@ -424,6 +420,7 @@ pub async fn get_workout_sessions_for_analytics(
                         Some(SessionExercise {
                             exercise_id: obj.get("exerciseId")?.as_s().ok()?.clone(),
                             name: obj.get("name")?.as_s().ok()?.clone(),
+                            order: obj.get("order").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(0),
                             sets: obj.get("sets")
                                 .and_then(|v| v.as_l().ok())
                                 .map(|sets| sets.iter().filter_map(|set| {
@@ -433,7 +430,9 @@ pub async fn get_workout_sessions_for_analytics(
                                         reps: set_obj.get("reps").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         weight: set_obj.get("weight").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         duration_seconds: set_obj.get("durationSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
+                                        rest_seconds: set_obj.get("restSeconds").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
                                         completed: *set_obj.get("completed")?.as_bool().ok()?,
+                                        notes: set_obj.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
                                     })
                                 }).collect())
                                 .unwrap_or_default(),
@@ -476,10 +475,16 @@ pub async fn get_achievements_from_db(
                 user_id: item.get("userId")?.as_s().ok()?.clone(),
                 title: item.get("title")?.as_s().ok()?.clone(),
                 description: item.get("description")?.as_s().ok()?.clone(),
+                achievement_type: item.get("achievementType")?.as_s().ok()?.clone(),
                 category: item.get("category")?.as_s().ok()?.clone(),
+                icon: item.get("icon").and_then(|v| v.as_s().ok()).map_or("🏆", |v| v).to_string(),
+                rarity: item.get("rarity").and_then(|v| v.as_s().ok()).map_or("common", |v| v).to_string(),
                 points: item.get("points")?.as_n().ok()?.parse().ok()?,
+                earned_date: item.get("earnedDate")?.as_s().ok()?.clone(),
                 achieved_at: item.get("achievedAt")?.as_s().ok()?.clone(),
                 created_at: item.get("createdAt")?.as_s().ok()?.clone(),
+                requirements: serde_json::Value::Null,
+                metadata: None,
             })
         })
         .collect();

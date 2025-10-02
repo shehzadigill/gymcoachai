@@ -294,35 +294,14 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             delete_exercise_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         
-        // Progress Photos
-        ("GET", "/api/workouts/progress-photos") => {
-            get_progress_photos_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
-        }
-        ("DELETE", path) if path.starts_with("/api/workouts/progress-photos/") => {
-            // Extract photo ID from path
-            let photo_id = path.strip_prefix("/api/workouts/progress-photos/").unwrap_or("");
-            
-            // Inject photo ID into pathParameters
-            if let Some(path_params) = modified_event.get_mut("pathParameters") {
-                if let Some(params_obj) = path_params.as_object_mut() {
-                    params_obj.insert("photoId".to_string(), json!(photo_id));
-                }
-            } else {
-                let mut params = serde_json::Map::new();
-                params.insert("photoId".to_string(), json!(photo_id));
-                modified_event["pathParameters"] = json!(params);
-            }
-            
-            delete_progress_photo_handler(
-                modified_event,
-                DYNAMODB_CLIENT.get().expect("DynamoDB not initialized"),
-                S3_CLIENT.get().expect("S3 not initialized"),
-            ).await
-        }
+
         
         // Analytics
         ("GET", "/api/workouts/analytics") => {
             get_workout_analytics_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
+        }
+        ("GET", "/api/workouts/insights") => {
+            get_workout_insights_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await
         }
         ("GET", "/api/workouts/history") => {
             get_workout_history_handler(modified_event, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).await

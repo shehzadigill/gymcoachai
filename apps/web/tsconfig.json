@@ -5,7 +5,8 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "jsx": "preserve"
   },
   "include": [
     "../../packages/tsconfig/next-env.d.ts",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
@@ -12,51 +12,195 @@ import {
   Filter,
   Grid3X3,
   List,
+  Download,
+  Share2,
+  // Compare (not available in lucide-react, using TrendingUp instead)
+  TrendingUp,
+  BarChart3,
+  Star,
+  Tag,
+  Edit3,
+  Plus,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Heart,
+  MessageCircle,
+  Clock,
+  Target,
+  Award,
+  Zap,
+  Activity,
+  Image as ImageIcon,
+  Calendar as CalendarIcon,
+  Users,
+  Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 
 interface ProgressPhoto {
   id: string;
-  photo_type: string; // 'before', 'after', 'progress'
+  photo_type: string;
   photo_url: string;
   s3_key: string;
   taken_at: string;
   notes?: string;
   workout_session_id?: string;
+  tags: string[];
+  metadata?: PhotoMetadata;
+  created_at: string;
+  updated_at: string;
 }
 
-const photoTypes = ['All', 'before', 'after', 'progress'];
+interface PhotoMetadata {
+  file_size?: number;
+  dimensions?: { width: number; height: number };
+  device_info?: string;
+  location?: string;
+}
 
-export default function ProgressPhotosPage() {
+interface ProgressPhotoAnalytics {
+  total_photos: number;
+  photos_by_type: Record<string, number>;
+  photos_by_month: MonthlyPhotoCount[];
+  upload_frequency: PhotoUploadFrequency;
+  consistency_score: number;
+  transformation_insights: TransformationInsights;
+}
+
+interface MonthlyPhotoCount {
+  month: string;
+  count: number;
+  types: Record<string, number>;
+}
+
+interface PhotoUploadFrequency {
+  daily_average: number;
+  weekly_average: number;
+  monthly_average: number;
+  longest_streak: number;
+  current_streak: number;
+}
+
+interface TransformationInsights {
+  total_duration_days: number;
+  milestone_photos: MilestonePhoto[];
+  progress_indicators: ProgressIndicator[];
+}
+
+interface MilestonePhoto {
+  photo_id: string;
+  milestone_type: string;
+  date: string;
+  significance: string;
+}
+
+interface ProgressIndicator {
+  indicator_type: string;
+  value: number;
+  description: string;
+  trend: string;
+}
+
+interface PhotoTimelineEntry {
+  date: string;
+  photos: ProgressPhoto[];
+  week_number: number;
+  month_name: string;
+  days_since_start: number;
+  workout_context?: {
+    sessions_that_week: number;
+    primary_focus?: string;
+    achievements: string[];
+  };
+}
+
+const photoTypes = [
+  'All',
+  'before',
+  'progress',
+  'after',
+  'front',
+  'side',
+  'back',
+];
+const timeRanges = ['7d', '30d', '90d', '6m', '1y', 'all'];
+
+export default function AdvancedProgressPhotosPage() {
   const user = useCurrentUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State management
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
   const [filteredPhotos, setFilteredPhotos] = useState<ProgressPhoto[]>([]);
+  const [analytics, setAnalytics] = useState<ProgressPhotoAnalytics | null>(
+    null
+  );
+  const [timeline, setTimeline] = useState<PhotoTimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // UI State
   const [selectedPhoto, setSelectedPhoto] = useState<ProgressPhoto | null>(
     null
   );
-
-  // Filters and view
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<
+    'grid' | 'list' | 'timeline' | 'comparison'
+  >('grid');
   const [selectedType, setSelectedType] = useState('All');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('1y');
+  const [isUploading, setIsUploading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Upload state
+  const [uploadData, setUploadData] = useState({
+    photo_type: 'progress',
+    notes: '',
+    tags: [] as string[],
+    file: null as File | null,
+  });
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'date' | 'type' | 'name'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
-    fetchPhotos();
-  }, []);
+    if (user) {
+      fetchAllData();
+    }
+  }, [user, selectedTimeRange]);
 
   useEffect(() => {
     filterPhotos();
-  }, [photos, selectedType]);
+  }, [photos, selectedType, searchQuery, sortBy, sortOrder]);
 
-  const fetchPhotos = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await api.getProgressPhotos();
-      if (response && Array.isArray(response)) {
-        // Transform API response if needed
-        const transformedPhotos: ProgressPhoto[] = response.map(
+      const [photosData, analyticsData, timelineData] = await Promise.all([
+        api.getProgressPhotos(undefined, {
+          photo_type: selectedType !== 'All' ? selectedType : undefined,
+          limit: 100,
+        }),
+        api.getProgressPhotoAnalytics(undefined, selectedTimeRange),
+        api.getProgressPhotoTimeline(
+          undefined,
+          selectedType !== 'All' ? selectedType : undefined
+        ),
+      ]);
+
+      if (photosData && Array.isArray(photosData)) {
+        // Transform API response to match interface
+        const transformedPhotos: ProgressPhoto[] = photosData.map(
           (photo: any) => ({
             id: photo.id || photo.ProgressPhotoId,
             photo_type: photo.photo_type || photo.PhotoType,
@@ -64,47 +208,171 @@ export default function ProgressPhotosPage() {
             s3_key: photo.s3_key || photo.S3Key,
             taken_at: photo.taken_at || photo.TakenAt,
             notes: photo.notes || photo.Notes,
+            workout_session_id: photo.workout_session_id,
+            tags: photo.tags || [],
+            metadata: photo.metadata,
+            created_at: photo.created_at || photo.taken_at,
+            updated_at: photo.updated_at || photo.taken_at,
           })
         );
         setPhotos(transformedPhotos);
       } else {
-        setError('No progress photos found');
         setPhotos([]);
       }
+
+      setAnalytics(analyticsData);
+      setTimeline(timelineData || []);
     } catch (e: any) {
-      console.error('Failed to fetch progress photos:', e);
-      setError(e.message || 'Failed to fetch progress photos');
-      setPhotos([]);
+      console.error('Failed to fetch progress photos data:', e);
+      setError(e.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
-  const filterPhotos = () => {
+  const filterPhotos = useCallback(() => {
     let filtered = [...photos];
 
+    // Type filter
     if (selectedType !== 'All') {
       filtered = filtered.filter((photo) => photo.photo_type === selectedType);
     }
 
-    // Sort by date (newest first)
-    filtered.sort(
-      (a, b) => new Date(b.taken_at).getTime() - new Date(a.taken_at).getTime()
-    );
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (photo) =>
+          photo.notes?.toLowerCase().includes(query) ||
+          photo.tags.some((tag) => tag.toLowerCase().includes(query)) ||
+          photo.photo_type.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (sortBy) {
+        case 'date':
+          aValue = new Date(a.taken_at).getTime();
+          bValue = new Date(b.taken_at).getTime();
+          break;
+        case 'type':
+          aValue = a.photo_type;
+          bValue = b.photo_type;
+          break;
+        case 'name':
+          aValue = a.notes || '';
+          bValue = b.notes || '';
+          break;
+        default:
+          aValue = new Date(a.taken_at).getTime();
+          bValue = new Date(b.taken_at).getTime();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
 
     setFilteredPhotos(filtered);
+  }, [photos, selectedType, searchQuery, sortBy, sortOrder]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadData((prev) => ({ ...prev, file }));
+      setShowUploadModal(true);
+    }
   };
 
-  const deletePhoto = async (photoId: string) => {
-    if (!confirm('Are you sure you want to delete this progress photo?'))
-      return;
+  const handleUpload = async () => {
+    if (!uploadData.file) return;
 
     try {
-      await api.deleteProgressPhoto(photoId);
-      setPhotos(photos.filter((p) => p.id !== photoId));
+      setIsUploading(true);
+      const result = await api.uploadProgressPhoto({
+        photo_type: uploadData.photo_type,
+        file: uploadData.file,
+        notes: uploadData.notes || undefined,
+      });
+
+      if (result) {
+        await fetchAllData(); // Refresh data
+        setShowUploadModal(false);
+        setUploadData({
+          photo_type: 'progress',
+          notes: '',
+          tags: [],
+          file: null,
+        });
+      }
     } catch (e: any) {
-      console.error('Failed to delete progress photo:', e);
-      alert('Failed to delete progress photo');
+      console.error('Upload failed:', e);
+      setError(e.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!confirm('Are you sure you want to delete this photo?')) return;
+
+    try {
+      // Find the photo to get its taken_at timestamp
+      const photo = photos.find((p) => p.id === photoId);
+      if (!photo) {
+        throw new Error('Photo not found');
+      }
+
+      await api.deleteProgressPhoto(photoId, photo.taken_at);
+      await fetchAllData();
+    } catch (e: any) {
+      console.error('Delete failed:', e);
+      setError(e.message || 'Delete failed');
+    }
+  };
+
+  const handlePhotoSelect = (photoId: string) => {
+    setSelectedPhotos((prev) =>
+      prev.includes(photoId)
+        ? prev.filter((id) => id !== photoId)
+        : [...prev, photoId]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selectedPhotos.length} photos?`)) return;
+
+    try {
+      await Promise.all(
+        selectedPhotos.map((id) => {
+          const photo = photos.find((p) => p.id === id);
+          if (!photo) throw new Error(`Photo ${id} not found`);
+          return api.deleteProgressPhoto(id, photo.taken_at);
+        })
+      );
+      await fetchAllData();
+      setSelectedPhotos([]);
+    } catch (e: any) {
+      console.error('Bulk delete failed:', e);
+      setError(e.message || 'Bulk delete failed');
+    }
+  };
+
+  const handleComparePhotos = async () => {
+    if (selectedPhotos.length < 2) return;
+
+    try {
+      const comparison = await api.getProgressPhotoComparison(selectedPhotos);
+      // Handle comparison result - could show in modal or new view
+      console.log('Comparison result:', comparison);
+    } catch (e: any) {
+      console.error('Comparison failed:', e);
+      setError(e.message || 'Comparison failed');
     }
   };
 
@@ -116,6 +384,31 @@ export default function ProgressPhotosPage() {
     });
   };
 
+  const getPhotoTypeIcon = (type: string) => {
+    switch (type) {
+      case 'before':
+        return <Star className="h-4 w-4 text-blue-500" />;
+      case 'after':
+        return <Award className="h-4 w-4 text-green-500" />;
+      case 'progress':
+        return <TrendingUp className="h-4 w-4 text-purple-500" />;
+      case 'front':
+        return <Users className="h-4 w-4 text-orange-500" />;
+      case 'side':
+        return <Activity className="h-4 w-4 text-pink-500" />;
+      case 'back':
+        return <Target className="h-4 w-4 text-indigo-500" />;
+      default:
+        return <ImageIcon className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getConsistencyColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'before':
@@ -124,6 +417,12 @@ export default function ProgressPhotosPage() {
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'progress':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
+      case 'front':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400';
+      case 'side':
+        return 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400';
+      case 'back':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
@@ -147,6 +446,15 @@ export default function ProgressPhotosPage() {
 
   return (
     <div className="space-y-6">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -158,7 +466,7 @@ export default function ProgressPhotosPage() {
           </p>
         </div>
         <button
-          onClick={() => alert('Photo upload feature coming soon!')}
+          onClick={() => fileInputRef.current?.click()}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Camera className="h-4 w-4" />
@@ -279,7 +587,7 @@ export default function ProgressPhotosPage() {
           </p>
           <div className="mt-6">
             <button
-              onClick={() => alert('Photo upload feature coming soon!')}
+              onClick={() => fileInputRef.current?.click()}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto"
             >
               <Camera className="h-4 w-4" />
@@ -334,7 +642,7 @@ export default function ProgressPhotosPage() {
                     View
                   </button>
                   <button
-                    onClick={() => deletePhoto(photo.id)}
+                    onClick={() => handleDeletePhoto(photo.id)}
                     className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -372,7 +680,7 @@ export default function ProgressPhotosPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => deletePhoto(photo.id)}
+                      onClick={() => handleDeletePhoto(photo.id)}
                       className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -451,7 +759,7 @@ export default function ProgressPhotosPage() {
                 </button>
                 <button
                   onClick={() => {
-                    deletePhoto(selectedPhoto.id);
+                    handleDeletePhoto(selectedPhoto.id);
                     setSelectedPhoto(null);
                   }}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
@@ -459,6 +767,100 @@ export default function ProgressPhotosPage() {
                   Delete Photo
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Upload Progress Photo
+            </h2>
+
+            {uploadData.file && (
+              <div className="mb-4">
+                <img
+                  src={URL.createObjectURL(uploadData.file)}
+                  alt="Preview"
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Photo Type
+                </label>
+                <select
+                  value={uploadData.photo_type}
+                  onChange={(e) =>
+                    setUploadData((prev) => ({
+                      ...prev,
+                      photo_type: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="progress">Progress</option>
+                  <option value="before">Before</option>
+                  <option value="after">After</option>
+                  <option value="front">Front</option>
+                  <option value="side">Side</option>
+                  <option value="back">Back</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={uploadData.notes}
+                  onChange={(e) =>
+                    setUploadData((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="Add any notes about this photo..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setUploadData((prev) => ({ ...prev, file: null, notes: '' }));
+                }}
+                disabled={isUploading}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpload}
+                disabled={isUploading || !uploadData.file}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 flex items-center space-x-2"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    <span>Upload Photo</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

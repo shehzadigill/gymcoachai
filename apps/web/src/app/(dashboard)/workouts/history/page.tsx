@@ -14,26 +14,89 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Search,
+  Download,
+  BarChart3,
+  TrendingUp,
+  Dumbbell,
+  Target,
+  ArrowUpDown,
+  Play,
+  Pause,
+  MoreHorizontal,
+  Activity,
+  Zap,
+  Award,
+  RefreshCw,
+  Calendar as CalendarIcon,
+  SortAsc,
+  SortDesc,
+  Grid,
+  List,
+  Map,
+  PieChart,
+  Bookmark,
+  Share,
+  Edit,
+  X,
+  Smile,
+  Meh,
+  Frown,
+  Trophy,
 } from 'lucide-react';
 
-interface WorkoutSession {
+interface EnhancedWorkoutSession {
   id: string;
   name: string;
   started_at: string;
   completed_at?: string;
   duration_minutes?: number;
-  exercises: SessionExercise[];
-  notes?: string;
   rating?: number;
-  workout_plan_id?: string;
+  notes?: string;
+  exercises: Array<{
+    id: string;
+    name: string;
+    notes?: string;
+    sets: Array<{
+      id: string;
+      reps: number;
+      weight: number;
+      completed?: boolean;
+      set_number?: number;
+      duration_seconds?: number;
+    }>;
+  }>;
+  calories_burned?: number;
+  volume_load?: number;
+  intensity_score?: number;
+  difficulty?: 'easy' | 'moderate' | 'hard' | 'extreme';
+  mood?: 'great' | 'good' | 'okay' | 'tired' | 'exhausted';
+  personal_records?: string[];
 }
+
+interface PersonalRecord {
+  id: string;
+  exercise_id: string;
+  exercise_name: string;
+  record_type: string;
+  value: number;
+  unit: string;
+  achieved_at: string;
+}
+
+// For backwards compatibility
+interface WorkoutSession extends EnhancedWorkoutSession {}
 
 interface SessionExercise {
   exercise_id: string;
+  exercise_name?: string;
   name: string;
   sets: ExerciseSet[];
   notes?: string;
   order: number;
+  rest_time_seconds?: number;
+  muscle_groups?: string[];
+  equipment?: string[];
 }
 
 interface ExerciseSet {
@@ -44,6 +107,8 @@ interface ExerciseSet {
   rest_seconds?: number;
   completed: boolean;
   notes?: string;
+  rpe?: number; // Rate of Perceived Exertion 1-10
+  heart_rate?: number;
 }
 
 interface WorkoutHistory {
@@ -56,7 +121,13 @@ interface WorkoutHistory {
   };
 }
 
-export default function WorkoutHistoryPage() {
+type ViewMode = 'list' | 'grid' | 'timeline' | 'calendar';
+type FilterStatus = 'all' | 'completed' | 'incomplete';
+type SortBy = 'date' | 'duration' | 'calories' | 'volume' | 'rating';
+type SortOrder = 'asc' | 'desc';
+type DifficultyFilter = 'all' | 'easy' | 'moderate' | 'hard' | 'extreme';
+
+export default function EnhancedWorkoutHistoryPage() {
   const router = useRouter();
   const user = useCurrentUser();
   const [history, setHistory] = useState<WorkoutHistory | null>(null);
@@ -66,10 +137,26 @@ export default function WorkoutHistoryPage() {
     null
   );
 
-  // Pagination and filters
+  // Enhanced state management
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit] = useState(10);
-  const [filterCompleted, setFilterCompleted] = useState<string>('all'); // 'all', 'completed', 'incomplete'
+  const [pageLimit] = useState(12);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [filterCompleted, setFilterCompleted] = useState<FilterStatus>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(
+    new Set()
+  );
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Analytics state
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
 
   useEffect(() => {
     fetchHistory();
@@ -212,12 +299,134 @@ export default function WorkoutHistoryPage() {
     ));
   };
 
+  // Enhanced filtering and sorting functions
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchHistory();
+    setRefreshing(false);
+  };
+
+  const calculateSessionMetrics = (session: WorkoutSession) => {
+    const totalSets = session.exercises.reduce(
+      (acc, ex) => acc + ex.sets.length,
+      0
+    );
+    const totalReps = session.exercises.reduce(
+      (acc, ex) =>
+        acc + ex.sets.reduce((repAcc, set) => repAcc + (set.reps || 0), 0),
+      0
+    );
+    const totalVolume = session.exercises.reduce(
+      (acc, ex) =>
+        acc +
+        ex.sets.reduce(
+          (volAcc, set) => volAcc + (set.weight || 0) * (set.reps || 0),
+          0
+        ),
+      0
+    );
+
+    return {
+      sets: totalSets,
+      reps: totalReps,
+      volume: totalVolume,
+      calories: Math.round(
+        totalVolume * 0.05 + (session.duration_minutes || 0) * 5
+      ), // Rough estimate
+    };
+  };
+
+  const getDifficultyColor = (difficulty?: string) => {
+    switch (difficulty) {
+      case 'easy':
+        return 'text-green-600 bg-green-50';
+      case 'moderate':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'hard':
+        return 'text-orange-600 bg-orange-50';
+      case 'extreme':
+        return 'text-red-600 bg-red-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const exportData = async () => {
+    try {
+      const data = filteredSessions.map((session) => ({
+        ...session,
+        metrics: calculateSessionMetrics(session),
+      }));
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `workout-history-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
+  };
+
+  const getSessionSortValue = (session: WorkoutSession, sortBy: SortBy) => {
+    switch (sortBy) {
+      case 'date':
+        return new Date(session.started_at).getTime();
+      case 'duration':
+        return session.duration_minutes || 0;
+      case 'calories':
+        return calculateSessionMetrics(session).calories;
+      case 'volume':
+        return calculateSessionMetrics(session).volume;
+      case 'rating':
+        return session.rating || 0;
+      default:
+        return new Date(session.started_at).getTime();
+    }
+  };
+
   const filteredSessions =
-    history?.sessions.filter((session) => {
-      if (filterCompleted === 'completed') return !!session.completed_at;
-      if (filterCompleted === 'incomplete') return !session.completed_at;
-      return true;
-    }) || [];
+    history?.sessions
+      .filter((session) => {
+        // Status filter
+        if (filterCompleted === 'completed' && !session.completed_at)
+          return false;
+        if (filterCompleted === 'incomplete' && session.completed_at)
+          return false;
+
+        // Search filter
+        if (
+          searchQuery &&
+          !session.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ) {
+          return false;
+        }
+
+        // Date filter
+        if (dateFilter) {
+          const sessionDate = new Date(session.started_at)
+            .toISOString()
+            .split('T')[0];
+          if (sessionDate !== dateFilter) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const aValue = getSessionSortValue(a, sortBy);
+        const bValue = getSessionSortValue(b, sortBy);
+
+        if (sortOrder === 'asc') {
+          return aValue > bValue ? 1 : -1;
+        } else {
+          return aValue < bValue ? 1 : -1;
+        }
+      }) || [];
 
   if (loading) {
     return (
@@ -238,18 +447,168 @@ export default function WorkoutHistoryPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Enhanced Header with Controls */}
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Workout History
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-gray-600">
             View and manage your past workout sessions
           </p>
         </div>
+
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search workouts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Date Filter */}
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <button
+              onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+            >
+              {viewMode === 'list' ? (
+                <Grid className="h-4 w-4" />
+              ) : (
+                <List className="h-4 w-4" />
+              )}
+              {viewMode === 'list' ? 'Grid' : 'List'}
+            </button>
+
+            {/* Sort Controls */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="date">Sort by Date</option>
+              <option value="duration">Sort by Duration</option>
+              <option value="calories">Sort by Calories</option>
+              <option value="volume">Sort by Volume</option>
+              <option value="rating">Sort by Rating</option>
+            </select>
+
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+            >
+              {sortOrder === 'asc' ? (
+                <SortAsc className="h-4 w-4" />
+              ) : (
+                <SortDesc className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Filters Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </button>
+
+            {/* Refresh */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+              />
+              Refresh
+            </button>
+
+            {/* Export */}
+            <button
+              onClick={exportData}
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Advanced Filters Panel */}
+      {showFilters && (
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={filterCompleted}
+                onChange={(e) =>
+                  setFilterCompleted(e.target.value as FilterStatus)
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Sessions</option>
+                <option value="completed">Completed Only</option>
+                <option value="incomplete">Incomplete Only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Difficulty
+              </label>
+              <select
+                value={difficultyFilter}
+                onChange={(e) =>
+                  setDifficultyFilter(e.target.value as DifficultyFilter)
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Difficulties</option>
+                <option value="easy">Easy</option>
+                <option value="moderate">Moderate</option>
+                <option value="hard">Hard</option>
+                <option value="extreme">Extreme</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setDateFilter('');
+                  setFilterCompleted('all');
+                  setDifficultyFilter('all');
+                }}
+                className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -323,7 +682,7 @@ export default function WorkoutHistoryPage() {
           <Filter className="h-5 w-5 text-gray-400" />
           <select
             value={filterCompleted}
-            onChange={(e) => setFilterCompleted(e.target.value)}
+            onChange={(e) => setFilterCompleted(e.target.value as FilterStatus)}
             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             <option value="all">All Sessions</option>
@@ -345,114 +704,278 @@ export default function WorkoutHistoryPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredSessions.map((session) => (
-            <div
-              key={session.id}
-              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
-            >
-              {/* Session Header */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {session.name}
-                    </h3>
-                    {session.completed_at ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full bg-yellow-200 dark:bg-yellow-800" />
-                    )}
+        <div
+          className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}`}
+        >
+          {filteredSessions.map((session) => {
+            const enhancedSession = session as EnhancedWorkoutSession;
+            const metrics = calculateSessionMetrics(enhancedSession);
+            const difficultyColor = getDifficultyColor(
+              enhancedSession.difficulty || 'moderate'
+            );
+
+            return (
+              <div
+                key={session.id}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 overflow-hidden"
+              >
+                {/* Enhanced Session Header with Status Bar */}
+                <div
+                  className={`h-2 w-full ${enhancedSession.completed_at ? 'bg-green-500' : 'bg-yellow-500'}`}
+                />
+
+                <div className="p-6">
+                  {/* Header with Status and Difficulty */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {enhancedSession.name}
+                        </h3>
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${difficultyColor}`}
+                        >
+                          {enhancedSession.difficulty || 'Moderate'}
+                        </span>
+                        {enhancedSession.completed_at ? (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <Clock className="h-5 w-5 text-yellow-600" />
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {formatDate(enhancedSession.started_at)}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {enhancedSession.duration_minutes} min
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rating and Mood */}
+                    <div className="flex flex-col items-end gap-2">
+                      {enhancedSession.rating && (
+                        <div className="flex gap-1">
+                          {renderStars(enhancedSession.rating)}
+                        </div>
+                      )}
+                      {enhancedSession.mood && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          {enhancedSession.mood === 'great' && (
+                            <Smile className="h-4 w-4 text-green-500" />
+                          )}
+                          {enhancedSession.mood === 'good' && (
+                            <Smile className="h-4 w-4 text-blue-500" />
+                          )}
+                          {enhancedSession.mood === 'okay' && (
+                            <Meh className="h-4 w-4 text-yellow-500" />
+                          )}
+                          {enhancedSession.mood === 'tired' && (
+                            <Frown className="h-4 w-4 text-orange-500" />
+                          )}
+                          {enhancedSession.mood === 'exhausted' && (
+                            <Frown className="h-4 w-4 text-red-500" />
+                          )}
+                          <span className="capitalize">
+                            {enhancedSession.mood}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {formatDate(session.started_at)}
+
+                  {/* Enhanced Metrics Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-blue-600 mb-1">
+                        <Target className="h-4 w-4" />
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {metrics.sets}
+                      </div>
+                      <div className="text-xs text-gray-500">Sets</div>
                     </div>
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {formatTime(session.started_at)}
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
+                        <Zap className="h-4 w-4" />
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {metrics.reps}
+                      </div>
+                      <div className="text-xs text-gray-500">Reps</div>
                     </div>
-                    {session.duration_minutes && (
-                      <div className="flex items-center">
-                        <span>{session.duration_minutes} min</span>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-purple-600 mb-1">
+                        <Activity className="h-4 w-4" />
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {enhancedSession.calories_burned || metrics.calories}
+                      </div>
+                      <div className="text-xs text-gray-500">Calories</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-orange-600 mb-1">
+                        <Dumbbell className="h-4 w-4" />
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {Math.round(metrics.volume)}
+                      </div>
+                      <div className="text-xs text-gray-500">Volume</div>
+                    </div>
+                  </div>
+
+                  {/* Exercise Summary */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-gray-700">
+                        Exercises ({enhancedSession.exercises.length})
+                      </div>
+                      {enhancedSession.personal_records &&
+                        enhancedSession.personal_records.length > 0 && (
+                          <div className="flex items-center gap-1 text-sm text-green-600">
+                            <Trophy className="h-4 w-4" />
+                            {enhancedSession.personal_records.length} PR
+                            {enhancedSession.personal_records.length > 1
+                              ? 's'
+                              : ''}
+                          </div>
+                        )}
+                    </div>
+                    <div className="space-y-1">
+                      {enhancedSession.exercises
+                        .slice(0, 3)
+                        .map((exercise, index) => (
+                          <div
+                            key={index}
+                            className="flex justify-between items-center text-sm"
+                          >
+                            <span className="text-gray-700">
+                              {exercise.name}
+                            </span>
+                            <span className="text-gray-500">
+                              {exercise.sets.length} sets
+                            </span>
+                          </div>
+                        ))}
+                      {enhancedSession.exercises.length > 3 && (
+                        <div className="text-sm text-gray-500 text-center py-1">
+                          +{enhancedSession.exercises.length - 3} more exercises
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {enhancedSession.notes && (
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-200">
+                      <div className="text-sm text-gray-700">
+                        {enhancedSession.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedSession(enhancedSession)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View Details
+                      </button>
+                      {!enhancedSession.completed_at && (
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/workouts/sessions/${enhancedSession.id}`
+                            )
+                          }
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                        >
+                          <Play className="h-4 w-4" />
+                          Continue
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteSession(enhancedSession.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Exercise Summary */}
+                <div className="mb-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Exercises ({session.exercises.length}):
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {session.exercises.slice(0, 6).map((exercise, index) => (
+                      <div
+                        key={index}
+                        className="text-sm text-gray-700 dark:text-gray-300"
+                      >
+                        • {exercise.name} ({exercise.sets.length} sets)
+                      </div>
+                    ))}
+                    {session.exercises.length > 6 && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        +{session.exercises.length - 6} more exercises
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Rating */}
-                {session.rating && (
-                  <div className="flex space-x-1">
-                    {renderStars(session.rating)}
+                {/* Notes */}
+                {session.notes && (
+                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      Notes:
+                    </div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      {session.notes}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {/* Exercise Summary */}
-              <div className="mb-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Exercises ({session.exercises.length}):
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {session.exercises.slice(0, 6).map((exercise, index) => (
-                    <div
-                      key={index}
-                      className="text-sm text-gray-700 dark:text-gray-300"
-                    >
-                      • {exercise.name} ({exercise.sets.length} sets)
-                    </div>
-                  ))}
-                  {session.exercises.length > 6 && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      +{session.exercises.length - 6} more exercises
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Notes */}
-              {session.notes && (
-                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    Notes:
-                  </div>
-                  <div className="text-sm text-gray-700 dark:text-gray-300">
-                    {session.notes}
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSelectedSession(session)}
-                    className="bg-blue-100 dark:bg-blue-900/20 hover:bg-blue-200 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-3 py-2 rounded-md text-sm flex items-center space-x-1"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>View Details</span>
-                  </button>
-                  {!session.completed_at && (
+                {/* Actions */}
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex space-x-2">
                     <button
-                      onClick={() =>
-                        router.push(`/workouts/session/${session.id}`)
-                      }
-                      className="bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-md text-sm"
+                      onClick={() => setSelectedSession(session)}
+                      className="bg-blue-100 dark:bg-blue-900/20 hover:bg-blue-200 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-3 py-2 rounded-md text-sm flex items-center space-x-1"
                     >
-                      Resume
+                      <Eye className="h-4 w-4" />
+                      <span>View Details</span>
                     </button>
-                  )}
+                    {!session.completed_at && (
+                      <button
+                        onClick={() =>
+                          router.push(`/workouts/sessions/${session.id}`)
+                        }
+                        className="bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-md text-sm"
+                      >
+                        Resume
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => deleteSession(session.id)}
+                    className="bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-md text-sm"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => deleteSession(session.id)}
-                  className="bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-md text-sm"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

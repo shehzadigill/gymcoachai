@@ -92,18 +92,7 @@ pub struct Exercise {
     pub updated_at: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ProgressPhoto {
-    pub id: String,
-    pub user_id: String,
-    pub workout_session_id: Option<String>,
-    pub photo_type: String, // "before", "after", "progress"
-    pub photo_url: String,
-    pub s3_key: String,
-    pub taken_at: String,
-    pub notes: Option<String>,
-    pub created_at: String,
-}
+
 
 #[derive(Deserialize, Serialize, Validate, Debug, Clone)]
 pub struct ScheduledWorkout {

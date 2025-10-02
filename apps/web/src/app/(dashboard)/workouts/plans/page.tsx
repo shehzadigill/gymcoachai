@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Calendar,
   Clock,
@@ -67,6 +67,7 @@ interface ScheduledWorkout {
 
 export default function WorkoutPlansPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useCurrentUser();
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [scheduledWorkouts, setScheduledWorkouts] = useState<
@@ -74,8 +75,17 @@ export default function WorkoutPlansPage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Initialize view from URL parameter or default to 'my-plans'
+  const initialView = searchParams.get('view') as
+    | 'my-plans'
+    | 'templates'
+    | 'schedule'
+    | null;
   const [view, setView] = useState<'my-plans' | 'templates' | 'schedule'>(
-    'my-plans'
+    initialView && ['my-plans', 'templates', 'schedule'].includes(initialView)
+      ? initialView
+      : 'my-plans'
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
@@ -111,7 +121,10 @@ export default function WorkoutPlansPage() {
                 ? plan.isActive
                 : true,
           rating: plan.rating || 0,
-          isTemplate: plan.isTemplate || false,
+          isTemplate:
+            plan.is_template !== undefined
+              ? plan.is_template
+              : plan.isTemplate || false,
           tags: plan.tags || [],
         }));
         setWorkoutPlans(plans);
@@ -187,6 +200,37 @@ export default function WorkoutPlansPage() {
     } catch (error) {
       console.error('Failed to schedule plan:', error);
       alert('Failed to schedule workout plan. Please try again.');
+    }
+  };
+
+  const deleteScheduledWorkout = async (
+    scheduleId: string,
+    workoutName: string
+  ) => {
+    try {
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        `Are you sure you want to delete the scheduled workout "${workoutName}"? This action cannot be undone.`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      console.log('Deleting scheduled workout:', scheduleId);
+
+      await api.cancelScheduledWorkout(scheduleId, user.id);
+
+      // Refresh scheduled workouts list
+      await fetchScheduledWorkouts();
+
+      // Show success message
+      alert(
+        `Scheduled workout "${workoutName}" has been deleted successfully.`
+      );
+    } catch (error) {
+      console.error('Failed to delete scheduled workout:', error);
+      alert('Failed to delete scheduled workout. Please try again.');
     }
   };
 
@@ -324,7 +368,10 @@ export default function WorkoutPlansPage() {
 
       {/* Content */}
       {view === 'schedule' ? (
-        <ScheduleView scheduledWorkouts={scheduledWorkouts} />
+        <ScheduleView
+          scheduledWorkouts={scheduledWorkouts}
+          onDeleteScheduledWorkout={deleteScheduledWorkout}
+        />
       ) : (
         <PlansGrid
           plans={filteredPlans}
@@ -335,6 +382,31 @@ export default function WorkoutPlansPage() {
           onStart={(plan) => {
             // Create a workout session from the plan
             router.push(`/workouts/sessions/create?planId=${plan.id}`);
+          }}
+          onUseTemplate={(plan) => {
+            // Create a new workout plan from template
+            const templateData = encodeURIComponent(
+              JSON.stringify({
+                name: plan.name,
+                description: plan.description,
+                difficulty: plan.difficulty,
+                durationWeeks: plan.durationWeeks,
+                frequencyPerWeek: plan.frequencyPerWeek,
+                exercises: plan.exercises.map((ex) => ({
+                  exerciseId: ex.exerciseId,
+                  name: ex.name,
+                  sets: ex.sets,
+                  reps: ex.reps,
+                  durationSeconds: ex.durationSeconds,
+                  weight: ex.weight || 0,
+                  restSeconds: ex.restSeconds || 60,
+                  notes: ex.notes || '',
+                  order: ex.order,
+                })),
+                tags: plan.tags,
+              })
+            );
+            router.push(`/workouts/create?fromTemplate=${templateData}`);
           }}
           onCreatePlan={() => {
             if (view === 'templates') {
@@ -369,8 +441,10 @@ export default function WorkoutPlansPage() {
 // Schedule View Component
 function ScheduleView({
   scheduledWorkouts,
+  onDeleteScheduledWorkout,
 }: {
   scheduledWorkouts: ScheduledWorkout[];
+  onDeleteScheduledWorkout: (scheduleId: string, workoutName: string) => void;
 }) {
   const today = new Date().toISOString().split('T')[0];
   const upcoming = scheduledWorkouts.filter(
@@ -397,7 +471,11 @@ function ScheduleView({
             upcoming
               .filter((w) => w.scheduledDate === today)
               .map((workout) => (
-                <ScheduledWorkoutCard key={workout.id} workout={workout} />
+                <ScheduledWorkoutCard
+                  key={workout.id}
+                  workout={workout}
+                  onDelete={onDeleteScheduledWorkout}
+                />
               ))
           )}
         </div>
@@ -417,6 +495,7 @@ function ScheduleView({
                 key={workout.id}
                 workout={workout}
                 isCompact
+                onDelete={onDeleteScheduledWorkout}
               />
             ))}
         </div>
@@ -430,6 +509,7 @@ function PlansGrid({
   plans,
   onSchedule,
   onStart,
+  onUseTemplate,
   onCreatePlan,
   loading,
   error,
@@ -438,6 +518,7 @@ function PlansGrid({
   plans: WorkoutPlan[];
   onSchedule: (plan: WorkoutPlan) => void;
   onStart: (plan: WorkoutPlan) => void;
+  onUseTemplate?: (plan: WorkoutPlan) => void;
   onCreatePlan: () => void;
   loading: boolean;
   error: string | null;
@@ -506,6 +587,7 @@ function PlansGrid({
           plan={plan}
           onSchedule={onSchedule}
           onStart={onStart}
+          onUseTemplate={onUseTemplate}
           isTemplate={view === 'templates'}
         />
       ))}
@@ -518,11 +600,13 @@ function WorkoutPlanCard({
   plan,
   onSchedule,
   onStart,
+  onUseTemplate,
   isTemplate = false,
 }: {
   plan: WorkoutPlan;
   onSchedule: (plan: WorkoutPlan) => void;
   onStart: (plan: WorkoutPlan) => void;
+  onUseTemplate?: (plan: WorkoutPlan) => void;
   isTemplate?: boolean;
 }) {
   return (
@@ -597,20 +681,41 @@ function WorkoutPlanCard({
         )}
 
         <div className="flex space-x-2">
-          <button
-            onClick={() => onStart(plan)}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
-          >
-            <Play className="h-4 w-4" />
-            <span>Start Now</span>
-          </button>
-          <button
-            onClick={() => onSchedule(plan)}
-            className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center space-x-2"
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Schedule</span>
-          </button>
+          {isTemplate && onUseTemplate ? (
+            <>
+              <button
+                onClick={() => onUseTemplate(plan)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Use Template</span>
+              </button>
+              <button
+                onClick={() => onStart(plan)}
+                className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center space-x-2"
+              >
+                <Play className="h-4 w-4" />
+                <span>Start Session</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => onStart(plan)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
+              >
+                <Play className="h-4 w-4" />
+                <span>Start Now</span>
+              </button>
+              <button
+                onClick={() => onSchedule(plan)}
+                className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center space-x-2"
+              >
+                <Calendar className="h-4 w-4" />
+                <span>Schedule</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -621,9 +726,11 @@ function WorkoutPlanCard({
 function ScheduledWorkoutCard({
   workout,
   isCompact = false,
+  onDelete,
 }: {
   workout: ScheduledWorkout;
   isCompact?: boolean;
+  onDelete?: (scheduleId: string, workoutName: string) => void;
 }) {
   const router = useRouter();
 
@@ -641,17 +748,28 @@ function ScheduledWorkoutCard({
             </p>
           </div>
         </div>
-        <button
-          onClick={() =>
-            router.push(
-              `/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
-            )
-          }
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-        >
-          <Play className="h-4 w-4" />
-          <span>Start</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() =>
+              router.push(
+                `/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
+              )
+            }
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+          >
+            <Play className="h-4 w-4" />
+            <span>Start</span>
+          </button>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(workout.id, workout.planName)}
+              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Delete scheduled workout"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -679,17 +797,28 @@ function ScheduledWorkoutCard({
           {workout.status}
         </span>
       </div>
-      <button
-        onClick={() =>
-          router.push(
-            `/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
-          )
-        }
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
-      >
-        <Play className="h-4 w-4" />
-        <span>Start Workout</span>
-      </button>
+      <div className="flex space-x-2">
+        <button
+          onClick={() =>
+            router.push(
+              `/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
+            )
+          }
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
+        >
+          <Play className="h-4 w-4" />
+          <span>Start Workout</span>
+        </button>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(workout.id, workout.planName)}
+            className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2 transition-colors"
+            title="Delete scheduled workout"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -650,37 +650,7 @@ pub async fn clone_exercise_handler(
     }
 }
 
-// Progress Photo Handlers
-pub async fn get_progress_photos_handler(
-    payload: Value,
-    dynamodb_client: &DynamoDbClient,
-) -> Result<Value, Error> {
-    let user_id = payload["queryStringParameters"]["userId"]
-        .as_str()
-        .map(|s| s.to_string());
 
-    match get_progress_photos_from_db(user_id, dynamodb_client).await {
-        Ok(photos) => create_response(200, photos),
-        Err(e) => create_response(500, json!({"message": format!("Failed to retrieve progress photos: {}", e)})),
-    }
-}
-
-pub async fn delete_progress_photo_handler(
-    payload: Value,
-    dynamodb_client: &DynamoDbClient,
-    s3_client: &S3Client,
-) -> Result<Value, Error> {
-    let photo_id = payload["pathParameters"]["photoId"].as_str().unwrap_or("");
-
-    if photo_id.is_empty() {
-        return create_response(400, json!({"message": "Photo ID is required"}));
-    }
-
-    match delete_progress_photo_from_db(photo_id, dynamodb_client, s3_client).await {
-        Ok(_) => create_response(200, json!({"message": "Progress photo deleted successfully"})),
-        Err(e) => create_response(500, json!({"message": format!("Failed to delete progress photo: {}", e)})),
-    }
-}
 
 // Analytics Handlers
 pub async fn get_workout_analytics_handler(
@@ -694,6 +664,27 @@ pub async fn get_workout_analytics_handler(
     match get_workout_analytics_from_db(user_id, dynamodb_client).await {
         Ok(analytics) => create_response(200, analytics),
         Err(e) => create_response(500, json!({"message": format!("Failed to retrieve workout analytics: {}", e)})),
+    }
+}
+
+pub async fn get_workout_insights_handler(
+    payload: Value,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<Value, Error> {
+    let user_id = payload["queryStringParameters"]["userId"]
+        .as_str()
+        .unwrap_or("");
+    let time_range = payload["queryStringParameters"]["timeRange"]
+        .as_str()
+        .unwrap_or("30d");
+
+    if user_id.is_empty() {
+        return create_response(400, json!({"message": "User ID is required"}));
+    }
+
+    match get_workout_insights_from_db(user_id, time_range, dynamodb_client).await {
+        Ok(insights) => create_response(200, insights),
+        Err(e) => create_response(500, json!({"message": format!("Failed to retrieve workout insights: {}", e)})),
     }
 }
 
