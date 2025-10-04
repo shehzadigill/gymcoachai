@@ -305,7 +305,7 @@ export class GymCoachAIStack extends cdk.Stack {
       this,
       'ProgressPhotosOAI',
       {
-        comment: 'Origin Access Identity for Progress Photos bucket',
+        comment: 'Origin Access Identity for Progress Photos bucket v2',
       }
     );
 
@@ -580,9 +580,12 @@ export class GymCoachAIStack extends cdk.Stack {
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
           '/progress-photos/*': {
-            origin: new origins.S3Origin(this.progressPhotosBucket, {
-              originAccessIdentity: progressPhotosOAI,
-            }),
+            origin: origins.S3BucketOrigin.withOriginAccessIdentity(
+              this.progressPhotosBucket,
+              {
+                originAccessIdentity: progressPhotosOAI,
+              }
+            ),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
@@ -627,6 +630,7 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Grant analytics service full access to progress photos bucket
     this.progressPhotosBucket.grantReadWrite(analyticsServiceLambda);
+
     // Allow service to read from the main DynamoDB table
     this.mainTable.grantReadData(analyticsServiceLambda);
     this.mainTable.grantReadData(nutritionServiceLambda);

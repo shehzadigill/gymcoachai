@@ -198,6 +198,10 @@ export default function AdvancedProgressPhotosPage() {
         ),
       ]);
 
+      console.log('Fetched photos data:', photosData);
+      console.log('Fetched analytics data:', analyticsData);
+      console.log('Fetched timeline data:', timelineData);
+
       if (photosData && Array.isArray(photosData)) {
         // Transform API response to match interface
         const transformedPhotos: ProgressPhoto[] = photosData.map(

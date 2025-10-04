@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use aws_sdk_dynamodb::{Client as DynamoDbClient, Error as DynamoError};
+use aws_sdk_dynamodb::{Client as DynamoDbClient, Error as DynamoError, error::SdkError};
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_s3::{Client as S3Client, primitives::ByteStream};
 use serde_json;
-use uuid::Uuid;
-use chrono::Utc;
+use base64::{Engine as _, engine::general_purpose};
 use crate::models::*;
 
 pub struct AnalyticsDatabase {
@@ -438,8 +437,8 @@ impl AnalyticsDatabase {
         photo: &ProgressPhoto,
     ) -> Result<(), DynamoError> {
         let mut item = HashMap::new();
-        item.insert("pk".to_string(), AttributeValue::S(format!("USER#{}", photo.user_id)));
-        item.insert("sk".to_string(), AttributeValue::S(format!("PHOTO#{}#{}", photo.id, photo.taken_at)));
+        item.insert("PK".to_string(), AttributeValue::S(format!("USER#{}", photo.user_id)));
+        item.insert("SK".to_string(), AttributeValue::S(format!("PHOTO#{}#{}", photo.id, photo.taken_at)));
         item.insert("id".to_string(), AttributeValue::S(photo.id.clone()));
         item.insert("user_id".to_string(), AttributeValue::S(photo.user_id.clone()));
         item.insert("photo_type".to_string(), AttributeValue::S(photo.photo_type.clone()));
@@ -447,6 +446,7 @@ impl AnalyticsDatabase {
         item.insert("s3_key".to_string(), AttributeValue::S(photo.s3_key.clone()));
         item.insert("taken_at".to_string(), AttributeValue::S(photo.taken_at.clone()));
         item.insert("created_at".to_string(), AttributeValue::S(photo.created_at.clone()));
+        item.insert("updated_at".to_string(), AttributeValue::S(photo.updated_at.clone()));
         
         if let Some(workout_session_id) = &photo.workout_session_id {
             item.insert("workout_session_id".to_string(), AttributeValue::S(workout_session_id.clone()));
@@ -454,6 +454,18 @@ impl AnalyticsDatabase {
         
         if let Some(notes) = &photo.notes {
             item.insert("notes".to_string(), AttributeValue::S(notes.clone()));
+        }
+
+        // Add tags
+        if !photo.tags.is_empty() {
+            item.insert("tags".to_string(), AttributeValue::Ss(photo.tags.clone()));
+        }
+
+        // Add metadata if present
+        if let Some(metadata) = &photo.metadata {
+            if let Ok(metadata_json) = serde_json::to_string(metadata) {
+                item.insert("metadata".to_string(), AttributeValue::S(metadata_json));
+            }
         }
 
         // Add to GSI for date-based queries
@@ -475,30 +487,41 @@ impl AnalyticsDatabase {
         user_id: &str,
         photo_id: &str,
         content_type: &str,
-        file_data: Vec<u8>,
-    ) -> Result<String, anyhow::Error> {
-        let file_extension = match content_type {
-            "image/jpeg" => "jpg",
-            "image/png" => "png",
-            "image/gif" => "gif",
-            "image/webp" => "webp",
-            _ => return Err(anyhow::anyhow!("Unsupported image format")),
+        image_data: &str,
+    ) -> Result<String, String> {
+        let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+        let s3_client = aws_sdk_s3::Client::new(&config);
+        
+        // Decode base64 image data
+        let image_bytes = match general_purpose::STANDARD.decode(image_data) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                return Err("Invalid base64 image data".to_string());
+            },
         };
 
-        let s3_key = format!("users/{}/progress-photos/{}.{}", user_id, photo_id, file_extension);
+        let key = format!("progress-photos/users/{}/{}.jpg", user_id, photo_id);
+        let bucket_name = "gymcoach-ai-progress-photos-345868259891";
         
-        self.s3_client
+        match s3_client
             .put_object()
-            .bucket(&self.progress_photos_bucket)
-            .key(&s3_key)
+            .bucket(bucket_name)
+            .key(&key)
+            .body(ByteStream::from(image_bytes))
             .content_type(content_type)
-            .body(ByteStream::from(file_data))
             .send()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to upload to S3: {}", e))?;
-
-        let photo_url = format!("https://{}.s3.amazonaws.com/{}", self.progress_photos_bucket, s3_key);
-        Ok(photo_url)
+            .await 
+        {
+            Ok(_) => {
+                // Use the actual CloudFront domain from deployment
+                // CloudFront is configured to serve /progress-photos/* path
+                let cloudfront_domain = "d12pveuxxq3vvn.cloudfront.net";
+                Ok(format!("https://{}/{}", cloudfront_domain, key))
+            },
+            Err(e) => {
+                return Err(format!("Failed to upload to S3: {}", e));
+            },
+        }
     }
 
     pub async fn get_progress_photos(
@@ -509,7 +532,7 @@ impl AnalyticsDatabase {
         end_date: Option<&str>,
         limit: Option<u32>,
     ) -> Result<Vec<ProgressPhoto>, DynamoError> {
-        let mut key_condition = "pk = :pk AND begins_with(sk, :sk_prefix)".to_string();
+        let mut key_condition = "PK = :pk AND begins_with(SK, :sk_prefix)".to_string();
         let mut expression_values = HashMap::new();
         expression_values.insert(":pk".to_string(), AttributeValue::S(format!("USER#{}", user_id)));
         expression_values.insert(":sk_prefix".to_string(), AttributeValue::S("PHOTO#".to_string()));
@@ -579,8 +602,8 @@ impl AnalyticsDatabase {
         let mut update_item = self.client
             .update_item()
             .table_name(&self.table_name)
-            .key("pk", AttributeValue::S(format!("USER#{}", user_id)))
-            .key("sk", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
             .update_expression(update_expression)
             .return_values(aws_sdk_dynamodb::types::ReturnValue::AllNew);
 
@@ -624,8 +647,8 @@ impl AnalyticsDatabase {
         let get_result = self.client
             .get_item()
             .table_name(&self.table_name)
-            .key("pk", AttributeValue::S(format!("USER#{}", user_id)))
-            .key("sk", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
             .send()
             .await?;
 
@@ -647,8 +670,8 @@ impl AnalyticsDatabase {
         self.client
             .delete_item()
             .table_name(&self.table_name)
-            .key("pk", AttributeValue::S(format!("USER#{}", user_id)))
-            .key("sk", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
             .send()
             .await?;
 
@@ -749,7 +772,7 @@ impl AnalyticsDatabase {
                 id: photo_id.clone(),
                 user_id: user_id.to_string(),
                 photo_type: photo_type.to_string(),
-                photo_url: format!("https://example.com/{}.jpg", photo_type),
+                photo_url: format!("https://d12pveuxxq3vvn.cloudfront.net/progress-photos/users/{}/{}.jpg", user_id, photo_type),
                 s3_key: format!("photos/{}.jpg", photo_id),
                 taken_at: taken_at.to_string(),
                 notes: Some(format!("{} photo", photo_type)),
@@ -807,7 +830,7 @@ impl AnalyticsDatabase {
                         id: "recent1".to_string(),
                         user_id: user_id.to_string(),
                         photo_type: "progress".to_string(),
-                        photo_url: "https://example.com/recent1.jpg".to_string(),
+                        photo_url: "https://d12pveuxxq3vvn.cloudfront.net/progress-photos/users/sample/recent1.jpg".to_string(),
                         s3_key: "photos/recent1.jpg".to_string(),
                         taken_at: "2024-10-01T10:00:00Z".to_string(),
                         notes: Some("Latest progress".to_string()),
@@ -834,7 +857,7 @@ impl AnalyticsDatabase {
                         id: "mid1".to_string(),
                         user_id: user_id.to_string(),
                         photo_type: "progress".to_string(),
-                        photo_url: "https://example.com/mid1.jpg".to_string(),
+                        photo_url: "https://d12pveuxxq3vvn.cloudfront.net/progress-photos/users/sample/mid1.jpg".to_string(),
                         s3_key: "photos/mid1.jpg".to_string(),
                         taken_at: "2024-09-15T10:00:00Z".to_string(),
                         notes: Some("Mid-month check-in".to_string()),
@@ -868,8 +891,8 @@ impl AnalyticsDatabase {
         let response = self.client
             .get_item()
             .table_name(&self.table_name)
-            .key("pk", AttributeValue::S(format!("USER#{}", user_id)))
-            .key("sk", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("PHOTO#{}#{}", photo_id, taken_at)))
             .send()
             .await?;
 

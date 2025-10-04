@@ -297,7 +297,7 @@ impl EnhancedHandlers {
         let created_at = taken_at.clone();
 
         // Upload to S3
-        match self.database.upload_progress_photo_to_s3(&user_id, &photo_id, content_type, file_data).await {
+        match self.database.upload_progress_photo_to_s3(&user_id, &photo_id, content_type, image_data).await {
             Ok(photo_url) => {
                 // Create progress photo record
                 let progress_photo = ProgressPhoto {

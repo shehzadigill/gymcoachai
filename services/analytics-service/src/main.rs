@@ -15,12 +15,15 @@ use tracing::{info, error};
 use std::sync::Arc;
 use once_cell::sync::{OnceCell, Lazy};
 use chrono::Utc;
+use uuid;
+use base64::{self, Engine as _};
 
 use handlers::*;
 use enhanced_handlers::EnhancedHandlers;
 use enhanced_database::AnalyticsDatabase;
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 use aws_lambda_events::event::apigw::ApiGatewayProxyRequest;
+use models::ProgressPhoto;
 
 // Global clients for cold start optimization
 static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
@@ -253,9 +256,47 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                 }).to_string()
             }))
         }
-        // Progress Photos endpoints
-        ("GET", path) if path.contains("/progress-photos") => {
-            info!("Route: GET progress-photos - {}", path);
+        // Progress Photos Analytics endpoint
+        ("GET", path) if path.contains("/progress-photos") && (path.ends_with("/analytics") || path.contains("/analytics?")) => {
+            info!("🔍 ANALYTICS ROUTE MATCHED: GET progress-photos analytics - {}", path);
+            
+            match handle_get_progress_photo_analytics_safely(event.clone()).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    error!("GET progress-photos analytics error: {}", e);
+                    Ok(json!({
+                        "statusCode": 500,
+                        "headers": get_cors_headers(),
+                        "body": json!({
+                            "error": "Database Error",
+                            "message": format!("Failed to retrieve progress photos: {}", e)
+                        }).to_string()
+                    }))
+                }
+            }
+        }
+        // Progress Photos Timeline endpoint
+        ("GET", path) if path.contains("/progress-photos") && (path.ends_with("/timeline") || path.contains("/timeline?")) => {
+            info!("📅 TIMELINE ROUTE MATCHED: GET progress-photos timeline - {}", path);
+            
+            match handle_get_progress_photo_timeline_safely(event.clone()).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    error!("GET progress-photos timeline error: {}", e);
+                    Ok(json!({
+                        "statusCode": 500,
+                        "headers": get_cors_headers(),
+                        "body": json!({
+                            "error": "Database Error",
+                            "message": format!("Failed to retrieve progress photos: {}", e)
+                        }).to_string()
+                    }))
+                }
+            }
+        }
+        // Progress Photos basic endpoints - must be more specific to avoid catching analytics/timeline
+        ("GET", path) if path.contains("/progress-photos") && !path.ends_with("/analytics") && !path.ends_with("/timeline") && !path.contains("/analytics?") && !path.contains("/timeline?") => {
+            info!("📷 PHOTOS ROUTE MATCHED: GET progress-photos - {}", path);
             
             // Try to implement real functionality with careful error handling
             match handle_get_progress_photos_safely(event.clone()).await {
@@ -273,8 +314,28 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
                 }
             }
         }
-        ("POST", path) if path.contains("/progress-photos") => {
-            info!("Route: POST progress-photos - {}", path);
+        // Progress Photos Upload endpoint - specific match for /upload
+        ("POST", path) if path.contains("/progress-photos") && path.contains("/upload") => {
+            info!("📤 UPLOAD ROUTE MATCHED: POST progress-photos upload - {}", path);
+            
+            // Try to implement real functionality with careful error handling
+            match handle_upload_progress_photo_safely(event.clone()).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    error!("POST progress-photos upload error: {}", e);
+                    Ok(json!({
+                        "statusCode": 500,
+                        "headers": get_cors_headers(),
+                        "body": json!({
+                            "error": "Internal Server Error",
+                            "message": format!("Failed to upload progress photo: {}", e)
+                        }).to_string()
+                    }))
+                }
+            }
+        }
+        ("POST", path) if path.contains("/progress-photos") && !path.contains("/analytics") && !path.contains("/timeline") && !path.contains("/upload") => {
+            info!("📷 PHOTOS ROUTE MATCHED: POST progress-photos - {}", path);
             
             // Try to implement real functionality with careful error handling
             match handle_upload_progress_photo_safely(event.clone()).await {
@@ -353,7 +414,7 @@ async fn handle_get_progress_photos_safely(event: Value) -> Result<Value, String
         .and_then(|p| p.as_str())
         .ok_or_else(|| "Missing path in request".to_string())?;
     
-    info!("Processing GET progress-photos for path: {}", path);
+    info!("📷 PHOTOS HANDLER: Processing GET progress-photos for path: {}", path);
     
     // Extract user_id from path like /api/analytics/progress-photos/{user_id}
     let parts: Vec<&str> = path.split('/').collect();
@@ -365,18 +426,56 @@ async fn handle_get_progress_photos_safely(event: Value) -> Result<Value, String
     
     info!("Extracted user_id: {}", user_id);
     
-    // For now, return a success response with the extracted user_id
-    // Later we'll add the actual database query
-    Ok(json!({
-        "statusCode": 200,
-        "headers": get_cors_headers(),
-        "body": json!({
-            "message": "Progress photos retrieved successfully",
-            "user_id": user_id,
-            "photos": [],
-            "total": 0
-        }).to_string()
-    }))
+    // Step 2: Parse query parameters
+    let default_params = serde_json::Map::new();
+    let query_params = event.get("queryStringParameters")
+        .and_then(|q| q.as_object())
+        .unwrap_or(&default_params);
+    
+    let photo_type = query_params.get("photo_type")
+        .and_then(|t| t.as_str());
+    let start_date = query_params.get("start_date")
+        .and_then(|d| d.as_str());
+    let end_date = query_params.get("end_date")
+        .and_then(|d| d.as_str());
+    let limit = query_params.get("limit")
+        .and_then(|l| l.as_str())
+        .and_then(|l| l.parse::<u32>().ok())
+        .unwrap_or(50);
+    
+    // Step 3: Initialize database
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    let bucket_name = std::env::var("PROGRESS_PHOTOS_BUCKET").unwrap_or_else(|_| "gymcoach-ai-progress-photos".to_string());
+    
+    let database = AnalyticsDatabase::new(
+        (**DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).clone(),
+        (**S3_CLIENT.get().expect("S3 not initialized")).clone(),
+        table_name,
+        bucket_name
+    );
+    
+    // Step 4: Fetch photos from database
+    match database.get_progress_photos(&user_id, photo_type, start_date, end_date, Some(limit)).await {
+        Ok(photos) => {
+            info!("Retrieved {} photos for user {}", photos.len(), user_id);
+            Ok(json!({
+                "statusCode": 200,
+                "headers": get_cors_headers(),
+                "body": serde_json::to_string(&photos).map_err(|e| format!("Serialization error: {}", e))?
+            }))
+        },
+        Err(e) => {
+            error!("Failed to retrieve progress photos: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Database Error",
+                    "message": format!("Failed to retrieve progress photos: {}", e)
+                }).to_string()
+            }))
+        }
+    }
 }
 
 async fn handle_upload_progress_photo_safely(event: Value) -> Result<Value, String> {
@@ -388,12 +487,12 @@ async fn handle_upload_progress_photo_safely(event: Value) -> Result<Value, Stri
     
     info!("Processing POST progress-photos for path: {}", path);
     
-    // Extract user_id from path like /api/analytics/progress-photos/{user_id}
+    // Extract user_id from path like /api/analytics/progress-photos/{user_id}/upload
     let parts: Vec<&str> = path.split('/').collect();
     let user_id = if parts.len() >= 5 && parts[1] == "api" && parts[2] == "analytics" && parts[3] == "progress-photos" {
         parts[4].to_string()
     } else {
-        return Err("Invalid path format - expected /api/analytics/progress-photos/{user_id}".to_string());
+        return Err("Invalid path format - expected /api/analytics/progress-photos/{user_id}/upload".to_string());
     };
     
     info!("Extracted user_id: {}", user_id);
@@ -425,25 +524,98 @@ async fn handle_upload_progress_photo_safely(event: Value) -> Result<Value, Stri
         .and_then(|n| n.as_str())
         .map(String::from);
     
+    let workout_session_id = body.get("workoutSessionId")
+        .and_then(|id| id.as_str())
+        .map(String::from);
+    
     info!("Processing photo upload: type={}, content_type={}, has_notes={}", 
           photo_type, content_type, notes.is_some());
     
-    // For now, return a success response with the parsed data
-    // Later we'll add the actual S3 upload and database save
-    Ok(json!({
-        "statusCode": 200,
-        "headers": get_cors_headers(),
-        "body": json!({
-            "message": "Progress photo uploaded successfully",
-            "user_id": user_id,
-            "photo_id": "temp-photo-id-123",
-            "photo_type": photo_type,
-            "content_type": content_type,
-            "notes": notes,
-            "image_size": image_data.len(),
-            "created_at": chrono::Utc::now().to_rfc3339()
-        }).to_string()
-    }))
+    // Step 3: Initialize database and S3 clients
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    let bucket_name = std::env::var("PROGRESS_PHOTOS_BUCKET").unwrap_or_else(|_| "gymcoach-ai-progress-photos".to_string());
+    
+    let database = AnalyticsDatabase::new(
+        (**DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).clone(),
+        (**S3_CLIENT.get().expect("S3 not initialized")).clone(),
+        table_name,
+        bucket_name
+    );
+    
+    // Step 4: Decode base64 image data
+    let file_data = base64::engine::general_purpose::STANDARD
+        .decode(image_data)
+        .map_err(|_| "Invalid base64 image data".to_string())?;
+    
+    // Validate file size (max 10MB)
+    if file_data.len() > 10 * 1024 * 1024 {
+        return Ok(json!({
+            "statusCode": 413,
+            "headers": get_cors_headers(),
+            "body": json!({
+                "error": "File too large",
+                "message": "Maximum file size is 10MB"
+            }).to_string()
+        }));
+    }
+    
+    // Step 5: Generate unique photo ID and upload to S3
+    let photo_id = uuid::Uuid::new_v4().to_string();
+    let taken_at = Utc::now().to_rfc3339();
+    let created_at = taken_at.clone();
+    
+    match database.upload_progress_photo_to_s3(&user_id, &photo_id, &content_type, &image_data).await {
+        Ok(photo_url) => {
+            // Step 6: Create progress photo record in database
+            let progress_photo = ProgressPhoto {
+                id: photo_id.clone(),
+                user_id: user_id.clone(),
+                workout_session_id,
+                photo_type: photo_type.clone(),
+                photo_url: photo_url.clone(),
+                s3_key: format!("users/{}/progress-photos/{}", user_id, photo_id),
+                taken_at: taken_at.clone(),
+                notes,
+                created_at: created_at.clone(),
+                updated_at: created_at,
+                tags: Vec::new(),
+                metadata: None,
+            };
+            
+            match database.create_progress_photo(&progress_photo).await {
+                Ok(_) => {
+                    info!("Successfully uploaded photo {} for user {}", photo_id, user_id);
+                    Ok(json!({
+                        "statusCode": 200,
+                        "headers": get_cors_headers(),
+                        "body": json!(progress_photo).to_string()
+                    }))
+                },
+                Err(e) => {
+                    error!("Failed to save progress photo to database: {}", e);
+                    Ok(json!({
+                        "statusCode": 500,
+                        "headers": get_cors_headers(),
+                        "body": json!({
+                            "error": "Database Error",
+                            "message": format!("Failed to save progress photo: {}", e)
+                        }).to_string()
+                    }))
+                }
+            }
+        },
+        Err(e) => {
+            error!("Failed to upload photo to S3: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Upload Error",
+                    "message": format!("Failed to upload photo: {}", e)
+                }).to_string()
+            }))
+        }
+    }
 }
 
 async fn handle_update_progress_photo_safely(event: Value) -> Result<Value, String> {
@@ -547,6 +719,264 @@ async fn handle_delete_progress_photo_safely(event: Value) -> Result<Value, Stri
             "deleted_at": chrono::Utc::now().to_rfc3339()
         }).to_string()
     }))
+}
+
+async fn handle_get_progress_photo_analytics_safely(event: Value) -> Result<Value, String> {
+    // Step 1: Extract user_id from the path
+    let path = event.get("rawPath")
+        .or_else(|| event.get("path"))
+        .and_then(|p| p.as_str())
+        .ok_or_else(|| "Missing path in request".to_string())?;
+    
+    info!("🔍 ANALYTICS HANDLER: Processing GET progress-photos analytics for path: {}", path);
+    
+    // Extract user_id from path - more flexible parsing
+    let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
+    info!("Path parts: {:?}", parts);
+    
+    // Look for progress-photos in the path and extract user_id
+    let user_id = if let Some(progress_index) = parts.iter().position(|&p| p == "progress-photos") {
+        if progress_index + 1 < parts.len() {
+            parts[progress_index + 1].to_string()
+        } else {
+            return Err("Missing user_id in path after progress-photos".to_string());
+        }
+    } else {
+        return Err("Path does not contain progress-photos segment".to_string());
+    };
+    
+    // Step 2: Extract time_range from query parameters
+    let query_params = event.get("queryStringParameters")
+        .and_then(|q| q.as_object());
+    
+    let time_range = query_params
+        .and_then(|params| params.get("time_range"))
+        .and_then(|tr| tr.as_str())
+        .unwrap_or("1m"); // default to 1 month
+    
+    info!("Extracted user_id: {}, time_range: {}", user_id, time_range);
+    
+    // Step 3: Initialize database
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    let bucket_name = std::env::var("PROGRESS_PHOTOS_BUCKET").unwrap_or_else(|_| "gymcoach-ai-progress-photos".to_string());
+    
+    let database = AnalyticsDatabase::new(
+        (**DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).clone(),
+        (**S3_CLIENT.get().expect("S3 not initialized")).clone(),
+        table_name,
+        bucket_name
+    );
+    
+    // Step 4: Get progress photos from database with error handling
+    let photos = match database.get_progress_photos(&user_id, None, None, None, None).await {
+        Ok(photos) => {
+            info!("Successfully retrieved {} photos for user {}", photos.len(), user_id);
+            photos
+        },
+        Err(e) => {
+            error!("Failed to get progress photos for user {}: {:?}", user_id, e);
+            // Return empty analytics instead of failing
+            vec![]
+        }
+    };
+    
+    // Step 5: Calculate analytics based on time range
+    let analytics = calculate_progress_photo_analytics(&photos, time_range);
+    
+    Ok(json!({
+        "statusCode": 200,
+        "headers": get_cors_headers(),
+        "body": serde_json::to_string(&analytics).map_err(|e| format!("Serialization error: {}", e))?
+    }))
+}
+
+async fn handle_get_progress_photo_timeline_safely(event: Value) -> Result<Value, String> {
+    // Step 1: Extract user_id from the path
+    let path = event.get("rawPath")
+        .or_else(|| event.get("path"))
+        .and_then(|p| p.as_str())
+        .ok_or_else(|| "Missing path in request".to_string())?;
+    
+    info!("📅 TIMELINE HANDLER: Processing GET progress-photos timeline for path: {}", path);
+    
+    // Extract user_id from path - more flexible parsing
+    let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
+    info!("Path parts: {:?}", parts);
+    
+    // Look for progress-photos in the path and extract user_id
+    let user_id = if let Some(progress_index) = parts.iter().position(|&p| p == "progress-photos") {
+        if progress_index + 1 < parts.len() {
+            parts[progress_index + 1].to_string()
+        } else {
+            return Err("Missing user_id in path after progress-photos".to_string());
+        }
+    } else {
+        return Err("Path does not contain progress-photos segment".to_string());
+    };
+    
+    // Step 2: Extract time_range from query parameters
+    let query_params = event.get("queryStringParameters")
+        .and_then(|q| q.as_object());
+    
+    let time_range = query_params
+        .and_then(|params| params.get("time_range"))
+        .and_then(|tr| tr.as_str())
+        .unwrap_or("1m"); // default to 1 month
+    
+    info!("Extracted user_id: {}, time_range: {}", user_id, time_range);
+    
+    // Step 3: Initialize database
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    let bucket_name = std::env::var("PROGRESS_PHOTOS_BUCKET").unwrap_or_else(|_| "gymcoach-ai-progress-photos".to_string());
+    
+    let database = AnalyticsDatabase::new(
+        (**DYNAMODB_CLIENT.get().expect("DynamoDB not initialized")).clone(),
+        (**S3_CLIENT.get().expect("S3 not initialized")).clone(),
+        table_name,
+        bucket_name
+    );
+    
+    // Step 4: Get progress photos from database with error handling
+    let photos = match database.get_progress_photos(&user_id, None, None, None, None).await {
+        Ok(photos) => {
+            info!("Successfully retrieved {} photos for user {}", photos.len(), user_id);
+            photos
+        },
+        Err(e) => {
+            error!("Failed to get progress photos for user {}: {:?}", user_id, e);
+            // Return empty timeline instead of failing
+            vec![]
+        }
+    };
+    
+    // Step 5: Create timeline based on time range
+    let timeline = create_progress_photo_timeline(&photos, time_range);
+    
+    Ok(json!({
+        "statusCode": 200,
+        "headers": get_cors_headers(),
+        "body": serde_json::to_string(&timeline).map_err(|e| format!("Serialization error: {}", e))?
+    }))
+}
+
+fn calculate_progress_photo_analytics(photos: &[models::ProgressPhoto], time_range: &str) -> serde_json::Value {
+    // Calculate basic analytics from photos
+    let total_photos = photos.len();
+    
+    // Group by photo type if available
+    let mut photos_by_type = std::collections::HashMap::new();
+    for photo in photos {
+        let photo_type = &photo.photo_type;
+        *photos_by_type.entry(photo_type.to_string()).or_insert(0) += 1;
+    }
+    
+    // Group photos by month
+    let mut photos_by_month = Vec::new();
+    // TODO: Group by actual months when we have proper date parsing
+    if !photos.is_empty() {
+        photos_by_month.push(json!({
+            "month": "Current",
+            "count": total_photos,
+            "types": photos_by_type.clone()
+        }));
+    }
+    
+    // Calculate upload frequency
+    let days_in_period = match time_range {
+        "1w" => 7.0,
+        "1m" => 30.0,
+        "3m" => 90.0,
+        "6m" => 180.0,
+        "1y" => 365.0,
+        _ => 30.0, // default to monthly
+    };
+    
+    let daily_average = total_photos as f64 / days_in_period;
+    let weekly_average = daily_average * 7.0;
+    let monthly_average = daily_average * 30.0;
+    
+    let upload_frequency = json!({
+        "daily_average": daily_average,
+        "weekly_average": weekly_average,
+        "monthly_average": monthly_average,
+        "longest_streak": if total_photos > 0 { 1 } else { 0 },
+        "current_streak": if total_photos > 0 { 1 } else { 0 }
+    });
+    
+    // Calculate transformation insights
+    let transformation_insights = json!({
+        "total_duration_days": days_in_period as i32,
+        "milestone_photos": [],
+        "progress_indicators": []
+    });
+    
+    json!({
+        "total_photos": total_photos,
+        "photos_by_type": photos_by_type,
+        "photos_by_month": photos_by_month,
+        "upload_frequency": upload_frequency,
+        "consistency_score": if total_photos > 0 { 0.8 } else { 0.0 },
+        "transformation_insights": transformation_insights
+    })
+}
+
+fn create_progress_photo_timeline(photos: &[models::ProgressPhoto], time_range: &str) -> serde_json::Value {
+    // Sort photos by taken_at date
+    let mut sorted_photos = photos.to_vec();
+    sorted_photos.sort_by(|a, b| {
+        a.taken_at.cmp(&b.taken_at)
+    });
+    
+    // Group photos by date for timeline entries
+    let mut timeline_entries = Vec::new();
+    let mut current_date = String::new();
+    let mut current_photos = Vec::new();
+    
+    for (index, photo) in sorted_photos.iter().enumerate() {
+        // Extract date from taken_at (assuming ISO format)
+        let photo_date = photo.taken_at.split('T').next().unwrap_or(&photo.taken_at).to_string();
+        
+        if photo_date != current_date {
+            // If we have accumulated photos for previous date, add timeline entry
+            if !current_photos.is_empty() {
+                timeline_entries.push(json!({
+                    "date": current_date,
+                    "photos": current_photos,
+                    "week_number": (index / 7) + 1,
+                    "month_name": "Current", // TODO: Parse actual month name
+                    "days_since_start": index,
+                    "workout_context": {
+                        "sessions_that_week": 3,
+                        "primary_focus": "Progress tracking",
+                        "achievements": []
+                    }
+                }));
+                current_photos = Vec::new();
+            }
+            current_date = photo_date;
+        }
+        
+        // Add photo to current date group
+        current_photos.push(photo.clone());
+    }
+    
+    // Add the last group if exists
+    if !current_photos.is_empty() {
+        timeline_entries.push(json!({
+            "date": current_date,
+            "photos": current_photos,
+            "week_number": (sorted_photos.len() / 7) + 1,
+            "month_name": "Current",
+            "days_since_start": sorted_photos.len(),
+            "workout_context": {
+                "sessions_that_week": 3,
+                "primary_focus": "Progress tracking",
+                "achievements": []
+            }
+        }));
+    }
+    
+    serde_json::Value::Array(timeline_entries)
 }
 
 fn get_cors_headers() -> serde_json::Map<String, Value> {
