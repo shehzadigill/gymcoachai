@@ -205,17 +205,17 @@ pub async fn get_workout_sessions_from_db(
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
-    let mut query = dynamodb_client
-        .query()
-        .table_name(&table_name)
-        .key_condition_expression("PK = :pk")
-        .expression_attribute_values(":pk", AttributeValue::S("WORKOUT_SESSIONS".to_string()));
-    
-    if let Some(uid) = user_id {
-        query = query
-            .filter_expression("userId = :userId")
-            .expression_attribute_values(":userId", AttributeValue::S(uid));
-    }
+    let query = if let Some(uid) = user_id {
+        dynamodb_client
+            .query()
+            .table_name(&table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", uid)))
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("SESSION#".to_string()))
+    } else {
+        // If no user_id provided, scan all users' sessions - this is expensive and should be avoided
+        return Ok(serde_json::to_value(Vec::<WorkoutSession>::new())?);
+    };
     
     let result = query.send().await?;
     
@@ -225,17 +225,17 @@ pub async fn get_workout_sessions_from_db(
         .into_iter()
         .filter_map(|item| {
             Some(WorkoutSession {
-                id: item.get("id")?.as_s().ok()?.clone(),
-                user_id: item.get("userId")?.as_s().ok()?.clone(),
-                workout_plan_id: item.get("workoutPlanId").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                name: item.get("name")?.as_s().ok()?.clone(),
-                started_at: item.get("startedAt")?.as_s().ok()?.clone(),
-                completed_at: item.get("completedAt").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                duration_minutes: item.get("durationMinutes").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                notes: item.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.clone()),
-                rating: item.get("rating").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-                created_at: item.get("createdAt")?.as_s().ok()?.clone(),
-                updated_at: item.get("updatedAt")?.as_s().ok()?.clone(),
+                id: item.get("SessionId").or_else(|| item.get("id")).and_then(|v| v.as_s().ok())?.clone(),
+                user_id: item.get("UserId").or_else(|| item.get("userId")).and_then(|v| v.as_s().ok())?.clone(),
+                workout_plan_id: item.get("WorkoutPlanId").or_else(|| item.get("workoutPlanId")).and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                name: item.get("Name").or_else(|| item.get("name")).and_then(|v| v.as_s().ok())?.clone(),
+                started_at: item.get("StartedAt").or_else(|| item.get("startedAt")).and_then(|v| v.as_s().ok())?.clone(),
+                completed_at: item.get("CompletedAt").or_else(|| item.get("completedAt")).and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                duration_minutes: item.get("DurationMinutes").or_else(|| item.get("durationMinutes")).and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
+                notes: item.get("Notes").or_else(|| item.get("notes")).and_then(|v| v.as_s().ok()).map(|s| s.clone()),
+                rating: item.get("Rating").or_else(|| item.get("rating")).and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
+                created_at: item.get("CreatedAt").or_else(|| item.get("createdAt")).and_then(|v| v.as_s().ok())?.clone(),
+                updated_at: item.get("UpdatedAt").or_else(|| item.get("updatedAt")).and_then(|v| v.as_s().ok())?.clone(),
                 exercises: item.get("exercises")
                     .and_then(|v| v.as_l().ok())
                     .map(|list| list.iter().filter_map(|v| {
@@ -277,29 +277,29 @@ pub async fn create_workout_session_in_db(
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
     let mut item = std::collections::HashMap::new();
-    item.insert("PK".to_string(), AttributeValue::S("WORKOUT_SESSIONS".to_string()));
+    item.insert("PK".to_string(), AttributeValue::S(format!("USER#{}", session.user_id)));
     item.insert("SK".to_string(), AttributeValue::S(format!("SESSION#{}", session.id)));
-    item.insert("id".to_string(), AttributeValue::S(session.id.clone()));
-    item.insert("userId".to_string(), AttributeValue::S(session.user_id.clone()));
-    item.insert("name".to_string(), AttributeValue::S(session.name.clone()));
-    item.insert("startedAt".to_string(), AttributeValue::S(session.started_at.clone()));
-    item.insert("createdAt".to_string(), AttributeValue::S(session.created_at.clone()));
-    item.insert("updatedAt".to_string(), AttributeValue::S(session.updated_at.clone()));
+    item.insert("SessionId".to_string(), AttributeValue::S(session.id.clone()));
+    item.insert("UserId".to_string(), AttributeValue::S(session.user_id.clone()));
+    item.insert("Name".to_string(), AttributeValue::S(session.name.clone()));
+    item.insert("StartedAt".to_string(), AttributeValue::S(session.started_at.clone()));
+    item.insert("CreatedAt".to_string(), AttributeValue::S(session.created_at.clone()));
+    item.insert("UpdatedAt".to_string(), AttributeValue::S(session.updated_at.clone()));
     
     if let Some(plan_id) = &session.workout_plan_id {
-        item.insert("workoutPlanId".to_string(), AttributeValue::S(plan_id.clone()));
+        item.insert("WorkoutPlanId".to_string(), AttributeValue::S(plan_id.clone()));
     }
     if let Some(completed_at) = &session.completed_at {
-        item.insert("completedAt".to_string(), AttributeValue::S(completed_at.clone()));
+        item.insert("CompletedAt".to_string(), AttributeValue::S(completed_at.clone()));
     }
     if let Some(duration) = session.duration_minutes {
-        item.insert("durationMinutes".to_string(), AttributeValue::N(duration.to_string()));
+        item.insert("DurationMinutes".to_string(), AttributeValue::N(duration.to_string()));
     }
     if let Some(notes) = &session.notes {
-        item.insert("notes".to_string(), AttributeValue::S(notes.clone()));
+        item.insert("Notes".to_string(), AttributeValue::S(notes.clone()));
     }
     if let Some(rating) = session.rating {
-        item.insert("rating".to_string(), AttributeValue::N(rating.to_string()));
+        item.insert("Rating".to_string(), AttributeValue::N(rating.to_string()));
     }
     
     // Add exercises as a list of maps
@@ -365,27 +365,31 @@ pub async fn get_workout_session_from_db(
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
+    // Since we changed to USER#{user_id} pattern but don't have user_id here,
+    // we need to scan for the session. This is less efficient but necessary.
     let result = dynamodb_client
-        .get_item()
+        .scan()
         .table_name(&table_name)
-        .key("PK", AttributeValue::S("WORKOUT_SESSIONS".to_string()))
-        .key("SK", AttributeValue::S(format!("SESSION#{}", session_id)))
+        .filter_expression("SK = :sk")
+        .expression_attribute_values(":sk", AttributeValue::S(format!("SESSION#{}", session_id)))
         .send()
         .await?;
+    
+    let item = result.items.and_then(|items| items.into_iter().next());
 
-    if let Some(item) = result.item {
+    if let Some(item) = item {
         let session = WorkoutSession {
-            id: item.get("id").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
-            user_id: item.get("userId").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
-            workout_plan_id: item.get("workoutPlanId").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            name: item.get("name").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
-            started_at: item.get("startedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
-            completed_at: item.get("completedAt").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            duration_minutes: item.get("durationMinutes").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-            notes: item.get("notes").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
-            rating: item.get("rating").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
-            created_at: item.get("createdAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
-            updated_at: item.get("updatedAt").and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            id: item.get("SessionId").or_else(|| item.get("id")).and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            user_id: item.get("UserId").or_else(|| item.get("userId")).and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            workout_plan_id: item.get("WorkoutPlanId").or_else(|| item.get("workoutPlanId")).and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
+            name: item.get("Name").or_else(|| item.get("name")).and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            started_at: item.get("StartedAt").or_else(|| item.get("startedAt")).and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            completed_at: item.get("CompletedAt").or_else(|| item.get("completedAt")).and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
+            duration_minutes: item.get("DurationMinutes").or_else(|| item.get("durationMinutes")).and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
+            notes: item.get("Notes").or_else(|| item.get("notes")).and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
+            rating: item.get("Rating").or_else(|| item.get("rating")).and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()),
+            created_at: item.get("CreatedAt").or_else(|| item.get("createdAt")).and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
+            updated_at: item.get("UpdatedAt").or_else(|| item.get("updatedAt")).and_then(|v| v.as_s().ok()).map_or("", |v| v).to_string(),
             exercises: item.get("exercises")
                 .and_then(|v| v.as_l().ok())
                 .map(|list| list.iter().filter_map(|v| {
@@ -434,13 +438,28 @@ pub async fn delete_workout_session_from_db(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
     
-    dynamodb_client
-        .delete_item()
+    // First, find the session to get the user_id
+    let scan_result = dynamodb_client
+        .scan()
         .table_name(&table_name)
-        .key("PK", AttributeValue::S("WORKOUT_SESSIONS".to_string()))
-        .key("SK", AttributeValue::S(format!("SESSION#{}", session_id)))
+        .filter_expression("SK = :sk")
+        .expression_attribute_values(":sk", AttributeValue::S(format!("SESSION#{}", session_id)))
         .send()
         .await?;
+    
+    if let Some(items) = scan_result.items {
+        if let Some(item) = items.into_iter().next() {
+            if let Some(user_id) = item.get("UserId").or_else(|| item.get("userId")).and_then(|v| v.as_s().ok()) {
+                dynamodb_client
+                    .delete_item()
+                    .table_name(&table_name)
+                    .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                    .key("SK", AttributeValue::S(format!("SESSION#{}", session_id)))
+                    .send()
+                    .await?;
+            }
+        }
+    }
     
     Ok(())
 }
@@ -802,21 +821,158 @@ pub async fn get_workout_analytics_from_db(
     user_id: Option<String>,
     dynamodb_client: &DynamoDbClient,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    // This would typically aggregate data from multiple tables
-    // For now, return a basic analytics structure
+    let user_id = user_id.unwrap_or_else(|| "unknown".to_string());
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    
+    // Fetch all workout sessions for the user
+    let sessions_result = dynamodb_client
+        .query()
+        .table_name(&table_name)
+        .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+        .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", user_id)))
+        .expression_attribute_values(":sk_prefix", AttributeValue::S("SESSION#".to_string()))
+        .send()
+        .await?;
+
+    let sessions = sessions_result.items.unwrap_or_default();
+    
+    // Calculate analytics from sessions
+    let total_workouts = sessions.len() as i32;
+    let mut total_duration_minutes = 0;
+    let mut workouts_this_week = 0;
+    let mut workouts_this_month = 0;
+    let mut last_workout_date: Option<String> = None;
+    let mut exercise_counts = std::collections::HashMap::new();
+    
+    let now = chrono::Utc::now();
+    let week_ago = now - chrono::Duration::days(7);
+    let month_ago = now - chrono::Duration::days(30);
+    
+    for session in &sessions {
+        // Extract duration
+        if let Some(duration) = session.get("DurationMinutes").and_then(|v| v.as_n().ok()).and_then(|n| n.parse::<i32>().ok()) {
+            total_duration_minutes += duration;
+        }
+        
+        // Check date for weekly/monthly counts
+        if let Some(started_at) = session.get("StartedAt").and_then(|v| v.as_s().ok()) {
+            if let Ok(session_date) = chrono::DateTime::parse_from_rfc3339(started_at) {
+                let session_utc = session_date.with_timezone(&chrono::Utc);
+                
+                if session_utc > week_ago {
+                    workouts_this_week += 1;
+                }
+                if session_utc > month_ago {
+                    workouts_this_month += 1;
+                }
+                
+                // Track latest workout date
+                if last_workout_date.is_none() || session_utc > chrono::DateTime::parse_from_rfc3339(last_workout_date.as_ref().unwrap()).unwrap().with_timezone(&chrono::Utc) {
+                    last_workout_date = Some(started_at.clone());
+                }
+            }
+        }
+        
+        // Count exercise frequency (simplified - would need to parse exercises from session)
+        if let Some(name) = session.get("Name").and_then(|v| v.as_s().ok()) {
+            *exercise_counts.entry(name.clone()).or_insert(0) += 1;
+        }
+    }
+    
+    // Calculate average duration
+    let average_workout_duration = if total_workouts > 0 {
+        total_duration_minutes as f32 / total_workouts as f32
+    } else {
+        0.0
+    };
+    
+    // Get top favorite exercises
+    let mut exercise_vec: Vec<(String, i32)> = exercise_counts
+        .into_iter()
+        .collect::<Vec<_>>();
+    exercise_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    let favorite_exercises: Vec<String> = exercise_vec
+        .into_iter()
+        .take(5)
+        .map(|(name, _)| name)
+        .collect();
+    
+    // Calculate streak (simplified - would need proper date sequence analysis)
+    let current_streak = if workouts_this_week > 0 { workouts_this_week } else { 0 };
+    let longest_streak = current_streak; // Simplified - would need historical analysis
+    
+    // Fetch strength progress data
+    let strength_result = dynamodb_client
+        .query()
+        .table_name(&table_name)
+        .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+        .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", user_id)))
+        .expression_attribute_values(":sk_prefix", AttributeValue::S("STRENGTH#".to_string()))
+        .send()
+        .await?;
+
+    let strength_items = strength_result.items.unwrap_or_default();
+    let mut strength_progress = Vec::new();
+    
+    for item in strength_items {
+        if let (Some(exercise_id), Some(exercise_name), Some(one_rep_max), Some(last_updated)) = (
+            item.get("ExerciseId").and_then(|v| v.as_s().ok()),
+            item.get("ExerciseName").and_then(|v| v.as_s().ok()),
+            item.get("OneRepMax").and_then(|v| v.as_n().ok()).and_then(|n| n.parse::<f32>().ok()),
+            item.get("LastUpdated").and_then(|v| v.as_s().ok()),
+        ) {
+            strength_progress.push(StrengthProgress {
+                exercise_id: exercise_id.clone(),
+                exercise_name: exercise_name.clone(),
+                one_rep_max,
+                last_updated: last_updated.clone(),
+                progress_percentage: 5.0, // Simplified - would calculate from historical data
+            });
+        }
+    }
+    
+    // Fetch body measurements
+    let measurements_result = dynamodb_client
+        .query()
+        .table_name(&table_name)
+        .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+        .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", user_id)))
+        .expression_attribute_values(":sk_prefix", AttributeValue::S("MEASUREMENT#".to_string()))
+        .send()
+        .await?;
+
+    let measurement_items = measurements_result.items.unwrap_or_default();
+    let mut body_measurements = Vec::new();
+    
+    for item in measurement_items {
+        if let (Some(measurement_type), Some(value), Some(unit), Some(measured_at)) = (
+            item.get("MeasurementType").and_then(|v| v.as_s().ok()),
+            item.get("Value").and_then(|v| v.as_n().ok()).and_then(|n| n.parse::<f32>().ok()),
+            item.get("Unit").and_then(|v| v.as_s().ok()),
+            item.get("MeasuredAt").and_then(|v| v.as_s().ok()),
+        ) {
+            body_measurements.push(BodyMeasurement {
+                measurement_type: measurement_type.clone(),
+                value,
+                unit: unit.clone(),
+                measured_at: measured_at.clone(),
+            });
+        }
+    }
+    
     let analytics = WorkoutAnalytics {
-        user_id: user_id.unwrap_or_else(|| "unknown".to_string()),
-        total_workouts: 0,
-        total_duration_minutes: 0,
-        current_streak: 0,
-        longest_streak: 0,
-        favorite_exercises: vec![],
-        average_workout_duration: 0.0,
-        workouts_this_week: 0,
-        workouts_this_month: 0,
-        last_workout_date: None,
-        strength_progress: vec![],
-        body_measurements: vec![],
+        user_id,
+        total_workouts,
+        total_duration_minutes,
+        current_streak,
+        longest_streak,
+        favorite_exercises,
+        average_workout_duration,
+        workouts_this_week,
+        workouts_this_month,
+        last_workout_date,
+        strength_progress,
+        body_measurements,
     };
     
     Ok(serde_json::to_value(analytics)?)
@@ -827,34 +983,121 @@ pub async fn get_workout_insights_from_db(
     time_range: &str,
     dynamodb_client: &DynamoDbClient,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    // Generate workout insights based on user's workout data
-    let insights = json!({
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    
+    // Get actual analytics data first
+    let analytics_result = get_workout_analytics_from_db(Some(user_id.to_string()), dynamodb_client).await?;
+    let analytics: WorkoutAnalytics = serde_json::from_value(analytics_result)?;
+    
+    // Generate insights based on actual data
+    let mut insights = Vec::new();
+    let mut recommendations = Vec::new();
+    let mut achievements = Vec::new();
+    let mut risk_factors = Vec::new();
+    let mut risk_recommendations = Vec::new();
+    
+    // Consistency insights
+    if analytics.workouts_this_week >= 3 {
+        insights.push("Excellent workout consistency this week!".to_string());
+        achievements.push(format!("Completed {} workouts this week", analytics.workouts_this_week));
+    } else if analytics.workouts_this_week >= 1 {
+        insights.push("Good start this week, consider adding one more workout.".to_string());
+        recommendations.push("Try to maintain at least 3 workouts per week for optimal results".to_string());
+    } else {
+        insights.push("Let's get back into a consistent routine.".to_string());
+        recommendations.push("Start with 2-3 workouts this week to rebuild momentum".to_string());
+        risk_factors.push("Low workout frequency".to_string());
+        risk_recommendations.push("Increase workout frequency gradually".to_string());
+    }
+    
+    // Duration insights
+    if analytics.average_workout_duration > 90.0 {
+        insights.push("Your workouts are quite long - consider if you're maintaining intensity throughout.".to_string());
+        recommendations.push("Try shorter, more intense sessions (45-75 minutes)".to_string());
+    } else if analytics.average_workout_duration < 30.0 && analytics.total_workouts > 0 {
+        insights.push("Your workouts are quite short - you might benefit from longer sessions.".to_string());
+        recommendations.push("Aim for 45-60 minute sessions for optimal muscle growth".to_string());
+    } else if analytics.average_workout_duration >= 45.0 && analytics.average_workout_duration <= 75.0 {
+        insights.push("Your workout duration is in the optimal range for strength building.".to_string());
+        achievements.push("Maintaining ideal workout duration".to_string());
+    }
+    
+    // Strength progress insights
+    if !analytics.strength_progress.is_empty() {
+        let avg_progress = analytics.strength_progress.iter()
+            .map(|p| p.progress_percentage)
+            .sum::<f32>() / analytics.strength_progress.len() as f32;
+            
+        if avg_progress > 10.0 {
+            insights.push("Outstanding strength gains across multiple exercises!".to_string());
+            achievements.push("Strong progress in strength training".to_string());
+        } else if avg_progress > 5.0 {
+            insights.push("Good strength progress - keep up the progressive overload.".to_string());
+            recommendations.push("Continue increasing weights gradually".to_string());
+        } else {
+            insights.push("Strength progress has plateaued - time to mix things up.".to_string());
+            recommendations.push("Try varying rep ranges or exercise variations".to_string());
+        }
+    } else {
+        recommendations.push("Start tracking your strength progress to monitor improvements".to_string());
+    }
+    
+    // Streak insights
+    if analytics.current_streak >= 7 {
+        insights.push("Amazing consistency streak!".to_string());
+        achievements.push(format!("Maintained {} day workout streak", analytics.current_streak));
+    } else if analytics.current_streak >= 3 {
+        insights.push("Building good momentum with your workout streak.".to_string());
+    }
+    
+    // Favorite exercises insights
+    if analytics.favorite_exercises.len() >= 3 {
+        insights.push("Good exercise variety in your routine.".to_string());
+    } else if analytics.favorite_exercises.len() <= 1 {
+        recommendations.push("Consider adding more exercise variety to target different muscle groups".to_string());
+    }
+    
+    // Risk assessment
+    let risk_level = if risk_factors.is_empty() {
+        "low"
+    } else if risk_factors.len() <= 2 {
+        "moderate"
+    } else {
+        "high"
+    };
+    
+    // Default recommendations if none generated
+    if recommendations.is_empty() {
+        recommendations.push("Keep up the great work with your fitness routine!".to_string());
+        recommendations.push("Stay hydrated and ensure adequate recovery between workouts".to_string());
+    }
+    
+    // Default insights if none generated
+    if insights.is_empty() {
+        insights.push("Your fitness journey is progressing well.".to_string());
+    }
+    
+    let insights_response = json!({
         "user_id": user_id,
         "time_range": time_range,
-        "insights": [
-            "Your workout consistency has improved by 15% this month.",
-            "Consider adding more compound exercises to your routine.",
-            "Your average workout duration is optimal for strength building."
-        ],
-        "recommendations": [
-            "Try progressive overload with heavier weights",
-            "Add 1-2 rest days between intense sessions",
-            "Focus on form over speed"
-        ],
-        "achievements": [
-            "Completed 5 workouts this week",
-            "New personal record in bench press",
-            "Maintained 80% workout consistency"
-        ],
+        "analytics_summary": {
+            "total_workouts": analytics.total_workouts,
+            "workouts_this_week": analytics.workouts_this_week,
+            "average_duration": analytics.average_workout_duration,
+            "current_streak": analytics.current_streak
+        },
+        "insights": insights,
+        "recommendations": recommendations,
+        "achievements": achievements,
         "risk_assessment": {
-            "level": "low",
-            "factors": [],
-            "recommendations": []
+            "level": risk_level,
+            "factors": risk_factors,
+            "recommendations": risk_recommendations
         },
         "generated_at": chrono::Utc::now().to_rfc3339()
     });
     
-    Ok(insights)
+    Ok(insights_response)
 }
 
 pub async fn get_workout_history_from_db(

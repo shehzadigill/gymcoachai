@@ -695,10 +695,10 @@ export const api = {
 
   // Nutrition statistics
   async getNutritionStats(userId?: string) {
+    userId = userId || (await getCurrentUserId());
     if (userId) {
       return apiFetch<any>(`/api/nutrition/users/${userId}/stats`);
     }
-    return apiFetch<any>(`/api/nutrition/me/stats`);
   },
 
   // Water intake endpoints

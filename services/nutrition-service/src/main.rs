@@ -216,6 +216,11 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             handle_get_nutrition_plan(&user_id.unwrap_or_default(), plan_id, &nutrition_repo, &auth_context).await
         }
 
+        // Nutrition statistics endpoints
+        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/stats") => {
+            handle_get_nutrition_stats(&user_id.unwrap_or_default(), &nutrition_repo, &auth_context).await
+        }
+
         // Water intake endpoints
         ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/water/date/") => {
             let date = path_parts.last().map_or("", |v| v);

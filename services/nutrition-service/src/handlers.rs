@@ -948,3 +948,28 @@ pub async fn handle_set_water(
         }
     }
 }
+
+pub async fn handle_get_nutrition_stats(
+    user_id: &str,
+    nutrition_repo: &NutritionRepository,
+    _auth_context: &AuthContext,
+) -> Result<Value> {
+    match nutrition_repo.get_nutrition_stats(user_id).await {
+        Ok(stats) => Ok(json!({
+            "statusCode": 200,
+            "headers": get_cors_headers(),
+            "body": stats
+        })),
+        Err(e) => {
+            error!("Failed to get nutrition stats: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to get nutrition statistics"
+                })
+            }))
+        }
+    }
+}
