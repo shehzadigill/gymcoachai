@@ -7,6 +7,7 @@ use tracing::error;
 use validator::Validate;
 
 use crate::models::*;
+use crate::database::{get_sleep_data_from_db, save_sleep_data_to_db, get_sleep_history_from_db, calculate_sleep_stats};
 use crate::database::*;
 use crate::get_cors_headers;
 use auth_layer::AuthContext;
@@ -459,5 +460,283 @@ fn extract_user_id_from_path(path: &str) -> Option<String> {
         }
     } else {
         None
+    }
+}
+
+// Sleep tracking handlers
+pub async fn handle_get_sleep_data(
+    query_params: &std::collections::HashMap<String, String>,
+    dynamodb_client: &DynamoDbClient,
+    auth_context: &AuthContext,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let user_id = query_params.get("userId")
+        .map(|s| s.as_str())
+        .unwrap_or(&auth_context.user_id);
+    
+    // Check if user can access this data
+    if !can_access_user_profile(auth_context, user_id) {
+        return Ok(json!({
+            "statusCode": 403,
+            "headers": get_cors_headers(),
+            "body": json!({
+                "error": "Forbidden",
+                "message": "You can only access your own sleep data"
+            })
+        }));
+    }
+
+    let default_date = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let date = query_params.get("date")
+        .map(|s| s.as_str())
+        .unwrap_or(&default_date);
+
+    match get_sleep_data_from_db(user_id, date, dynamodb_client).await {
+        Ok(Some(sleep_data)) => {
+            Ok(json!({
+                "statusCode": 200,
+                "headers": get_cors_headers(),
+                "body": sleep_data
+            }))
+        }
+        Ok(None) => {
+            Ok(json!({
+                "statusCode": 404,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Not Found",
+                    "message": "No sleep data found for this date"
+                })
+            }))
+        }
+        Err(e) => {
+            error!("Error fetching sleep data: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to fetch sleep data"
+                })
+            }))
+        }
+    }
+}
+
+pub async fn handle_save_sleep_data(
+    body: &str,
+    dynamodb_client: &DynamoDbClient,
+    auth_context: &AuthContext,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let mut sleep_data: SleepData = serde_json::from_str(body)?;
+    
+    // Use authenticated user ID
+    sleep_data.user_id = auth_context.user_id.clone();
+    
+    // Validate the data
+    if let Err(validation_errors) = sleep_data.validate() {
+        return Ok(json!({
+            "statusCode": 400,
+            "headers": get_cors_headers(),
+            "body": json!({
+                "error": "Validation Error",
+                "message": format!("Invalid sleep data: {}", validation_errors)
+            })
+        }));
+    }
+
+    // Set timestamps
+    let now = chrono::Utc::now().to_rfc3339();
+    if sleep_data.created_at.is_empty() {
+        sleep_data.created_at = now.clone();
+    }
+    sleep_data.updated_at = now;
+
+    match save_sleep_data_to_db(&sleep_data, dynamodb_client).await {
+        Ok(()) => {
+            Ok(json!({
+                "statusCode": 201,
+                "headers": get_cors_headers(),
+                "body": sleep_data
+            }))
+        }
+        Err(e) => {
+            error!("Error saving sleep data: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to save sleep data"
+                })
+            }))
+        }
+    }
+}
+
+pub async fn handle_update_sleep_data(
+    body: &str,
+    dynamodb_client: &DynamoDbClient,
+    auth_context: &AuthContext,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let mut sleep_data: SleepData = serde_json::from_str(body)?;
+    
+    // Use authenticated user ID
+    sleep_data.user_id = auth_context.user_id.clone();
+    
+    // Validate the data
+    if let Err(validation_errors) = sleep_data.validate() {
+        return Ok(json!({
+            "statusCode": 400,
+            "headers": get_cors_headers(),
+            "body": json!({
+                "error": "Validation Error",
+                "message": format!("Invalid sleep data: {}", validation_errors)
+            })
+        }));
+    }
+
+    // Check if sleep data exists for this date
+    match get_sleep_data_from_db(&sleep_data.user_id, &sleep_data.date, dynamodb_client).await {
+        Ok(Some(existing_data)) => {
+            // Keep the original created_at timestamp
+            sleep_data.created_at = existing_data.created_at;
+            sleep_data.updated_at = chrono::Utc::now().to_rfc3339();
+
+            match save_sleep_data_to_db(&sleep_data, dynamodb_client).await {
+                Ok(()) => {
+                    Ok(json!({
+                        "statusCode": 200,
+                        "headers": get_cors_headers(),
+                        "body": sleep_data
+                    }))
+                }
+                Err(e) => {
+                    error!("Error updating sleep data: {}", e);
+                    Ok(json!({
+                        "statusCode": 500,
+                        "headers": get_cors_headers(),
+                        "body": json!({
+                            "error": "Internal Server Error",
+                            "message": "Failed to update sleep data"
+                        })
+                    }))
+                }
+            }
+        }
+        Ok(None) => {
+            Ok(json!({
+                "statusCode": 404,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Not Found",
+                    "message": "No sleep data found for this date"
+                })
+            }))
+        }
+        Err(e) => {
+            error!("Error checking existing sleep data: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to check existing sleep data"
+                })
+            }))
+        }
+    }
+}
+
+pub async fn handle_get_sleep_history(
+    query_params: &std::collections::HashMap<String, String>,
+    dynamodb_client: &DynamoDbClient,
+    auth_context: &AuthContext,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let user_id = query_params.get("userId")
+        .map(|s| s.as_str())
+        .unwrap_or(&auth_context.user_id);
+    
+    // Check if user can access this data
+    if !can_access_user_profile(auth_context, user_id) {
+        return Ok(json!({
+            "statusCode": 403,
+            "headers": get_cors_headers(),
+            "body": json!({
+                "error": "Forbidden",
+                "message": "You can only access your own sleep data"
+            })
+        }));
+    }
+
+    let days = query_params.get("days")
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(7);
+
+    match get_sleep_history_from_db(user_id, days, dynamodb_client).await {
+        Ok(sleep_history) => {
+            Ok(json!({
+                "statusCode": 200,
+                "headers": get_cors_headers(),
+                "body": sleep_history
+            }))
+        }
+        Err(e) => {
+            error!("Error fetching sleep history: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to fetch sleep history"
+                })
+            }))
+        }
+    }
+}
+
+pub async fn handle_get_sleep_stats(
+    query_params: &std::collections::HashMap<String, String>,
+    dynamodb_client: &DynamoDbClient,
+    auth_context: &AuthContext,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let user_id = query_params.get("userId")
+        .map(|s| s.as_str())
+        .unwrap_or(&auth_context.user_id);
+    
+    // Check if user can access this data
+    if !can_access_user_profile(auth_context, user_id) {
+        return Ok(json!({
+            "statusCode": 403,
+            "headers": get_cors_headers(),
+            "body": json!({
+                "error": "Forbidden",
+                "message": "You can only access your own sleep data"
+            })
+        }));
+    }
+
+    let period = query_params.get("period")
+        .map(|s| s.as_str())
+        .unwrap_or("month");
+
+    match calculate_sleep_stats(user_id, period, dynamodb_client).await {
+        Ok(sleep_stats) => {
+            Ok(json!({
+                "statusCode": 200,
+                "headers": get_cors_headers(),
+                "body": sleep_stats
+            }))
+        }
+        Err(e) => {
+            error!("Error calculating sleep stats: {}", e);
+            Ok(json!({
+                "statusCode": 500,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Internal Server Error",
+                    "message": "Failed to calculate sleep statistics"
+                })
+            }))
+        }
     }
 }

@@ -821,4 +821,81 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  // Sleep tracking endpoints - now using user-profile-service backend
+  async getSleepData(date?: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (date) params.append('date', date);
+    const res = await apiFetch<any>(`/api/user-profiles/sleep?${params}`);
+
+    // Handle Lambda proxy integration response format
+    return res.body || res;
+  },
+
+  async logSleep(
+    data: {
+      date: string;
+      hours: number;
+      minutes?: number;
+      quality?: number; // 1-5 scale
+      bedTime?: string;
+      wakeTime?: string;
+      notes?: string;
+    },
+    userId?: string
+  ) {
+    const id = userId || (await getCurrentUserId());
+    const res = await apiFetch<any>(`/api/user-profiles/sleep`, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+
+    // Handle Lambda proxy integration response format
+    return res.body || res;
+  },
+
+  async updateSleepData(
+    data: {
+      date: string;
+      hours: number;
+      minutes?: number;
+      quality?: number;
+      bedTime?: string;
+      wakeTime?: string;
+      notes?: string;
+    },
+    userId?: string
+  ) {
+    const id = userId || (await getCurrentUserId());
+    const res = await apiFetch<any>(`/api/user-profiles/sleep`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, userId: id }),
+    });
+
+    // Handle Lambda proxy integration response format
+    return res.body || res;
+  },
+
+  async getSleepHistory(userId?: string, days?: number) {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (days) params.append('days', days.toString());
+    const res = await apiFetch<any>(
+      `/api/user-profiles/sleep/history?${params}`
+    );
+
+    // Handle Lambda proxy integration response format
+    return res.body || res;
+  },
+
+  async getSleepStats(userId?: string, period?: 'week' | 'month' | 'year') {
+    const id = userId || (await getCurrentUserId());
+    const params = new URLSearchParams({ userId: id });
+    if (period) params.append('period', period);
+    const res = await apiFetch<any>(`/api/user-profiles/sleep/stats?${params}`);
+
+    // Handle Lambda proxy integration response format
+    return res.body || res;
+  },
 };

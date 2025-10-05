@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api-client';
-import { useCurrentUser } from '@packages/auth';
+import { useCurrentUser, updatePassword } from '@packages/auth';
 import {
   User,
   Settings,
@@ -18,6 +18,11 @@ import {
   Bell,
   Shield,
   Globe,
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
 
 interface UserProfile {
@@ -94,7 +99,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'preferences' | 'goals'
+    'profile' | 'preferences' | 'goals' | 'security'
   >('profile');
   const [uploading, setUploading] = useState(false);
 
@@ -322,6 +327,7 @@ export default function ProfilePage() {
             { id: 'profile', name: 'Profile', icon: User },
             { id: 'preferences', name: 'Preferences', icon: Settings },
             { id: 'goals', name: 'Goals', icon: Target },
+            { id: 'security', name: 'Security', icon: Shield },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -358,6 +364,7 @@ export default function ProfilePage() {
         {activeTab === 'goals' && (
           <GoalsTab profile={profile} onUpdate={handleProfileUpdate} />
         )}
+        {activeTab === 'security' && <SecurityTab />}
       </div>
     </div>
   );
@@ -725,7 +732,9 @@ function PreferencesTab({
                 <input
                   type="checkbox"
                   checked={
-                    preferences.privacy[key as keyof typeof preferences.privacy]
+                    preferences.privacy[
+                      key as 'workoutSharing' | 'progressSharing'
+                    ] as boolean
                   }
                   onChange={(e) =>
                     onUpdate({
@@ -820,6 +829,388 @@ function GoalsTab({
             </p>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SecurityTab() {
+  const [formData, setFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+    // Clear error when user starts typing
+    if (error) setError('');
+    if (success) setSuccess('');
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    // Validation
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('New passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.newPassword.length < 8) {
+      setError('New password must be at least 8 characters long');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.currentPassword === formData.newPassword) {
+      setError('New password must be different from current password');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await updatePassword({
+        oldPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+      });
+
+      setSuccess('Password updated successfully!');
+      setFormData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (err) {
+      console.error('Password update error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update password. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getPasswordStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength += 25;
+    if (/[A-Z]/.test(password)) strength += 25;
+    if (/[a-z]/.test(password)) strength += 25;
+    if (/\d/.test(password)) strength += 12.5;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 12.5;
+    return Math.min(strength, 100);
+  };
+
+  const passwordStrength = getPasswordStrength(formData.newPassword);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+          <Lock className="h-5 w-5 mr-2" />
+          Change Password
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Update your password to keep your account secure
+        </p>
+      </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+          <div className="flex items-center">
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mr-3" />
+            <div className="text-green-600 dark:text-green-400">{success}</div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-3" />
+            <div className="text-red-600 dark:text-red-400">{error}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Change Form */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Current Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Current Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.current ? 'text' : 'password'}
+                name="currentPassword"
+                value={formData.currentPassword}
+                onChange={handleChange}
+                required
+                placeholder="Enter your current password"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                         dark:bg-gray-700 dark:text-white pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility('current')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+              >
+                {showPasswords.current ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* New Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.new ? 'text' : 'password'}
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleChange}
+                required
+                placeholder="Enter your new password"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                         dark:bg-gray-700 dark:text-white pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility('new')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+              >
+                {showPasswords.new ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+
+            {/* Password Strength Indicator */}
+            {formData.newPassword && (
+              <div className="mt-3">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Password Strength
+                  </span>
+                  <span
+                    className={`font-medium ${
+                      passwordStrength < 50
+                        ? 'text-red-500'
+                        : passwordStrength < 75
+                          ? 'text-yellow-500'
+                          : 'text-green-500'
+                    }`}
+                  >
+                    {passwordStrength < 50
+                      ? 'Weak'
+                      : passwordStrength < 75
+                        ? 'Medium'
+                        : 'Strong'}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      passwordStrength < 50
+                        ? 'bg-red-500'
+                        : passwordStrength < 75
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
+                    }`}
+                    style={{ width: `${passwordStrength}%` }}
+                  ></div>
+                </div>
+
+                {/* Password Requirements */}
+                <div className="mt-3 space-y-1">
+                  <div
+                    className={`text-xs flex items-center ${
+                      formData.newPassword.length >= 8
+                        ? 'text-green-600'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full mr-2 ${
+                        formData.newPassword.length >= 8
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
+                      }`}
+                    ></div>
+                    At least 8 characters
+                  </div>
+                  <div
+                    className={`text-xs flex items-center ${
+                      /[A-Z]/.test(formData.newPassword) &&
+                      /[a-z]/.test(formData.newPassword)
+                        ? 'text-green-600'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full mr-2 ${
+                        /[A-Z]/.test(formData.newPassword) &&
+                        /[a-z]/.test(formData.newPassword)
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
+                      }`}
+                    ></div>
+                    Uppercase & lowercase letters
+                  </div>
+                  <div
+                    className={`text-xs flex items-center ${
+                      /\d/.test(formData.newPassword)
+                        ? 'text-green-600'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full mr-2 ${
+                        /\d/.test(formData.newPassword)
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
+                      }`}
+                    ></div>
+                    Numbers
+                  </div>
+                  <div
+                    className={`text-xs flex items-center ${
+                      /[!@#$%^&*(),.?":{}|<>]/.test(formData.newPassword)
+                        ? 'text-green-600'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full mr-2 ${
+                        /[!@#$%^&*(),.?":{}|<>]/.test(formData.newPassword)
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
+                      }`}
+                    ></div>
+                    Special characters
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm New Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.confirm ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                placeholder="Confirm your new password"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                         dark:bg-gray-700 dark:text-white pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility('confirm')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+              >
+                {showPasswords.confirm ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+            {formData.confirmPassword &&
+              formData.newPassword !== formData.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  Passwords do not match
+                </p>
+              )}
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={
+                isLoading ||
+                !formData.currentPassword ||
+                !formData.newPassword ||
+                !formData.confirmPassword ||
+                formData.newPassword !== formData.confirmPassword
+              }
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
+                       disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4" />
+                  <span>Update Password</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Security Tips */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+          🔒 Security Tips
+        </h4>
+        <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+          <li>• Use a unique password that you don't use elsewhere</li>
+          <li>• Consider using a password manager</li>
+          <li>• Change your password regularly</li>
+          <li>• Never share your password with anyone</li>
+        </ul>
       </div>
     </div>
   );

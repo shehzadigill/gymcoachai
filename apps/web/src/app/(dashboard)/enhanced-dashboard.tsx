@@ -70,6 +70,7 @@ interface DashboardData {
   weightProgress: number;
   bodyFatProgress: number;
   sleepHours: number;
+  sleepQuality: number;
   sleepGoal: number;
 
   // Enhanced nutrition metrics from Rust service
@@ -128,6 +129,7 @@ export default function DashboardPage() {
           todaysMeals,
           waterIntake,
           progressPhotos,
+          todaysSleepData,
         ] = await Promise.all([
           api.getWorkoutSessions().catch((e) => {
             console.warn('Failed to fetch workout sessions:', e);
@@ -179,6 +181,10 @@ export default function DashboardPage() {
             console.warn('Failed to fetch progress photos:', e);
             return { body: [] };
           }),
+          api.getSleepData().catch((e) => {
+            console.warn('Failed to fetch sleep data:', e);
+            return { body: { hours: 7, quality: 3 } };
+          }),
         ]);
         console.log('Fetched dashboard data:', {
           workoutSessions,
@@ -193,6 +199,7 @@ export default function DashboardPage() {
           todaysMeals,
           waterIntake,
           progressPhotos,
+          todaysSleepData,
         });
         // Process workout data
         console.log('workoutSessions:', workoutSessions);
@@ -503,10 +510,15 @@ export default function DashboardPage() {
           weightProgress: latestMeasurements?.weight || 0,
           bodyFatProgress: latestMeasurements?.bodyFat || 0,
           sleepHours:
+            todaysSleepData?.body?.hours ||
+            todaysSleepData?.hours ||
             userProfile?.body?.sleepHours ||
             latestMeasurements?.sleepHours ||
             7,
-          sleepGoal: 8,
+          sleepQuality:
+            todaysSleepData?.body?.quality || todaysSleepData?.quality || 3,
+          sleepGoal:
+            userProfile?.body?.sleepGoal || userProfile?.sleepGoal || 8,
 
           // Activity data
           recentActivities,
@@ -1134,17 +1146,17 @@ export default function DashboardPage() {
       color: 'green' as const,
     },
     {
+      icon: <Moon size={24} />,
+      title: 'Log Sleep',
+      description: 'Track your sleep hours',
+      onClick: () => (window.location.href = '/sleep'),
+      color: 'purple' as const,
+    },
+    {
       icon: <Camera size={24} />,
       title: 'Progress Photo',
       description: 'Capture your transformation',
       onClick: () => (window.location.href = '/progress'),
-      color: 'purple' as const,
-    },
-    {
-      icon: <BarChart3 size={24} />,
-      title: 'View Analytics',
-      description: 'Analyze your performance',
-      onClick: () => (window.location.href = '/analytics'),
       color: 'orange' as const,
     },
   ];
@@ -1514,6 +1526,20 @@ export default function DashboardPage() {
                       <p className="font-semibold text-gray-900 dark:text-white">
                         {data?.sleepHours || 0}h / {data?.sleepGoal || 8}h
                       </p>
+                      {data?.sleepQuality && (
+                        <div className="flex items-center space-x-1 mt-1">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${
+                                i < (data.sleepQuality || 3)
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300 dark:text-gray-600'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <ProgressRing

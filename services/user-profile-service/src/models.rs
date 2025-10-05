@@ -81,3 +81,64 @@ pub struct UploadResponse {
     pub bucket_name: String,
     pub expires_in: u64,
 }
+
+#[derive(Deserialize, Serialize, Validate, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepData {
+    pub user_id: String,
+    #[validate(length(min = 1))]
+    pub date: String, // ISO date string (YYYY-MM-DD)
+    #[validate(range(min = 0, max = 24))]
+    pub hours: u8, // Sleep duration in hours (0-24)
+    #[validate(range(min = 0, max = 59))]
+    pub minutes: Option<u8>, // Additional minutes (0-59)
+    #[validate(range(min = 1, max = 5))]
+    pub quality: Option<u8>, // Sleep quality (1-5 scale)
+    pub bed_time: Option<String>, // Bedtime in HH:MM format
+    pub wake_time: Option<String>, // Wake time in HH:MM format
+    #[validate(length(max = 1000))]
+    pub notes: Option<String>, // Optional sleep notes
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub updated_at: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepStats {
+    pub user_id: String,
+    pub period: String, // "week", "month", "year"
+    pub average_hours: f32,
+    pub average_quality: f32,
+    pub total_nights: u32,
+    pub best_night: SleepNight,
+    pub worst_night: SleepNight,
+    pub consistency: f32, // percentage (0-100)
+    pub trend: String, // "improving", "declining", "stable"
+    pub calculated_at: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepNight {
+    pub date: String,
+    pub hours: f32,
+    pub quality: u8,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepHistoryRequest {
+    pub user_id: Option<String>,
+    pub days: Option<u32>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepStatsRequest {
+    pub user_id: Option<String>,
+    pub period: Option<String>, // "week", "month", "year"
+}

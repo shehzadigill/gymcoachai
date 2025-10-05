@@ -199,6 +199,29 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             info!("Route: PUT user preferences");
             handle_update_user_preferences(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
+        ("GET", "/api/user-profiles/sleep") => {
+            info!("Route: GET sleep data");
+            let query_params = parse_query_string(&event);
+            handle_get_sleep_data(&query_params, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        }
+        ("POST", "/api/user-profiles/sleep") => {
+            info!("Route: POST sleep data");
+            handle_save_sleep_data(body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        }
+        ("PUT", "/api/user-profiles/sleep") => {
+            info!("Route: PUT sleep data");
+            handle_update_sleep_data(body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        }
+        ("GET", "/api/user-profiles/sleep/history") => {
+            info!("Route: GET sleep history");
+            let query_params = parse_query_string(&event);
+            handle_get_sleep_history(&query_params, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        }
+        ("GET", "/api/user-profiles/sleep/stats") => {
+            info!("Route: GET sleep stats");
+            let query_params = parse_query_string(&event);
+            handle_get_sleep_stats(&query_params, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        }
         _ => {
             info!("Route: Not Found {}", path);
             Ok(json!({
@@ -222,4 +245,20 @@ pub fn get_cors_headers() -> serde_json::Map<String, Value> {
     headers.insert("Access-Control-Allow-Headers".to_string(), "Content-Type, Authorization".into());
     headers.insert("Access-Control-Allow-Methods".to_string(), "OPTIONS,POST,GET,PUT,DELETE".into());
     headers
+}
+
+fn parse_query_string(event: &Value) -> std::collections::HashMap<String, String> {
+    let mut params = std::collections::HashMap::new();
+    
+    if let Some(query_params) = event.get("queryStringParameters") {
+        if let Some(query_obj) = query_params.as_object() {
+            for (key, value) in query_obj {
+                if let Some(value_str) = value.as_str() {
+                    params.insert(key.clone(), value_str.to_string());
+                }
+            }
+        }
+    }
+    
+    params
 }

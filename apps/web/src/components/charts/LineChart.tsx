@@ -37,10 +37,10 @@ export function LineChart({
     const adjustedMin = Math.max(0, minVal - padding);
 
     const width = 400;
-    const stepX = width / (data.length - 1);
+    const stepX = data.length === 1 ? 0 : width / (data.length - 1);
 
     const points = data.map((point, index) => {
-      const x = index * stepX;
+      const x = data.length === 1 ? width / 2 : index * stepX;
       const y =
         height -
         ((point.value - adjustedMin) / (adjustedMax - adjustedMin)) * height;
@@ -109,32 +109,37 @@ export function LineChart({
           </linearGradient>
         </defs>
 
-        {/* Area under the line */}
-        <path
-          d={`${pathData} L 400 ${height} L 0 ${height} Z`}
-          fill="url(#chartGradient)"
-          className={animate ? 'animate-pulse' : ''}
-        />
+        {/* Area under the line - only show if more than one point */}
+        {data.length > 1 && (
+          <path
+            d={`${pathData} L 400 ${height} L 0 ${height} Z`}
+            fill="url(#chartGradient)"
+            className={animate ? 'animate-pulse' : ''}
+          />
+        )}
 
-        {/* Main line */}
-        <path
-          d={pathData}
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-all duration-1000 ${animate ? 'animate-pulse' : ''}`}
-          style={{
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-          }}
-        />
+        {/* Main line - only show if more than one point */}
+        {data.length > 1 && (
+          <path
+            d={pathData}
+            fill="none"
+            stroke={color}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-all duration-1000 ${animate ? 'animate-pulse' : ''}`}
+            style={{
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+            }}
+          />
+        )}
 
         {/* Data points */}
         {showDots && (
           <g>
             {data.map((point, index) => {
-              const x = (index * 400) / (data.length - 1);
+              const x =
+                data.length === 1 ? 200 : (index * 400) / (data.length - 1);
               const y =
                 height -
                 ((point.value - minValue) / (maxValue - minValue)) * height;
