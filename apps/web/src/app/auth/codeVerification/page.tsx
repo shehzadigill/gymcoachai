@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import {
   confirmSignUp,
   resendSignUpCode,
@@ -9,7 +9,7 @@ import { Button, Card, Input } from '../../../../../../packages/ui/dist';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-export default function CodeVerificationPage() {
+function CodeVerificationForm() {
   const searchParams = useSearchParams();
   const username = searchParams.get('username');
   const [code, setCode] = useState('');
@@ -130,5 +130,19 @@ export default function CodeVerificationPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function CodeVerificationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }
+    >
+      <CodeVerificationForm />
+    </Suspense>
   );
 }

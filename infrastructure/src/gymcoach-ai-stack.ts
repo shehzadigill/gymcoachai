@@ -21,6 +21,7 @@ export class GymCoachAIStack extends cdk.Stack {
   public readonly staticAssetsBucket: s3.Bucket;
   public readonly processedImagesBucket: s3.Bucket;
   public readonly progressPhotosBucket: s3.Bucket;
+  public readonly frontendBucket: s3.Bucket;
   private authLayer?: lambda.LayerVersion;
   private pythonAuthLayer?: lambda.LayerVersion;
 
@@ -319,6 +320,34 @@ export class GymCoachAIStack extends cdk.Stack {
       })
     );
 
+    // Create CloudFront Origin Access Identity for frontend bucket
+    const frontendOAI = new cloudfront.OriginAccessIdentity(
+      this,
+      'FrontendOAI',
+      {
+        comment: 'Origin Access Identity for Frontend bucket',
+      }
+    );
+
+    // Create Frontend S3 Bucket for static assets
+    this.frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
+      bucketName: `gymcoach-ai-frontend-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      publicReadAccess: false, // Only CloudFront OAI should access
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block all public access
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Grant CloudFront OAI access to frontend bucket
+    this.frontendBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [frontendOAI.grantPrincipal],
+        actions: ['s3:GetObject'],
+        resources: [`${this.frontendBucket.bucketArn}/*`],
+      })
+    );
+
     // Create Lambda Authorizer
     const authorizerLambda = new lambda.Function(this, 'AuthorizerLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -511,18 +540,78 @@ export class GymCoachAIStack extends cdk.Stack {
       cdk.Fn.split('/', nutritionServiceUrl.url)
     );
 
+    // Create CloudFront Function for URL rewriting (handles SPA routing)
+    const urlRewriteFunction = new cloudfront.Function(
+      this,
+      'UrlRewriteFunction',
+      {
+        functionName: 'url-rewrite-function',
+        code: cloudfront.FunctionCode.fromInline(`
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          
+          // Check if the URI is asking for a file with an extension
+          if (uri.includes('.')) {
+            return request;
+          }
+          
+          // Handle root path
+          if (uri === '/') {
+            request.uri = '/index.html';
+            return request;
+          }
+          
+          // Check if the URI ends with a slash
+          if (uri.endsWith('/')) {
+            // URI has trailing slash, append index.html
+            request.uri += 'index.html';
+          } else {
+            // URI doesn't have trailing slash, redirect to version with trailing slash
+            // by appending /index.html (equivalent to adding trailing slash + index.html)
+            request.uri += '/index.html';
+          }
+          
+          return request;
+        }
+      `),
+        comment:
+          'URL rewrite function for SPA routing with trailing slash support',
+      }
+    );
+
     this.distribution = new cloudfront.Distribution(
       this,
       'GymCoachAIDistribution',
       {
+        defaultRootObject: 'index.html',
         defaultBehavior: {
-          origin: new origins.HttpOrigin(userProfileDomain),
+          origin: origins.S3BucketOrigin.withOriginAccessIdentity(
+            this.frontendBucket,
+            {
+              originAccessIdentity: frontendOAI,
+            }
+          ),
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy:
-            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+          cachePolicy: new cloudfront.CachePolicy(this, 'FrontendCachePolicy', {
+            cachePolicyName: 'frontend-cache-policy',
+            defaultTtl: cdk.Duration.hours(24),
+            maxTtl: cdk.Duration.days(365),
+            minTtl: cdk.Duration.seconds(0),
+            headerBehavior: cloudfront.CacheHeaderBehavior.allowList(
+              'CloudFront-Viewer-Country'
+            ),
+            queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+            cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+          }),
+          functionAssociations: [
+            {
+              function: urlRewriteFunction,
+              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+            },
+          ],
         },
         additionalBehaviors: {
           // '/api/users/*': {
@@ -732,6 +821,16 @@ export class GymCoachAIStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ProcessedImagesBucketName', {
       value: this.processedImagesBucket.bucketName,
       description: 'Processed Images S3 Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'FrontendBucketName', {
+      value: this.frontendBucket.bucketName,
+      description: 'Frontend S3 Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontDistributionURL', {
+      value: `https://${this.distribution.distributionDomainName}`,
+      description: 'CloudFront Distribution URL',
     });
 
     // Removed monitoring stack to avoid CloudWatch costs

@@ -42,7 +42,9 @@ body {
 
 .bg-white {
   background-color: #ffffff !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Light mode text improvements - better contrast and readability */
@@ -209,10 +211,593 @@ select:focus {
 }
 
 /* Typography improvements for light mode */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: #0f172a !important;
 }
 
-p, span {
+p,
+span {
   color: #334155 !important;
+}
+
+/* Button improvements for light mode */
+.bg-blue-600 {
+  background-color: #2563eb !important;
+}
+
+.bg-green-600 {
+  background-color: #16a34a !important;
+}
+
+.bg-red-600 {
+  background-color: #dc2626 !important;
+}
+
+.hover\:bg-blue-700:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.hover\:bg-green-700:hover {
+  background-color: #15803d !important;
+}
+
+.hover\:bg-red-700:hover {
+  background-color: #b91c1c !important;
+}
+
+/* Card background improvements for light mode */
+.bg-blue-100 {
+  background-color: #dbeafe !important;
+}
+
+.bg-green-100 {
+  background-color: #dcfce7 !important;
+}
+
+.bg-purple-100 {
+  background-color: #f3e8ff !important;
+}
+
+.bg-orange-100 {
+  background-color: #fed7aa !important;
+}
+
+.bg-teal-100 {
+  background-color: #ccfbf1 !important;
+}
+
+.bg-indigo-100 {
+  background-color: #e0e7ff !important;
+}
+
+/* Text color improvements on colored backgrounds */
+.text-blue-600 {
+  color: #2563eb !important;
+}
+
+.text-green-600 {
+  color: #16a34a !important;
+}
+
+.text-purple-600 {
+  color: #9333ea !important;
+}
+
+.text-orange-600 {
+  color: #ea580c !important;
+}
+
+.text-teal-600 {
+  color: #0d9488 !important;
+}
+
+.text-indigo-600 {
+  color: #4f46e5 !important;
+}
+
+/* Sidebar Navigation Improvements */
+.bg-blue-100 {
+  background-color: #dbeafe !important;
+}
+
+.text-blue-900 {
+  color: #1e3a8a !important;
+}
+
+.dark .bg-blue-100 {
+  background-color: #1e3a8a !important;
+}
+
+.dark .text-blue-900 {
+  color: #bfdbfe !important;
+}
+
+/* Icon color improvements for active states */
+.text-blue-500 {
+  color: #3b82f6 !important;
+}
+
+.dark .text-blue-500 {
+  color: #60a5fa !important;
+}
+
+.text-blue-400 {
+  color: #60a5fa !important;
+}
+
+.dark .text-blue-400 {
+  color: #93c5fd !important;
+}
+
+/* Theme toggle button improvements */
+.border-gray-300 {
+  border-color: #d1d5db !important;
+}
+
+.dark .border-gray-300 {
+  border-color: #6b7280 !important;
+}
+
+.border-gray-700 {
+  border-color: #374151 !important;
+}
+
+.dark .border-gray-700 {
+  border-color: #4b5563 !important;
+}
+
+/* Hover state improvements for sidebar */
+.hover\:bg-gray-700:hover {
+  background-color: #374151 !important;
+}
+
+.dark .hover\:bg-gray-700:hover {
+  background-color: #4b5563 !important;
+}
+
+/* Additional text color improvements */
+.text-gray-400 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.text-gray-300 {
+  color: #d1d5db !important;
+}
+
+.dark .text-gray-300 {
+  color: #9ca3af !important;
+}
+
+/* Group hover improvements */
+.group-hover\:text-gray-500:hover {
+  color: #6b7280 !important;
+}
+
+.dark .group-hover\:text-gray-500:hover {
+  color: #9ca3af !important;
+}
+
+.group-hover\:text-gray-300:hover {
+  color: #d1d5db !important;
+}
+
+.dark .group-hover\:text-gray-300:hover {
+  color: #d1d5db !important;
+}
+
+/* Dashboard Metric Card Improvements */
+.bg-gray-50 {
+  background-color: #f8fafc !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #374151 !important;
+}
+
+.bg-gray-700 {
+  background-color: #374151 !important;
+}
+
+.dark .bg-gray-700 {
+  background-color: #4b5563 !important;
+}
+
+.bg-gray-800 {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-gray-800 {
+  background-color: #111827 !important;
+}
+
+/* Additional color variations for dashboard */
+.bg-blue-50 {
+  background-color: #eff6ff !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: #1e3a8a !important;
+}
+
+.bg-green-50 {
+  background-color: #f0fdf4 !important;
+}
+
+.dark .bg-green-50 {
+  background-color: #14532d !important;
+}
+
+.bg-purple-50 {
+  background-color: #faf5ff !important;
+}
+
+.dark .bg-purple-50 {
+  background-color: #581c87 !important;
+}
+
+.bg-orange-50 {
+  background-color: #fff7ed !important;
+}
+
+.dark .bg-orange-50 {
+  background-color: #9a3412 !important;
+}
+
+.bg-red-50 {
+  background-color: #fef2f2 !important;
+}
+
+.dark .bg-red-50 {
+  background-color: #7f1d1d !important;
+}
+
+.bg-cyan-50 {
+  background-color: #ecfeff !important;
+}
+
+.dark .bg-cyan-50 {
+  background-color: #164e63 !important;
+}
+
+.bg-yellow-50 {
+  background-color: #fefce8 !important;
+}
+
+.dark .bg-yellow-50 {
+  background-color: #713f12 !important;
+}
+
+/* Border color improvements for colored cards */
+.border-blue-200 {
+  border-color: #bfdbfe !important;
+}
+
+.dark .border-blue-200 {
+  border-color: #1e40af !important;
+}
+
+.border-green-200 {
+  border-color: #bbf7d0 !important;
+}
+
+.dark .border-green-200 {
+  border-color: #15803d !important;
+}
+
+.border-purple-200 {
+  border-color: #e9d5ff !important;
+}
+
+.dark .border-purple-200 {
+  border-color: #7c3aed !important;
+}
+
+.border-orange-200 {
+  border-color: #fed7aa !important;
+}
+
+.dark .border-orange-200 {
+  border-color: #ea580c !important;
+}
+
+.border-red-200 {
+  border-color: #fecaca !important;
+}
+
+.dark .border-red-200 {
+  border-color: #dc2626 !important;
+}
+
+.border-cyan-200 {
+  border-color: #a5f3fc !important;
+}
+
+.dark .border-cyan-200 {
+  border-color: #0891b2 !important;
+}
+
+.border-yellow-200 {
+  border-color: #fef08a !important;
+}
+
+.dark .border-yellow-200 {
+  border-color: #ca8a04 !important;
+}
+
+/* Text colors for colored themes */
+.text-blue-800 {
+  color: #1e40af !important;
+}
+
+.dark .text-blue-800 {
+  color: #bfdbfe !important;
+}
+
+.text-green-800 {
+  color: #166534 !important;
+}
+
+.dark .text-green-800 {
+  color: #bbf7d0 !important;
+}
+
+.text-purple-800 {
+  color: #6b21a8 !important;
+}
+
+.dark .text-purple-800 {
+  color: #e9d5ff !important;
+}
+
+.text-orange-800 {
+  color: #9a3412 !important;
+}
+
+.dark .text-orange-800 {
+  color: #fed7aa !important;
+}
+
+.text-red-800 {
+  color: #991b1b !important;
+}
+
+.dark .text-red-800 {
+  color: #fecaca !important;
+}
+
+.text-cyan-800 {
+  color: #155e75 !important;
+}
+
+.dark .text-cyan-800 {
+  color: #a5f3fc !important;
+}
+
+.text-yellow-800 {
+  color: #854d0e !important;
+}
+
+.dark .text-yellow-800 {
+  color: #fef08a !important;
+}
+
+/* Hover border improvements */
+.hover\:border-blue-300:hover {
+  border-color: #93c5fd !important;
+}
+
+.dark .hover\:border-blue-300:hover {
+  border-color: #2563eb !important;
+}
+
+.hover\:border-blue-600:hover {
+  border-color: #2563eb !important;
+}
+
+.dark .hover\:border-blue-600:hover {
+  border-color: #3b82f6 !important;
+}
+
+/* Progress bar and indicator colors */
+.bg-cyan-600 {
+  background-color: #0891b2 !important;
+}
+
+.bg-yellow-600 {
+  background-color: #ca8a04 !important;
+}
+
+/* Enhanced text colors for better readability */
+.text-cyan-600 {
+  color: #0891b2 !important;
+}
+
+.text-yellow-600 {
+  color: #ca8a04 !important;
+}
+
+.dark .text-cyan-600 {
+  color: #22d3ee !important;
+}
+
+.dark .text-yellow-600 {
+  color: #facc15 !important;
+}
+
+/* Footer and navigation improvements */
+.bg-gray-900 {
+  background-color: #111827 !important;
+}
+
+.bg-gray-800 {
+  background-color: #1f2937 !important;
+}
+
+.border-gray-800 {
+  border-color: #1f2937 !important;
+}
+
+/* Button outline variations */
+.border-white {
+  border-color: #ffffff !important;
+}
+
+.hover\:bg-white:hover {
+  background-color: #ffffff !important;
+}
+
+.hover\:text-blue-600:hover {
+  color: #2563eb !important;
+}
+
+/* Landing page specific improvements */
+.text-blue-100 {
+  color: #dbeafe !important;
+}
+
+.text-blue-400 {
+  color: #60a5fa !important;
+}
+
+.text-gray-400 {
+  color: #9ca3af !important;
+}
+
+/* Gradient background support */
+.bg-gradient-to-r {
+  background-image: linear-gradient(
+    to right,
+    var(--tw-gradient-stops)
+  ) !important;
+}
+
+.from-blue-600 {
+  --tw-gradient-from: #2563eb !important;
+  --tw-gradient-to: rgba(37, 99, 235, 0) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.to-purple-600 {
+  --tw-gradient-to: #9333ea !important;
+}
+
+/* Enhanced contrast for light backgrounds */
+.bg-blue-50.dark\:bg-blue-900\/40 {
+  background-color: #eff6ff !important;
+}
+
+.dark .bg-blue-50.dark\:bg-blue-900\/40 {
+  background-color: rgba(30, 58, 138, 0.4) !important;
+}
+
+.bg-green-50.dark\:bg-green-900\/40 {
+  background-color: #f0fdf4 !important;
+}
+
+.dark .bg-green-50.dark\:bg-green-900\/40 {
+  background-color: rgba(20, 83, 45, 0.4) !important;
+}
+
+.bg-purple-50.dark\:bg-purple-900\/40 {
+  background-color: #faf5ff !important;
+}
+
+.dark .bg-purple-50.dark\:bg-purple-900\/40 {
+  background-color: rgba(88, 28, 135, 0.4) !important;
+}
+
+.bg-orange-50.dark\:bg-orange-900\/40 {
+  background-color: #fff7ed !important;
+}
+
+.dark .bg-orange-50.dark\:bg-orange-900\/40 {
+  background-color: rgba(154, 52, 18, 0.4) !important;
+}
+
+.bg-teal-50.dark\:bg-teal-900\/40 {
+  background-color: #f0fdfa !important;
+}
+
+.dark .bg-teal-50.dark\:bg-teal-900\/40 {
+  background-color: rgba(19, 78, 74, 0.4) !important;
+}
+
+/* Icon color improvements */
+.text-orange-400 {
+  color: #fb923c !important;
+}
+
+.text-teal-400 {
+  color: #2dd4bf !important;
+}
+
+.text-purple-400 {
+  color: #a78bfa !important;
+}
+
+.text-green-400 {
+  color: #4ade80 !important;
+}
+
+.dark .text-orange-400 {
+  color: #fb923c !important;
+}
+
+.dark .text-teal-400 {
+  color: #2dd4bf !important;
+}
+
+.dark .text-purple-400 {
+  color: #a78bfa !important;
+}
+
+.dark .text-green-400 {
+  color: #4ade80 !important;
+}
+
+/* Loading state improvements */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Ensure proper contrast for all interactive elements */
+button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Additional form improvements */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: #f3f4f6 !important;
+  color: #9ca3af !important;
+  cursor: not-allowed !important;
+}
+
+.dark input:disabled,
+.dark textarea:disabled,
+.dark select:disabled {
+  background-color: #374151 !important;
+  color: #6b7280 !important;
 }

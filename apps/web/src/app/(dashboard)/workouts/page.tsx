@@ -535,7 +535,7 @@ export default function WorkoutsPage() {
 
   const editWorkoutSession = (workout: Workout) => {
     // Navigate to edit page or set up edit modal
-    router.push(`/workouts/edit/${workout.id}`);
+    router.push(`/workouts/edit-workout?id=${workout.id}`);
   };
 
   const startPlanWorkout = async (plan: WorkoutPlan) => {

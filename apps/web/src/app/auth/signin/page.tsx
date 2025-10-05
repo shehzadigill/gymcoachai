@@ -97,15 +97,15 @@ export default function SignInPage() {
 
             <div className="flex items-center mb-6 lg:hidden">
               <Dumbbell className="h-8 w-8 text-blue-600 mr-3" />
-              <span className="text-2xl font-bold text-gray-900">
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">
                 GymCoach AI
               </span>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               Welcome Back
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Sign in to continue your fitness journey
             </p>
           </div>

@@ -200,7 +200,7 @@ export default function CreateWorkoutSessionPage() {
 
       if (response) {
         // Redirect to start the session immediately
-        router.push(`/workouts/sessions/${response.id}/start`);
+        router.push(`/workouts/sessions/start?id=${response.id}`);
       }
     } catch (error) {
       console.error('Failed to create and start workout session:', error);

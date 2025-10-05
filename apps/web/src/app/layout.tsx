@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from './providers/AuthProvider';
 import { ThemeProvider } from 'next-themes';
+import { ClientAuthWrapper } from '../components/auth/ClientAuthWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -58,7 +59,9 @@ export default function RootLayout({
           storageKey="gymcoach-theme"
           disableTransitionOnChange={false}
         >
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ClientAuthWrapper>{children}</ClientAuthWrapper>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -9,7 +9,6 @@ import {
   BarChart3,
   Brain,
   Smartphone,
-  Globe,
   Heart,
   Target,
   TrendingUp,
@@ -20,6 +19,7 @@ import {
   Star,
   ChevronRight,
   Download,
+  Globe,
 } from 'lucide-react';
 
 export default function Home() {
@@ -41,7 +41,7 @@ export default function Home() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Dumbbell className="h-8 w-8 text-blue-600 mr-3" />
-              <span className="text-2xl font-bold text-gray-900">
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">
                 GymCoach AI
               </span>
             </div>
@@ -101,13 +101,13 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <div className="flex justify-center mb-8">
-              <div className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+              <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 px-4 py-2 rounded-full text-sm font-medium">
                 <Brain className="h-4 w-4" />
                 AI-Powered Fitness Revolution
               </div>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
               Your Personal
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {' '}
@@ -116,7 +116,7 @@ export default function Home() {
               Coach
             </h1>
 
-            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
               Transform your fitness journey with intelligent workout plans,
               nutrition tracking, sleep monitoring, and real-time AI coaching.
               Available on web and mobile.
@@ -181,8 +181,8 @@ export default function Home() {
       <section id="features" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need for Your Fitness Journey
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Powerful Features
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Comprehensive tools powered by AI to help you achieve your fitness
@@ -193,13 +193,13 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Smart Workouts */}
             <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Dumbbell className="h-8 w-8 text-blue-600" />
+              <div className="bg-blue-100 dark:bg-blue-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Dumbbell className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                Smart Workouts
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                Workout Tracking
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 AI-generated workout plans that adapt to your fitness level,
                 preferences, and available equipment.
               </p>
@@ -220,13 +220,13 @@ export default function Home() {
 
             {/* Nutrition Tracking */}
             <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Apple className="h-8 w-8 text-green-600" />
+              <div className="bg-green-100 dark:bg-green-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Apple className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                 Nutrition Tracking
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 Log meals, track macros, and get personalized nutrition
                 recommendations powered by AI.
               </p>
@@ -247,13 +247,13 @@ export default function Home() {
 
             {/* Sleep Monitoring */}
             <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="h-8 w-8 text-purple-600" />
+              <div className="bg-purple-100 dark:bg-purple-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Heart className="h-8 w-8 text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                 Sleep Tracking
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 Monitor sleep patterns, quality, and get insights to optimize
                 your recovery and performance.
               </p>
@@ -274,13 +274,13 @@ export default function Home() {
 
             {/* Progress Analytics */}
             <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BarChart3 className="h-8 w-8 text-indigo-600" />
+              <div className="bg-indigo-100 dark:bg-indigo-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <BarChart3 className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                 Progress Analytics
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 Detailed analytics and insights to track your progress and
                 optimize your fitness journey.
               </p>
@@ -301,13 +301,13 @@ export default function Home() {
 
             {/* AI Coaching */}
             <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Brain className="h-8 w-8 text-orange-600" />
+              <div className="bg-orange-100 dark:bg-orange-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Brain className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                 AI Coaching
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 Get real-time form corrections, motivation, and personalized
                 advice from your AI coach.
               </p>
@@ -328,13 +328,13 @@ export default function Home() {
 
             {/* Performance Metrics */}
             <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <TrendingUp className="h-8 w-8 text-teal-600" />
+              <div className="bg-teal-100 dark:bg-teal-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <TrendingUp className="h-8 w-8 text-teal-600 dark:text-teal-400" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                 Performance Metrics
               </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 Track strength gains, endurance improvements, and other key
                 performance indicators.
               </p>
@@ -364,16 +364,16 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="flex items-center gap-2 text-blue-600 mb-4">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-4">
                 <Smartphone className="h-5 w-5" />
                 <span className="font-semibold">Mobile Experience</span>
               </div>
 
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                Take Your Fitness Journey Anywhere
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
+                Take Your Fitness Anywhere
               </h2>
 
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                 Our native mobile app brings the full power of GymCoach AI to
                 your smartphone. Train anywhere, anytime, with offline support
                 and real-time coaching.
@@ -382,23 +382,27 @@ export default function Home() {
               <div className="space-y-4 mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700">Offline workout support</span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    Offline workout support
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700">
+                  <span className="text-gray-700 dark:text-gray-300">
                     Real-time form analysis with camera
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700">
+                  <span className="text-gray-700 dark:text-gray-300">
                     Push notifications for workouts
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700">Sync across all devices</span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    Sync across all devices
+                  </span>
                 </div>
               </div>
 
@@ -406,7 +410,7 @@ export default function Home() {
                 <Button
                   variant="primary"
                   size="lg"
-                  className="flex items-center gap-2 text-primary"
+                  className="flex items-center gap-2"
                 >
                   <Download className="h-5 w-5" />
                   Download for iOS
@@ -450,22 +454,34 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">10K+</div>
-              <div className="text-gray-600">Active Users</div>
+              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                10K+
+              </div>
+              <div className="text-gray-600 dark:text-gray-400">
+                Active Users
+              </div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-green-600 mb-2">1M+</div>
-              <div className="text-gray-600">Workouts Completed</div>
+              <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
+                1M+
+              </div>
+              <div className="text-gray-600 dark:text-gray-400">
+                Workouts Completed
+              </div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-purple-600 mb-2">95%</div>
-              <div className="text-gray-600">User Satisfaction</div>
+              <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                95%
+              </div>
+              <div className="text-gray-600 dark:text-gray-400">
+                User Satisfaction
+              </div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-indigo-600 mb-2">
+              <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
                 24/7
               </div>
-              <div className="text-gray-600">AI Support</div>
+              <div className="text-gray-600 dark:text-gray-400">AI Support</div>
             </div>
           </div>
         </div>
@@ -478,10 +494,10 @@ export default function Home() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
               Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Start free and upgrade when you're ready for advanced AI features.
               No hidden fees, cancel anytime.
             </p>
@@ -490,14 +506,20 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Free Plan */}
             <Card className="text-center p-8 border-2 border-gray-200 relative">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Star className="h-8 w-8 text-gray-600" />
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Star className="h-8 w-8 text-gray-600 dark:text-gray-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Free</h3>
-              <p className="text-gray-600 mb-6">Perfect for getting started</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Free
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Perfect for getting started
+              </p>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900">$0</span>
-                <span className="text-gray-600">/month</span>
+                <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                  $0
+                </span>
+                <span className="text-gray-600 dark:text-gray-300">/month</span>
               </div>
               <ul className="text-left space-y-3 mb-8 text-sm">
                 <li className="flex items-center">
@@ -540,14 +562,20 @@ export default function Home() {
                   Most Popular
                 </Badge>
               </div>
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Zap className="h-8 w-8 text-blue-600" />
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Zap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium</h3>
-              <p className="text-gray-600 mb-6">Complete AI-powered coaching</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Premium
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Complete AI-powered coaching
+              </p>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900">$19.99</span>
-                <span className="text-gray-600">/month</span>
+                <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                  $19.99
+                </span>
+                <span className="text-gray-600 dark:text-gray-300">/month</span>
               </div>
               <ul className="text-left space-y-3 mb-8 text-sm">
                 <li className="flex items-center">
@@ -588,16 +616,22 @@ export default function Home() {
 
             {/* Enterprise Plan */}
             <Card className="text-center p-8 border-2 border-purple-200 md:col-span-2 lg:col-span-1">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="h-8 w-8 text-purple-600" />
+              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Users className="h-8 w-8 text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Enterprise
               </h3>
-              <p className="text-gray-600 mb-6">For gyms and organizations</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                For gyms and organizations
+              </p>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900">Custom</span>
-                <span className="text-gray-600">/pricing</span>
+                <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                  Custom
+                </span>
+                <span className="text-gray-600 dark:text-gray-300">
+                  /pricing
+                </span>
               </div>
               <ul className="text-left space-y-3 mb-8 text-sm">
                 <li className="flex items-center">
@@ -619,7 +653,7 @@ export default function Home() {
               </ul>
               <Button
                 variant="outline"
-                className="w-full border-purple-300 text-purple-600 hover:bg-purple-50"
+                className="w-full border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20"
               >
                 Contact Sales
               </Button>
@@ -627,7 +661,7 @@ export default function Home() {
           </div>
 
           <div className="text-center mt-12">
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
               Need more details? Compare all features and see what's included in
               each plan.
             </p>
@@ -635,7 +669,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="lg"
-                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-900/20"
               >
                 View Full Pricing Details
               </Button>

@@ -275,7 +275,7 @@ export default function WorkoutSessionsPage() {
   };
 
   const handleStartSession = (sessionId: string) => {
-    router.push(`/workouts/sessions/${sessionId}/start`);
+    router.push(`/workouts/sessions/start?id=${sessionId}`);
   };
 
   const handleCompleteSession = async (sessionId: string) => {

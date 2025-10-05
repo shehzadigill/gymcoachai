@@ -958,7 +958,9 @@ export default function EnhancedWorkoutHistoryPage() {
                     {!session.completed_at && (
                       <button
                         onClick={() =>
-                          router.push(`/workouts/sessions/${session.id}`)
+                          router.push(
+                            `/workouts/session-detail?id=${session.id}`
+                          )
                         }
                         className="bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-md text-sm"
                       >
