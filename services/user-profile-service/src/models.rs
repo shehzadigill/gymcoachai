@@ -32,11 +32,22 @@ pub struct UserProfile {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct DailyGoals {
+    pub calories: i32,
+    pub water: i32,
+    pub protein: i32,
+    pub carbs: i32,
+    pub fat: i32,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UserPreferences {
     pub units: String, // "metric" or "imperial"
     pub timezone: String,
     pub notifications: NotificationSettings,
     pub privacy: PrivacySettings,
+    pub daily_goals: Option<DailyGoals>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -172,7 +172,7 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         }
         ("PUT", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
             info!("Route: PUT user profile");
-            handle_update_user_profile(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+            handle_partial_update_user_profile(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
         }
         ("POST", "/api/user-profiles/profile/upload") => {
             info!("Route: POST upload");

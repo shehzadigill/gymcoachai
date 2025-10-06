@@ -153,6 +153,78 @@ pub async fn handle_update_user_profile(
     }
 }
 
+pub async fn handle_partial_update_user_profile(
+    path: &str,
+    body: &str,
+    dynamodb_client: &DynamoDbClient,
+    auth_context: &AuthContext,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let user_id = extract_user_id_from_path(path).or_else(|| Some(auth_context.user_id.clone()));
+    
+    match user_id {
+        Some(id) => {
+            // Check if user can access this profile
+            if !can_access_user_profile(auth_context, &id) {
+                return Ok(json!({
+                    "statusCode": 403,
+                    "headers": get_cors_headers(),
+                    "body": json!({
+                        "error": "Forbidden",
+                        "message": "You can only update your own profile"
+                    })
+                }));
+            }
+            
+            let update_data: Result<Value, _> = serde_json::from_str(body);
+            match update_data {
+                Ok(data) => {
+                    match partial_update_user_profile_in_db(&id, &data, dynamodb_client).await {
+                        Ok(updated_profile) => {
+                            Ok(json!({
+                                "statusCode": 200,
+                                "headers": get_cors_headers(),
+                                "body": updated_profile
+                            }))
+                        }
+                        Err(e) => {
+                            error!("Error updating user profile: {}", e);
+                            Ok(json!({
+                                "statusCode": 500,
+                                "headers": get_cors_headers(),
+                                "body": json!({
+                                    "error": "Internal Server Error",
+                                    "message": "Failed to update user profile"
+                                })
+                            }))
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Error parsing request body: {}", e);
+                    Ok(json!({
+                        "statusCode": 400,
+                        "headers": get_cors_headers(),
+                        "body": json!({
+                            "error": "Bad Request",
+                            "message": "Invalid JSON in request body"
+                        })
+                    }))
+                }
+            }
+        }
+        None => {
+            Ok(json!({
+                "statusCode": 400,
+                "headers": get_cors_headers(),
+                "body": json!({
+                    "error": "Bad Request",
+                    "message": "User ID is required"
+                })
+            }))
+        }
+    }
+}
+
 pub async fn handle_generate_upload_url(
     body: &str,
     s3_client: &S3Client,

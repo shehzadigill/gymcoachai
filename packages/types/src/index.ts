@@ -9,11 +9,20 @@ export interface User {
   preferences: UserPreferences;
 }
 
+export interface DailyGoals {
+  calories: number;
+  water: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 export interface UserPreferences {
   units: 'metric' | 'imperial';
   timezone: string;
   notifications: NotificationSettings;
   privacy: PrivacySettings;
+  dailyGoals?: DailyGoals;
 }
 
 export interface NotificationSettings {

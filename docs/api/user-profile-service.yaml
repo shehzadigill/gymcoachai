@@ -36,21 +36,21 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateUserProfileRequest'
             example:
-              userId: "user123"
-              email: "user@example.com"
-              name: "John Doe"
-              fitnessGoals: "Build muscle"
-              experienceLevel: "beginner"
+              userId: 'user123'
+              email: 'user@example.com'
+              name: 'John Doe'
+              fitnessGoals: 'Build muscle'
+              experienceLevel: 'beginner'
               preferences:
-                units: "metric"
-                timezone: "UTC"
+                units: 'metric'
+                timezone: 'UTC'
                 notifications:
                   email: true
                   push: true
                   workoutReminders: true
                   nutritionReminders: true
                 privacy:
-                  profileVisibility: "private"
+                  profileVisibility: 'private'
                   workoutSharing: false
                   progressSharing: false
       responses:
@@ -101,7 +101,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
       responses:
         '200':
           description: User profile retrieved successfully
@@ -149,7 +149,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
       requestBody:
         required: true
         content:
@@ -157,19 +157,19 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdateUserProfileRequest'
             example:
-              name: "John Smith"
-              fitnessGoals: "Lose weight"
-              experienceLevel: "intermediate"
+              name: 'John Smith'
+              fitnessGoals: 'Lose weight'
+              experienceLevel: 'intermediate'
               preferences:
-                units: "imperial"
-                timezone: "America/New_York"
+                units: 'imperial'
+                timezone: 'America/New_York'
                 notifications:
                   email: true
                   push: false
                   workoutReminders: true
                   nutritionReminders: false
                 privacy:
-                  profileVisibility: "public"
+                  profileVisibility: 'public'
                   workoutSharing: true
                   progressSharing: true
       responses:
@@ -225,7 +225,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
       responses:
         '204':
           description: User profile deleted successfully
@@ -270,7 +270,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
       responses:
         '200':
           description: User preferences retrieved successfully
@@ -318,7 +318,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
       requestBody:
         required: true
         content:
@@ -326,15 +326,15 @@ paths:
             schema:
               $ref: '#/components/schemas/UserPreferences'
             example:
-              units: "metric"
-              timezone: "UTC"
+              units: 'metric'
+              timezone: 'UTC'
               notifications:
                 email: true
                 push: true
                 workoutReminders: true
                 nutritionReminders: true
               privacy:
-                profileVisibility: "private"
+                profileVisibility: 'private'
                 workoutSharing: false
                 progressSharing: false
       responses:
@@ -391,7 +391,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
         - name: period
           in: query
           required: false
@@ -455,7 +455,7 @@ paths:
           description: Unique identifier for the user
           schema:
             type: string
-            example: "user123"
+            example: 'user123'
       requestBody:
         required: true
         content:
@@ -463,8 +463,8 @@ paths:
             schema:
               $ref: '#/components/schemas/UploadRequest'
             example:
-              fileName: "profile-picture.jpg"
-              fileType: "image/jpeg"
+              fileName: 'profile-picture.jpg'
+              fileType: 'image/jpeg'
               fileSize: 1048576
       responses:
         '200':
@@ -522,43 +522,50 @@ components:
         userId:
           type: string
           description: Unique identifier for the user
-          example: "user123"
+          example: 'user123'
         email:
           type: string
           format: email
           description: User's email address
-          example: "user@example.com"
+          example: 'user@example.com'
         name:
           type: string
           description: User's full name
-          example: "John Doe"
+          example: 'John Doe'
         fitnessGoals:
           type: string
           description: User's fitness goals
-          enum: [Build muscle, Lose weight, Improve endurance, General fitness, Sports performance]
-          example: "Build muscle"
+          enum:
+            [
+              Build muscle,
+              Lose weight,
+              Improve endurance,
+              General fitness,
+              Sports performance,
+            ]
+          example: 'Build muscle'
         experienceLevel:
           type: string
           description: User's fitness experience level
           enum: [beginner, intermediate, advanced, expert]
-          example: "beginner"
+          example: 'beginner'
         preferences:
           $ref: '#/components/schemas/UserPreferences'
         profilePictureUrl:
           type: string
           format: uri
           description: URL to user's profile picture
-          example: "https://s3.amazonaws.com/gymcoach-ai-profiles/user123/profile.jpg"
+          example: 'https://s3.amazonaws.com/gymcoach-ai-profiles/user123/profile.jpg'
         createdAt:
           type: string
           format: date-time
           description: Profile creation timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         updatedAt:
           type: string
           format: date-time
           description: Profile last update timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
 
     UserPreferences:
       type: object
@@ -572,15 +579,17 @@ components:
           type: string
           description: Preferred unit system
           enum: [metric, imperial]
-          example: "metric"
+          example: 'metric'
         timezone:
           type: string
           description: User's timezone
-          example: "UTC"
+          example: 'UTC'
         notifications:
           $ref: '#/components/schemas/NotificationPreferences'
         privacy:
           $ref: '#/components/schemas/PrivacyPreferences'
+        dailyGoals:
+          $ref: '#/components/schemas/DailyGoals'
 
     NotificationPreferences:
       type: object
@@ -618,7 +627,7 @@ components:
           type: string
           description: Profile visibility setting
           enum: [private, friends, public]
-          example: "private"
+          example: 'private'
         workoutSharing:
           type: boolean
           description: Allow sharing workout data
@@ -627,6 +636,41 @@ components:
           type: boolean
           description: Allow sharing progress data
           example: false
+
+    DailyGoals:
+      type: object
+      description: Daily nutrition and health goals
+      properties:
+        calories:
+          type: integer
+          description: Daily calorie target
+          minimum: 1000
+          maximum: 5000
+          example: 2000
+        water:
+          type: integer
+          description: Daily water intake target in glasses
+          minimum: 1
+          maximum: 20
+          example: 8
+        protein:
+          type: integer
+          description: Daily protein target in grams
+          minimum: 50
+          maximum: 300
+          example: 150
+        carbs:
+          type: integer
+          description: Daily carbohydrates target in grams
+          minimum: 50
+          maximum: 500
+          example: 200
+        fat:
+          type: integer
+          description: Daily fat target in grams
+          minimum: 20
+          maximum: 200
+          example: 65
 
     UserStatistics:
       type: object
@@ -645,12 +689,12 @@ components:
         userId:
           type: string
           description: Unique identifier for the user
-          example: "user123"
+          example: 'user123'
         period:
           type: string
           description: Statistics period
           enum: [week, month, quarter, year, all]
-          example: "month"
+          example: 'month'
         totalWorkouts:
           type: integer
           description: Total number of workouts completed
@@ -682,12 +726,12 @@ components:
           type: string
           format: date-time
           description: Statistics creation timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         updatedAt:
           type: string
           format: date-time
           description: Statistics last update timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
 
     ExerciseStats:
       type: object
@@ -700,11 +744,11 @@ components:
         exerciseId:
           type: string
           description: Unique identifier for the exercise
-          example: "ex123"
+          example: 'ex123'
         exerciseName:
           type: string
           description: Name of the exercise
-          example: "Push-ups"
+          example: 'Push-ups'
         count:
           type: integer
           description: Number of times performed
@@ -725,20 +769,20 @@ components:
         id:
           type: string
           description: Unique identifier for the achievement
-          example: "ach123"
+          example: 'ach123'
         name:
           type: string
           description: Achievement name
-          example: "First Workout"
+          example: 'First Workout'
         description:
           type: string
           description: Achievement description
-          example: "Completed your first workout"
+          example: 'Completed your first workout'
         unlockedAt:
           type: string
           format: date-time
           description: Achievement unlock timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
 
     CreateUserProfileRequest:
       type: object
@@ -753,26 +797,33 @@ components:
         userId:
           type: string
           description: Unique identifier for the user
-          example: "user123"
+          example: 'user123'
         email:
           type: string
           format: email
           description: User's email address
-          example: "user@example.com"
+          example: 'user@example.com'
         name:
           type: string
           description: User's full name
-          example: "John Doe"
+          example: 'John Doe'
         fitnessGoals:
           type: string
           description: User's fitness goals
-          enum: [Build muscle, Lose weight, Improve endurance, General fitness, Sports performance]
-          example: "Build muscle"
+          enum:
+            [
+              Build muscle,
+              Lose weight,
+              Improve endurance,
+              General fitness,
+              Sports performance,
+            ]
+          example: 'Build muscle'
         experienceLevel:
           type: string
           description: User's fitness experience level
           enum: [beginner, intermediate, advanced, expert]
-          example: "beginner"
+          example: 'beginner'
         preferences:
           $ref: '#/components/schemas/UserPreferences'
 
@@ -782,17 +833,24 @@ components:
         name:
           type: string
           description: User's full name
-          example: "John Smith"
+          example: 'John Smith'
         fitnessGoals:
           type: string
           description: User's fitness goals
-          enum: [Build muscle, Lose weight, Improve endurance, General fitness, Sports performance]
-          example: "Lose weight"
+          enum:
+            [
+              Build muscle,
+              Lose weight,
+              Improve endurance,
+              General fitness,
+              Sports performance,
+            ]
+          example: 'Lose weight'
         experienceLevel:
           type: string
           description: User's fitness experience level
           enum: [beginner, intermediate, advanced, expert]
-          example: "intermediate"
+          example: 'intermediate'
         preferences:
           $ref: '#/components/schemas/UserPreferences'
 
@@ -806,11 +864,11 @@ components:
         fileName:
           type: string
           description: Name of the file to upload
-          example: "profile-picture.jpg"
+          example: 'profile-picture.jpg'
         fileType:
           type: string
           description: MIME type of the file
-          example: "image/jpeg"
+          example: 'image/jpeg'
         fileSize:
           type: integer
           description: Size of the file in bytes
@@ -827,16 +885,16 @@ components:
           type: string
           format: uri
           description: Presigned URL for uploading the file
-          example: "https://s3.amazonaws.com/gymcoach-ai-profiles/user123/profile.jpg?X-Amz-Algorithm=..."
+          example: 'https://s3.amazonaws.com/gymcoach-ai-profiles/user123/profile.jpg?X-Amz-Algorithm=...'
         fileKey:
           type: string
           description: S3 key for the uploaded file
-          example: "user123/profile.jpg"
+          example: 'user123/profile.jpg'
         expiresAt:
           type: string
           format: date-time
           description: URL expiration timestamp
-          example: "2024-01-01T01:00:00Z"
+          example: '2024-01-01T01:00:00Z'
 
     ErrorResponse:
       type: object
@@ -848,16 +906,16 @@ components:
         error:
           type: string
           description: Error type
-          example: "ValidationError"
+          example: 'ValidationError'
         message:
           type: string
           description: Human-readable error message
-          example: "Invalid input data provided"
+          example: 'Invalid input data provided'
         timestamp:
           type: string
           format: date-time
           description: Error timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         details:
           type: object
           description: Additional error details
@@ -865,7 +923,7 @@ components:
         requestId:
           type: string
           description: Unique identifier for the request
-          example: "req123"
+          example: 'req123'
 
 tags:
   - name: User Profiles

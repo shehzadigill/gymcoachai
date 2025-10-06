@@ -764,6 +764,13 @@ function GoalsTab({
   onUpdate: (updates: Partial<UserProfile>) => void;
 }) {
   const [newGoal, setNewGoal] = useState('');
+  const [dailyGoals, setDailyGoals] = useState({
+    calories: 2000,
+    water: 8, // glasses
+    protein: 150, // grams
+    carbs: 200, // grams
+    fat: 65, // grams
+  });
 
   const addGoal = () => {
     if (newGoal.trim() && profile.fitnessGoals) {
@@ -782,8 +789,145 @@ function GoalsTab({
     }
   };
 
+  const updateDailyGoal = (key: keyof typeof dailyGoals, value: number) => {
+    setDailyGoals((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const saveDailyGoals = () => {
+    // For now, just show success message
+    console.log('Daily goals saved:', dailyGoals);
+    alert('Daily goals saved successfully!');
+  };
+
   return (
     <div className="space-y-6">
+      {/* Daily Goals Section */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Daily Goals
+        </h3>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Daily Calories
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  value={dailyGoals.calories}
+                  onChange={(e) =>
+                    updateDailyGoal(
+                      'calories',
+                      parseInt(e.target.value) || 2000
+                    )
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="2000"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  kcal
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Water Intake
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  value={dailyGoals.water}
+                  onChange={(e) =>
+                    updateDailyGoal('water', parseInt(e.target.value) || 8)
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="8"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  glasses
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Protein
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  value={dailyGoals.protein}
+                  onChange={(e) =>
+                    updateDailyGoal('protein', parseInt(e.target.value) || 150)
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="150"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  g
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Carbohydrates
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  value={dailyGoals.carbs}
+                  onChange={(e) =>
+                    updateDailyGoal('carbs', parseInt(e.target.value) || 200)
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="200"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  g
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Fat
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  value={dailyGoals.fat}
+                  onChange={(e) =>
+                    updateDailyGoal('fat', parseInt(e.target.value) || 65)
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="65"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  g
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={saveDailyGoals}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Save Daily Goals
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Fitness Goals Section */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Fitness Goals

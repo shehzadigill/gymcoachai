@@ -49,6 +49,15 @@ pub async fn get_user_profile_from_db(
                     workout_sharing: *item.get("workoutSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
                     progress_sharing: *item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
                 },
+                daily_goals: item.get("dailyGoals").and_then(|v| v.as_m().ok()).and_then(|goals_map| {
+                    Some(DailyGoals {
+                        calories: goals_map.get("calories").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(2000),
+                        water: goals_map.get("water").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(8),
+                        protein: goals_map.get("protein").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(150),
+                        carbs: goals_map.get("carbs").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(200),
+                        fat: goals_map.get("fat").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(65),
+                    })
+                }),
             },
             gender: item.get("gender").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
             fitness_level: item.get("fitnessLevel").and_then(|v| v.as_s().ok()).map(|s| s.to_string()),
@@ -121,6 +130,17 @@ pub async fn update_user_profile_in_db(
     item.insert("workoutSharing".to_string(), AttributeValue::Bool(profile.preferences.privacy.workout_sharing));
     item.insert("progressSharing".to_string(), AttributeValue::Bool(profile.preferences.privacy.progress_sharing));
     
+    // Add daily goals if present
+    if let Some(daily_goals) = &profile.preferences.daily_goals {
+        let mut goals_map = std::collections::HashMap::new();
+        goals_map.insert("calories".to_string(), AttributeValue::N(daily_goals.calories.to_string()));
+        goals_map.insert("water".to_string(), AttributeValue::N(daily_goals.water.to_string()));
+        goals_map.insert("protein".to_string(), AttributeValue::N(daily_goals.protein.to_string()));
+        goals_map.insert("carbs".to_string(), AttributeValue::N(daily_goals.carbs.to_string()));
+        goals_map.insert("fat".to_string(), AttributeValue::N(daily_goals.fat.to_string()));
+        item.insert("dailyGoals".to_string(), AttributeValue::M(goals_map));
+    }
+    
     // Set created_at if this is a new profile
     if profile.created_at.is_empty() {
         item.insert("createdAt".to_string(), AttributeValue::S(now.clone()));
@@ -136,6 +156,69 @@ pub async fn update_user_profile_in_db(
         .await?;
     
     Ok(serde_json::to_value(profile)?)
+}
+
+pub async fn partial_update_user_profile_in_db(
+    user_id: &str,
+    update_data: &Value,
+    dynamodb_client: &DynamoDbClient,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
+    let now = Utc::now().to_rfc3339();
+    
+    // First, get the current profile
+    let current_profile = get_user_profile_from_db(user_id, dynamodb_client).await?;
+    let mut profile: UserProfile = serde_json::from_value(current_profile)?;
+    
+    // Update only the fields that are provided in the update_data
+    if let Some(preferences_obj) = update_data.get("preferences") {
+        if let Some(daily_goals_obj) = preferences_obj.get("dailyGoals") {
+            let daily_goals = DailyGoals {
+                calories: daily_goals_obj.get("calories").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(2000),
+                water: daily_goals_obj.get("water").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(8),
+                protein: daily_goals_obj.get("protein").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(150),
+                carbs: daily_goals_obj.get("carbs").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(200),
+                fat: daily_goals_obj.get("fat").and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(65),
+            };
+            profile.preferences.daily_goals = Some(daily_goals);
+        }
+    }
+    
+    // Update goals if provided
+    if let Some(goals_arr) = update_data.get("goals").and_then(|v| v.as_array()) {
+        profile.fitness_goals = goals_arr.iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect();
+    }
+    
+    // Update other fields if provided
+    if let Some(first_name) = update_data.get("firstName").and_then(|v| v.as_str()) {
+        profile.first_name = first_name.to_string();
+    }
+    if let Some(last_name) = update_data.get("lastName").and_then(|v| v.as_str()) {
+        profile.last_name = last_name.to_string();
+    }
+    if let Some(bio) = update_data.get("bio").and_then(|v| v.as_str()) {
+        profile.bio = Some(bio.to_string());
+    }
+    if let Some(gender) = update_data.get("gender").and_then(|v| v.as_str()) {
+        profile.gender = Some(gender.to_string());
+    }
+    if let Some(fitness_level) = update_data.get("fitnessLevel").and_then(|v| v.as_str()) {
+        profile.fitness_level = Some(fitness_level.to_string());
+    }
+    if let Some(height) = update_data.get("height").and_then(|v| v.as_i64()) {
+        profile.height = Some(height as i32);
+    }
+    if let Some(weight) = update_data.get("weight").and_then(|v| v.as_f64()) {
+        profile.weight = Some(weight as f32);
+    }
+    if let Some(birth_date) = update_data.get("birthDate").and_then(|v| v.as_str()) {
+        profile.date_of_birth = Some(birth_date.to_string());
+    }
+    
+    // Save the updated profile
+    update_user_profile_in_db(user_id, &profile, dynamodb_client).await
 }
 
 pub async fn get_user_stats_from_db(
@@ -214,6 +297,15 @@ pub async fn get_user_preferences_from_db(
                 workout_sharing: *item.get("workoutSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
                 progress_sharing: *item.get("progressSharing").and_then(|v| v.as_bool().ok()).unwrap_or(&false),
             },
+            daily_goals: item.get("dailyGoals").and_then(|v| v.as_m().ok()).and_then(|goals_map| {
+                Some(DailyGoals {
+                    calories: goals_map.get("calories").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(2000),
+                    water: goals_map.get("water").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(8),
+                    protein: goals_map.get("protein").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(150),
+                    carbs: goals_map.get("carbs").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(200),
+                    fat: goals_map.get("fat").and_then(|v| v.as_n().ok()).and_then(|s| s.parse().ok()).unwrap_or(65),
+                })
+            }),
         };
         
         Ok(serde_json::to_value(preferences)?)
@@ -233,6 +325,7 @@ pub async fn get_user_preferences_from_db(
                 workout_sharing: false,
                 progress_sharing: false,
             },
+            daily_goals: None,
         };
         Ok(serde_json::to_value(default_preferences)?)
     }
