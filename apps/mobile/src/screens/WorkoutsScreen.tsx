@@ -1,403 +1,364 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ScrollView,
   View,
   Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Modal,
 } from 'react-native';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { useApi, apiFetch } from '../hooks/useApi';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ErrorMessage } from '../components/ErrorMessage';
+import { Card, LoadingSpinner, Button } from '../components/common/UI';
+import apiClient from '../services/api';
 
-interface Workout {
-  id: string;
-  name: string;
-  description: string;
-  duration: number;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  exercises: Exercise[];
-  completed: boolean;
-  completedAt?: string;
-}
-
-interface Exercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  weight?: number;
-  restTime: number;
-  instructions: string;
-}
-
-export function WorkoutsScreen() {
-  const [user, setUser] = useState<any>(null);
+export default function WorkoutsScreen({ navigation }: any) {
+  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
-    loadUser();
+    loadWorkouts();
   }, []);
 
-  const loadUser = async () => {
+  const loadWorkouts = async () => {
     try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      setLoading(true);
+      const [workoutsData, sessionsData] = await Promise.allSettled([
+        apiClient.getWorkouts(),
+        apiClient.getWorkoutSessions(),
+      ]);
+
+      setWorkouts(
+        workoutsData.status === 'fulfilled' ? workoutsData.value : []
+      );
+      setSessions(
+        sessionsData.status === 'fulfilled' ? sessionsData.value : []
+      );
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('Error loading workouts:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
-
-  const {
-    data: workoutsResponse,
-    loading,
-    error,
-    refetch,
-  } = useApi<{ statusCode: number; body: any[] }>('/api/workouts/sessions');
-
-  // Transform API response or use mock data
-  const workouts: Workout[] =
-    workoutsResponse?.statusCode === 200
-      ? workoutsResponse.body.map((session: any) => ({
-          id: session.id,
-          name: session.workout_plan?.name || 'Workout Session',
-          description: session.workout_plan?.description || 'No description',
-          duration: session.duration_minutes || 0,
-          difficulty: session.workout_plan?.difficulty || 'beginner',
-          completed: session.status === 'completed',
-          completedAt: session.completed_at,
-          exercises: session.exercises || [],
-        }))
-      : [
-          {
-            id: '1',
-            name: 'Upper Body Strength',
-            description: 'Focus on chest, shoulders, and arms',
-            duration: 45,
-            difficulty: 'intermediate',
-            completed: false,
-            exercises: [
-              {
-                id: '1',
-                name: 'Bench Press',
-                sets: 3,
-                reps: 10,
-                weight: 135,
-                restTime: 90,
-                instructions: 'Lie flat on bench, lower bar to chest, press up',
-              },
-              {
-                id: '2',
-                name: 'Shoulder Press',
-                sets: 3,
-                reps: 12,
-                weight: 50,
-                restTime: 60,
-                instructions: 'Press dumbbells overhead from shoulder height',
-              },
-            ],
-          },
-          {
-            id: '2',
-            name: 'Lower Body Power',
-            description: 'Squats, deadlifts, and leg exercises',
-            duration: 60,
-            difficulty: 'advanced',
-            completed: true,
-            completedAt: '2024-01-15T10:30:00Z',
-            exercises: [
-              {
-                id: '3',
-                name: 'Back Squat',
-                sets: 4,
-                reps: 8,
-                weight: 185,
-                restTime: 120,
-                instructions: 'Squat down until thighs parallel to floor',
-              },
-            ],
-          },
-        ];
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    await loadWorkouts();
   };
 
-  const startWorkout = (workout: Workout) => {
-    setSelectedWorkout(workout);
+  const startQuickWorkout = () => {
+    navigation.navigate('Session', { workoutId: null });
   };
 
-  const completeWorkout = async (workoutId: string) => {
-    try {
-      await apiFetch(`/api/workouts/sessions`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          id: workoutId,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-        }),
-      });
-      await refetch();
-      setSelectedWorkout(null);
-    } catch (e: any) {
-      console.error('Failed to complete workout:', e);
-      await refetch();
-      setSelectedWorkout(null);
-    }
-  };
-
-  if (loading) {
-    return <LoadingSpinner message="Loading workouts..." />;
+  if (loading && !workouts.length) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingSpinner />
+      </SafeAreaView>
+    );
   }
-
-  if (error) {
-    return <ErrorMessage message={error} onRetry={onRefresh} />;
-  }
-
-  const completedWorkouts = workouts.filter((w) => w.completed).length;
-  const totalTime = workouts.reduce((acc, w) => acc + w.duration, 0);
-  const weeklyWorkouts = workouts.filter(
-    (w) =>
-      w.completed &&
-      w.completedAt &&
-      new Date(w.completedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  ).length;
 
   return (
-    <ScrollView
-      className="flex-1 bg-gray-50"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View className="p-4">
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header */}
-        <View className="flex-row justify-between items-center mb-6">
-          <View>
-            <Text className="text-2xl font-bold text-gray-900">Workouts</Text>
-            <Text className="text-gray-600">Manage your workout routines</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => setShowCreateForm(true)}
-            className="bg-blue-600 rounded-lg px-4 py-2"
-          >
-            <Text className="text-white font-semibold">+ New</Text>
-          </TouchableOpacity>
+        <View style={styles.header}>
+          <Text style={styles.title}>Workouts</Text>
+          <Text style={styles.subtitle}>
+            Choose a workout or start a custom session
+          </Text>
         </View>
 
-        {/* Stats */}
-        <View className="flex-row flex-wrap -mx-2 mb-6">
-          <View className="w-1/2 px-2">
-            <View className="bg-white rounded-lg border border-gray-200 p-4">
-              <View className="flex-row items-center">
-                <Text className="text-2xl mr-3">💪</Text>
-                <View>
-                  <Text className="text-sm font-medium text-gray-600">
-                    Total Workouts
-                  </Text>
-                  <Text className="text-2xl font-semibold text-gray-900">
-                    {workouts.length}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          <View className="w-1/2 px-2">
-            <View className="bg-white rounded-lg border border-gray-200 p-4">
-              <View className="flex-row items-center">
-                <Text className="text-2xl mr-3">✅</Text>
-                <View>
-                  <Text className="text-sm font-medium text-gray-600">
-                    Completed
-                  </Text>
-                  <Text className="text-2xl font-semibold text-gray-900">
-                    {completedWorkouts}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          <View className="w-1/2 px-2">
-            <View className="bg-white rounded-lg border border-gray-200 p-4">
-              <View className="flex-row items-center">
-                <Text className="text-2xl mr-3">⏱️</Text>
-                <View>
-                  <Text className="text-sm font-medium text-gray-600">
-                    Total Time
-                  </Text>
-                  <Text className="text-2xl font-semibold text-gray-900">
-                    {totalTime}m
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          <View className="w-1/2 px-2">
-            <View className="bg-white rounded-lg border border-gray-200 p-4">
-              <View className="flex-row items-center">
-                <Text className="text-2xl mr-3">📈</Text>
-                <View>
-                  <Text className="text-sm font-medium text-gray-600">
-                    This Week
-                  </Text>
-                  <Text className="text-2xl font-semibold text-gray-900">
-                    {weeklyWorkouts}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <Button
+            title="🔥 Start Quick Workout"
+            onPress={startQuickWorkout}
+            style={styles.quickWorkoutButton}
+          />
         </View>
 
-        {/* Workouts List */}
-        <View className="space-y-4">
-          {workouts.map((workout) => (
-            <View
-              key={workout.id}
-              className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-            >
-              <View className="p-6">
-                <View className="flex-row items-start justify-between mb-4">
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 mb-1">
-                      {workout.name}
+        {/* Recent Sessions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Sessions</Text>
+          {sessions && sessions.length > 0 ? (
+            sessions.slice(0, 5).map((session, index) => (
+              <Card key={session.id || index} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <Text style={styles.sessionName}>
+                    {session.workout?.name || 'Custom Workout'}
+                  </Text>
+                  <Text style={styles.sessionDate}>
+                    {new Date(session.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View style={styles.sessionInfo}>
+                  <Text style={styles.sessionDetail}>
+                    Status:{' '}
+                    <Text style={getStatusStyle(session.status)}>
+                      {session.status}
                     </Text>
-                    <Text className="text-sm text-gray-600">
-                      {workout.description}
+                  </Text>
+                  {session.exercises && (
+                    <Text style={styles.sessionDetail}>
+                      {session.exercises.length} exercises
                     </Text>
-                  </View>
-                  {workout.completed && (
-                    <Text className="text-green-500 text-xl">✅</Text>
+                  )}
+                  {session.startTime && session.endTime && (
+                    <Text style={styles.sessionDetail}>
+                      Duration:{' '}
+                      {calculateDuration(session.startTime, session.endTime)}
+                    </Text>
                   )}
                 </View>
+              </Card>
+            ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No workout sessions yet</Text>
+              <Text style={styles.emptySubtext}>
+                Start your first workout above!
+              </Text>
+            </Card>
+          )}
+        </View>
 
-                <View className="flex-row items-center space-x-4 mb-4">
-                  <View className="flex-row items-center">
-                    <Text className="text-sm text-gray-600 mr-1">⏱️</Text>
-                    <Text className="text-sm text-gray-600">
-                      {workout.duration}m
-                    </Text>
-                  </View>
-                  <View className="flex-row items-center">
-                    <Text className="text-sm text-gray-600 mr-1">🎯</Text>
-                    <Text className="text-sm text-gray-600 capitalize">
-                      {workout.difficulty}
-                    </Text>
-                  </View>
-                  <View className="flex-row items-center">
-                    <Text className="text-sm text-gray-600 mr-1">💪</Text>
-                    <Text className="text-sm text-gray-600">
+        {/* Workout Plans */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Workout Plans</Text>
+          {workouts && workouts.length > 0 ? (
+            workouts.map((workout) => (
+              <Card key={workout.id} style={styles.workoutCard}>
+                <View style={styles.workoutHeader}>
+                  <Text style={styles.workoutName}>{workout.name}</Text>
+                  {workout.difficulty && (
+                    <View
+                      style={[
+                        styles.difficultyBadge,
+                        getDifficultyStyle(workout.difficulty),
+                      ]}
+                    >
+                      <Text style={styles.difficultyText}>
+                        {workout.difficulty}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {workout.description && (
+                  <Text style={styles.workoutDescription}>
+                    {workout.description}
+                  </Text>
+                )}
+                <View style={styles.workoutInfo}>
+                  {workout.exercises && (
+                    <Text style={styles.workoutDetail}>
                       {workout.exercises.length} exercises
                     </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row space-x-2">
-                  <TouchableOpacity
-                    onPress={() => startWorkout(workout)}
-                    className="flex-1 bg-blue-600 rounded-lg py-3 flex-row items-center justify-center"
-                  >
-                    <Text className="text-white mr-2">▶️</Text>
-                    <Text className="text-white font-semibold">
-                      {workout.completed ? 'Repeat' : 'Start'}
+                  )}
+                  {workout.duration && (
+                    <Text style={styles.workoutDetail}>
+                      ~{workout.duration} minutes
                     </Text>
-                  </TouchableOpacity>
-                  {!workout.completed && (
-                    <TouchableOpacity
-                      onPress={() => completeWorkout(workout.id)}
-                      className="bg-green-600 rounded-lg px-4 py-3"
-                    >
-                      <Text className="text-white font-semibold">Complete</Text>
-                    </TouchableOpacity>
+                  )}
+                  {workout.category && (
+                    <Text style={styles.workoutDetail}>
+                      Category: {workout.category}
+                    </Text>
                   )}
                 </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Workout Detail Modal */}
-        <Modal
-          visible={!!selectedWorkout}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <View className="flex-1 bg-white">
-            <View className="p-6 border-b border-gray-200">
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
-                  <Text className="text-xl font-semibold text-gray-900">
-                    {selectedWorkout?.name}
-                  </Text>
-                  <Text className="text-gray-600 mt-1">
-                    {selectedWorkout?.description}
-                  </Text>
+                <View style={styles.workoutActions}>
+                  <Button
+                    title="View Details"
+                    variant="outline"
+                    size="small"
+                    onPress={() =>
+                      navigation.navigate('WorkoutDetail', {
+                        workoutId: workout.id,
+                      })
+                    }
+                    style={styles.actionButton}
+                  />
+                  <Button
+                    title="Start Workout"
+                    size="small"
+                    onPress={() =>
+                      navigation.navigate('Session', { workoutId: workout.id })
+                    }
+                    style={styles.actionButton}
+                  />
                 </View>
-                <TouchableOpacity
-                  onPress={() => setSelectedWorkout(null)}
-                  className="ml-4"
-                >
-                  <Text className="text-2xl">✕</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView className="flex-1 p-6">
-              <Text className="text-lg font-medium text-gray-900 mb-4">
-                Exercises
+              </Card>
+            ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No workout plans yet</Text>
+              <Text style={styles.emptySubtext}>
+                Create your first workout plan!
               </Text>
-              {selectedWorkout?.exercises.map((exercise, index) => (
-                <View
-                  key={exercise.id}
-                  className="border border-gray-200 rounded-lg p-4 mb-4"
-                >
-                  <View className="flex-row justify-between items-start mb-2">
-                    <Text className="font-medium text-gray-900 flex-1">
-                      {index + 1}. {exercise.name}
-                    </Text>
-                    {exercise.weight && (
-                      <Text className="text-sm text-gray-600">
-                        {exercise.weight} lbs
-                      </Text>
-                    )}
-                  </View>
-                  <Text className="text-sm text-gray-600 mb-2">
-                    {exercise.sets} sets × {exercise.reps} reps
-                  </Text>
-                  <Text className="text-sm text-gray-500">
-                    {exercise.instructions}
-                  </Text>
-                </View>
-              ))}
-
-              <View className="flex-row space-x-3 mt-6">
-                <TouchableOpacity
-                  onPress={() =>
-                    selectedWorkout && completeWorkout(selectedWorkout.id)
-                  }
-                  className="flex-1 bg-green-600 rounded-lg py-3"
-                >
-                  <Text className="text-white font-semibold text-center">
-                    Mark as Complete
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setSelectedWorkout(null)}
-                  className="px-4 py-3 border border-gray-300 rounded-lg"
-                >
-                  <Text className="text-gray-700 font-semibold">Close</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </Modal>
-      </View>
-    </ScrollView>
+            </Card>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const getStatusStyle = (status: string) => {
+  const statusColors: Record<string, any> = {
+    completed: { color: '#10b981' },
+    in_progress: { color: '#f59e0b' },
+    planned: { color: '#6b7280' },
+    cancelled: { color: '#ef4444' },
+  };
+  return statusColors[status] || { color: '#6b7280' };
+};
+
+const getDifficultyStyle = (difficulty: string) => {
+  const difficultyColors: Record<string, any> = {
+    easy: { backgroundColor: '#dcfce7' },
+    medium: { backgroundColor: '#fed7aa' },
+    hard: { backgroundColor: '#fecaca' },
+  };
+  return difficultyColors[difficulty] || { backgroundColor: '#f3f4f6' };
+};
+
+const calculateDuration = (startTime: string, endTime: string) => {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+  return `${duration} min`;
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    padding: 20,
+    paddingBottom: 10,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  quickActions: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  quickWorkoutButton: {
+    backgroundColor: '#ef4444',
+  },
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  sessionCard: {
+    marginBottom: 12,
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sessionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  sessionDate: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  sessionInfo: {
+    gap: 4,
+  },
+  sessionDetail: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  workoutCard: {
+    marginBottom: 12,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  workoutName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  difficultyText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  workoutDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  workoutInfo: {
+    marginBottom: 16,
+    gap: 4,
+  },
+  workoutDetail: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  workoutActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+});

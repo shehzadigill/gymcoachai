@@ -1,290 +1,466 @@
-import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
-import { useApi } from '../hooks/useApi';
-import { StatCard } from '../components/StatCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ErrorMessage } from '../components/ErrorMessage';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  RefreshControl,
+  Dimensions,
+} from 'react-native';
+import { Card, LoadingSpinner } from '../components/common/UI';
+import apiClient from '../services/api';
 
-interface AnalyticsData {
-  strengthProgress: {
-    completed: number;
-    weeklyGoal: number;
-    monthlyGoal: number;
-    trend: number;
-  };
-  bodyMeasurements: {
-    caloriesToday: number;
-    caloriesGoal: number;
-    weight: number;
-    bodyFat: number;
-    muscleMass: number;
-  };
-  milestones: {
-    recommendations: number;
-    achievements: string[];
-    streak: number;
-    totalWorkouts: number;
-  };
-  weeklyData: {
-    day: string;
-    workouts: number;
-    calories: number;
-    duration: number;
-  }[];
-}
+const { width } = Dimensions.get('window');
 
-export function AnalyticsScreen() {
-  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('week');
+export default function AnalyticsScreen() {
+  const [strengthProgress, setStrengthProgress] = useState<any[]>([]);
+  const [bodyMeasurements, setBodyMeasurements] = useState<any[]>([]);
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: strengthProgress, loading: strengthLoading, error: strengthError, refetch: refetchStrength } = useApi<{ statusCode: number; body: any }>('/api/analytics/strength-progress/me');
-  const { data: bodyMeasurements, loading: bodyLoading, error: bodyError, refetch: refetchBody } = useApi<{ statusCode: number; body: any }>('/api/analytics/body-measurements/me');
-  const { data: milestones, loading: milestonesLoading, error: milestonesError, refetch: refetchMilestones } = useApi<{ statusCode: number; body: any }>('/api/analytics/milestones/me');
+  useEffect(() => {
+    loadAnalyticsData();
+  }, []);
 
-  const loading = strengthLoading || bodyLoading || milestonesLoading;
-  const error = strengthError || bodyError || milestonesError;
+  const loadAnalyticsData = async () => {
+    try {
+      setLoading(true);
 
-  // Mock weekly data
-  const weeklyData = [
-    { day: 'Mon', workouts: 1, calories: 1800, duration: 45 },
-    { day: 'Tue', workouts: 0, calories: 1650, duration: 0 },
-    { day: 'Wed', workouts: 1, calories: 1950, duration: 60 },
-    { day: 'Thu', workouts: 1, calories: 2100, duration: 30 },
-    { day: 'Fri', workouts: 0, calories: 1750, duration: 0 },
-    { day: 'Sat', workouts: 1, calories: 2200, duration: 90 },
-    { day: 'Sun', workouts: 1, calories: 1900, duration: 45 },
-  ];
+      const [strengthData, bodyData, milestonesData, achievementsData] =
+        await Promise.allSettled([
+          apiClient.getStrengthProgress(),
+          apiClient.getBodyMeasurements(),
+          apiClient.getMilestones(),
+          apiClient.getAchievements(),
+        ]);
 
-  const analyticsData: AnalyticsData = {
-    strengthProgress: {
-      completed: strengthProgress?.body?.completed ?? 0,
-      weeklyGoal: strengthProgress?.body?.weeklyGoal ?? 3,
-      monthlyGoal: strengthProgress?.body?.monthlyGoal ?? 12,
-      trend: strengthProgress?.body?.trend ?? 15,
-    },
-    bodyMeasurements: {
-      caloriesToday: bodyMeasurements?.body?.caloriesToday ?? 1850,
-      caloriesGoal: bodyMeasurements?.body?.caloriesGoal ?? 2000,
-      weight: bodyMeasurements?.body?.weight ?? 75.5,
-      bodyFat: bodyMeasurements?.body?.bodyFat ?? 15.2,
-      muscleMass: bodyMeasurements?.body?.muscleMass ?? 65.3,
-    },
-    milestones: {
-      recommendations: milestones?.body?.recommendations ?? 3,
-      achievements: milestones?.body?.achievements ?? ['First Workout', 'Week Streak'],
-      streak: milestones?.body?.streak ?? 5,
-      totalWorkouts: milestones?.body?.totalWorkouts ?? 12,
-    },
-    weeklyData,
+      setStrengthProgress(
+        strengthData.status === 'fulfilled' ? strengthData.value : []
+      );
+      setBodyMeasurements(
+        bodyData.status === 'fulfilled' ? bodyData.value : []
+      );
+      setMilestones(
+        milestonesData.status === 'fulfilled' ? milestonesData.value : []
+      );
+      setAchievements(
+        achievementsData.status === 'fulfilled' ? achievementsData.value : []
+      );
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchStrength(), refetchBody(), refetchMilestones()]);
-    setRefreshing(false);
+    await loadAnalyticsData();
   };
 
-  if (loading) {
-    return <LoadingSpinner message="Loading analytics..." />;
-  }
-
-  if (error) {
-    return <ErrorMessage message={error} onRetry={onRefresh} />;
+  if (loading && !strengthProgress.length) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingSpinner />
+      </SafeAreaView>
+    );
   }
 
   return (
-    <ScrollView 
-      className="flex-1 bg-gray-50"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View className="p-4">
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header */}
-        <View className="flex-row justify-between items-center mb-6">
-          <View>
-            <Text className="text-2xl font-bold text-gray-900">Analytics</Text>
-            <Text className="text-gray-600">Track your fitness progress</Text>
-          </View>
-          <View className="flex-row space-x-2">
-            {(['week', 'month', 'year'] as const).map((range) => (
-              <TouchableOpacity
-                key={range}
-                onPress={() => setTimeRange(range)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                  timeRange === range
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
+        <View style={styles.header}>
+          <Text style={styles.title}>Analytics</Text>
+          <Text style={styles.subtitle}>Track your fitness progress</Text>
+        </View>
+
+        {/* Overview Stats */}
+        <View style={styles.statsContainer}>
+          <Card style={styles.statCard}>
+            <Text style={styles.statNumber}>{strengthProgress.length}</Text>
+            <Text style={styles.statLabel}>Strength Records</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Text style={styles.statNumber}>{bodyMeasurements.length}</Text>
+            <Text style={styles.statLabel}>Body Measurements</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Text style={styles.statNumber}>{achievements.length}</Text>
+            <Text style={styles.statLabel}>Achievements</Text>
+          </Card>
+        </View>
+
+        {/* Recent Strength Progress */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Strength Progress</Text>
+          {strengthProgress && strengthProgress.length > 0 ? (
+            strengthProgress.slice(0, 5).map((record, index) => (
+              <Card key={record.id || index} style={styles.progressCard}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.exerciseName}>
+                    {record.exercise?.name || 'Exercise'}
+                  </Text>
+                  <Text style={styles.progressDate}>
+                    {new Date(record.date).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View style={styles.progressStats}>
+                  <View style={styles.progressStat}>
+                    <Text style={styles.progressValue}>{record.weight}kg</Text>
+                    <Text style={styles.progressLabel}>Weight</Text>
+                  </View>
+                  <View style={styles.progressStat}>
+                    <Text style={styles.progressValue}>{record.reps}</Text>
+                    <Text style={styles.progressLabel}>Reps</Text>
+                  </View>
+                  <View style={styles.progressStat}>
+                    <Text style={styles.progressValue}>
+                      {record.oneRepMax}kg
+                    </Text>
+                    <Text style={styles.progressLabel}>1RM</Text>
+                  </View>
+                </View>
+              </Card>
+            ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                No strength progress recorded
+              </Text>
+              <Text style={styles.emptySubtext}>
+                Start tracking your workouts!
+              </Text>
+            </Card>
+          )}
+        </View>
+
+        {/* Recent Body Measurements */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Body Measurements</Text>
+          {bodyMeasurements && bodyMeasurements.length > 0 ? (
+            bodyMeasurements.slice(0, 3).map((measurement, index) => (
+              <Card
+                key={measurement.id || index}
+                style={styles.measurementCard}
               >
-                <Text className={`text-sm font-medium ${
-                  timeRange === range ? 'text-white' : 'text-gray-700'
-                }`}>
-                  {range.charAt(0).toUpperCase() + range.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Key Metrics */}
-        <View className="flex-row flex-wrap -mx-2 mb-6">
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Workouts This Week"
-              value={analyticsData.strengthProgress.completed}
-              icon={<Text className="text-lg">💪</Text>}
-              trend={`${analyticsData.strengthProgress.trend}%`}
-              color="blue"
-            />
-          </View>
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Current Streak"
-              value={`${analyticsData.milestones.streak} days`}
-              icon={<Text className="text-lg">🔥</Text>}
-              color="orange"
-            />
-          </View>
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Calories Today"
-              value={analyticsData.bodyMeasurements.caloriesToday}
-              icon={<Text className="text-lg">🎯</Text>}
-              trend={`Goal: ${analyticsData.bodyMeasurements.caloriesGoal} kcal`}
-              color="green"
-            />
-          </View>
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Total Workouts"
-              value={analyticsData.milestones.totalWorkouts}
-              icon={<Text className="text-lg">🏆</Text>}
-              color="purple"
-            />
-          </View>
-        </View>
-
-        {/* Weekly Activity Chart */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            Weekly Activity
-          </Text>
-          <View className="space-y-4">
-            {analyticsData.weeklyData.map((day, index) => (
-              <View key={day.day} className="flex-row items-center space-x-4">
-                <View className="w-8">
-                  <Text className="text-sm text-gray-600">{day.day}</Text>
+                <View style={styles.measurementHeader}>
+                  <Text style={styles.measurementDate}>
+                    {new Date(measurement.date).toLocaleDateString()}
+                  </Text>
                 </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center space-x-2 mb-1">
-                    <View className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <View 
-                        className="h-full bg-blue-600 rounded-full"
-                        style={{ width: `${(day.workouts / 2) * 100}%` }}
+                <View style={styles.measurementStats}>
+                  {measurement.weight && (
+                    <View style={styles.measurementStat}>
+                      <Text style={styles.measurementValue}>
+                        {measurement.weight}kg
+                      </Text>
+                      <Text style={styles.measurementLabel}>Weight</Text>
+                    </View>
+                  )}
+                  {measurement.bodyFat && (
+                    <View style={styles.measurementStat}>
+                      <Text style={styles.measurementValue}>
+                        {measurement.bodyFat}%
+                      </Text>
+                      <Text style={styles.measurementLabel}>Body Fat</Text>
+                    </View>
+                  )}
+                  {measurement.muscleMass && (
+                    <View style={styles.measurementStat}>
+                      <Text style={styles.measurementValue}>
+                        {measurement.muscleMass}kg
+                      </Text>
+                      <Text style={styles.measurementLabel}>Muscle Mass</Text>
+                    </View>
+                  )}
+                </View>
+              </Card>
+            ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                No body measurements recorded
+              </Text>
+              <Text style={styles.emptySubtext}>
+                Track your body composition changes!
+              </Text>
+            </Card>
+          )}
+        </View>
+
+        {/* Active Milestones */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Active Milestones</Text>
+          {milestones && milestones.length > 0 ? (
+            milestones
+              .filter((m) => !m.achieved)
+              .slice(0, 3)
+              .map((milestone) => (
+                <Card key={milestone.id} style={styles.milestoneCard}>
+                  <Text style={styles.milestoneTitle}>{milestone.title}</Text>
+                  {milestone.description && (
+                    <Text style={styles.milestoneDescription}>
+                      {milestone.description}
+                    </Text>
+                  )}
+                  <View style={styles.milestoneProgress}>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${(milestone.currentValue / milestone.targetValue) * 100}%`,
+                          },
+                        ]}
                       />
                     </View>
-                    <Text className="text-sm text-gray-600">
-                      {day.workouts} workout{day.workouts !== 1 ? 's' : ''}
+                    <Text style={styles.progressText}>
+                      {milestone.currentValue} / {milestone.targetValue}{' '}
+                      {milestone.unit}
                     </Text>
                   </View>
-                  <View className="flex-row items-center space-x-2">
-                    <View className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <View 
-                        className="h-full bg-green-600 rounded-full"
-                        style={{ width: `${(day.calories / 2500) * 100}%` }}
-                      />
-                    </View>
-                    <Text className="text-sm text-gray-600">
-                      {day.calories} cal
-                    </Text>
-                  </View>
+                </Card>
+              ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No active milestones</Text>
+              <Text style={styles.emptySubtext}>
+                Set your first fitness goal!
+              </Text>
+            </Card>
+          )}
+        </View>
+
+        {/* Recent Achievements */}
+        {achievements && achievements.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            {achievements.slice(0, 3).map((achievement) => (
+              <Card key={achievement.id} style={styles.achievementCard}>
+                <View style={styles.achievementContent}>
+                  <Text style={styles.achievementTitle}>
+                    {achievement.title}
+                  </Text>
+                  <Text style={styles.achievementDescription}>
+                    {achievement.description}
+                  </Text>
+                  <Text style={styles.achievementDate}>
+                    Unlocked{' '}
+                    {new Date(achievement.unlockedAt).toLocaleDateString()}
+                  </Text>
                 </View>
-              </View>
+                <Text style={styles.achievementBadge}>🏆</Text>
+              </Card>
             ))}
           </View>
-        </View>
-
-        {/* Body Composition */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            Body Composition
-          </Text>
-          <View className="space-y-4">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-gray-600">Weight</Text>
-              <Text className="font-semibold text-gray-900">
-                {analyticsData.bodyMeasurements.weight} kg
-              </Text>
-            </View>
-            <View className="flex-row justify-between items-center">
-              <Text className="text-gray-600">Body Fat</Text>
-              <Text className="font-semibold text-gray-900">
-                {analyticsData.bodyMeasurements.bodyFat}%
-              </Text>
-            </View>
-            <View className="flex-row justify-between items-center">
-              <Text className="text-gray-600">Muscle Mass</Text>
-              <Text className="font-semibold text-gray-900">
-                {analyticsData.bodyMeasurements.muscleMass} kg
-              </Text>
-            </View>
-            <View className="mt-4">
-              <View className="flex-row justify-between text-sm text-gray-600 mb-2">
-                <Text className="text-sm text-gray-600">Body Fat %</Text>
-                <Text className="text-sm text-gray-600">{analyticsData.bodyMeasurements.bodyFat}%</Text>
-              </View>
-              <View className="w-full bg-gray-200 rounded-full h-2">
-                <View 
-                  className="bg-red-500 h-2 rounded-full"
-                  style={{ width: `${Math.min(analyticsData.bodyMeasurements.bodyFat * 2, 100)}%` }}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Achievements */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            Recent Achievements
-          </Text>
-          <View className="flex-row flex-wrap">
-            {analyticsData.milestones.achievements.map((achievement, index) => (
-              <View key={index} className="flex-row items-center space-x-3 p-3 bg-yellow-50 rounded-lg mr-2 mb-2">
-                <Text className="text-lg">🏆</Text>
-                <Text className="text-sm font-medium text-gray-900">
-                  {achievement}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* AI Recommendations */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            AI Recommendations
-          </Text>
-          <View className="space-y-3">
-            <View className="p-4 bg-blue-50 rounded-lg">
-              <Text className="text-sm text-gray-700">
-                Based on your recent activity, consider adding more cardio to your routine for better overall fitness.
-              </Text>
-            </View>
-            <View className="p-4 bg-green-50 rounded-lg">
-              <Text className="text-sm text-gray-700">
-                Your protein intake looks good! Keep maintaining this level for muscle recovery.
-              </Text>
-            </View>
-            <View className="p-4 bg-purple-50 rounded-lg">
-              <Text className="text-sm text-gray-700">
-                Try increasing your workout frequency to 4-5 times per week for better results.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    padding: 20,
+    paddingBottom: 10,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3b82f6',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  progressCard: {
+    marginBottom: 12,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  progressDate: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  progressStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  progressStat: {
+    alignItems: 'center',
+  },
+  progressValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  progressLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  measurementCard: {
+    marginBottom: 12,
+  },
+  measurementHeader: {
+    marginBottom: 12,
+  },
+  measurementDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  measurementStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  measurementStat: {
+    alignItems: 'center',
+  },
+  measurementValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  measurementLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  milestoneCard: {
+    marginBottom: 12,
+  },
+  milestoneTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  milestoneDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  milestoneProgress: {
+    gap: 8,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  achievementCard: {
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  achievementContent: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  achievementDescription: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 4,
+  },
+  achievementDate: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  achievementBadge: {
+    fontSize: 24,
+    marginLeft: 12,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+});

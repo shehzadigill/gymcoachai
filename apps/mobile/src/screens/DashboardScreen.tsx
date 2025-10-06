@@ -1,248 +1,416 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
-import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
-import { useApi } from '../hooks/useApi';
-import { StatCard } from '../components/StatCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ErrorMessage } from '../components/ErrorMessage';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  RefreshControl,
+  Dimensions,
+} from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { Card, LoadingSpinner } from '../components/common/UI';
+import apiClient from '../services/api';
+
+const { width } = Dimensions.get('window');
 
 interface DashboardData {
-  workoutsCompleted: number;
-  activePlan: string;
-  caloriesToday: number;
-  aiRecommendations: number;
-  currentStreak: number;
-  totalWorkoutTime: number;
-  lastWorkoutDate: string | null;
-  weeklyProgress: number;
-  monthlyGoal: number;
-  achievements: string[];
+  recentWorkouts: any[];
+  nutritionSummary: any;
+  strengthProgress: any[];
+  achievements: any[];
+  upcomingWorkouts: any[];
 }
 
-export function DashboardScreen() {
-  const [user, setUser] = useState<any>(null);
+export default function DashboardScreen() {
+  const { user, userProfile } = useAuth();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadUser();
+    loadDashboardData();
   }, []);
 
-  const loadUser = async () => {
+  const loadDashboardData = async () => {
     try {
-      const currentUser = await getCurrentUser();
-      const attributes = await fetchUserAttributes();
-      setUser({ ...currentUser, attributes });
+      setLoading(true);
+
+      // Load dashboard data in parallel
+      const [
+        workoutSessions,
+        nutritionStats,
+        strengthProgress,
+        achievements,
+        scheduledWorkouts,
+      ] = await Promise.allSettled([
+        apiClient.getWorkoutSessions(),
+        apiClient.getNutritionStats(),
+        apiClient.getStrengthProgress(),
+        apiClient.getAchievements(),
+        apiClient.getScheduledWorkouts(),
+      ]);
+
+      setData({
+        recentWorkouts:
+          workoutSessions.status === 'fulfilled'
+            ? workoutSessions.value.slice(0, 3)
+            : [],
+        nutritionSummary:
+          nutritionStats.status === 'fulfilled' ? nutritionStats.value : null,
+        strengthProgress:
+          strengthProgress.status === 'fulfilled'
+            ? strengthProgress.value.slice(0, 5)
+            : [],
+        achievements:
+          achievements.status === 'fulfilled'
+            ? achievements.value.slice(0, 3)
+            : [],
+        upcomingWorkouts:
+          scheduledWorkouts.status === 'fulfilled'
+            ? scheduledWorkouts.value.slice(0, 3)
+            : [],
+      });
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  const { data: workoutsData, loading: workoutsLoading, error: workoutsError } = useApi<{ statusCode: number; body: { completed: number } }>('/api/analytics/strength-progress/me');
-  const { data: profileData, loading: profileLoading, error: profileError } = useApi<{ statusCode: number; body: any }>('/api/user-profiles/profile');
-  const { data: nutritionData, loading: nutritionLoading, error: nutritionError } = useApi<{ statusCode: number; body: { caloriesToday: number } }>('/api/analytics/body-measurements/me');
-  const { data: aiData, loading: aiLoading, error: aiError } = useApi<{ statusCode: number; body: { recommendations: number } }>('/api/analytics/milestones/me');
-  const { data: achievementsData, loading: achievementsLoading, error: achievementsError } = useApi<{ statusCode: number; body: { achievements: string[] } }>('/api/analytics/achievements/me');
-
-  const loading = workoutsLoading || profileLoading || nutritionLoading || aiLoading || achievementsLoading;
-  const error = workoutsError || profileError || nutritionError || aiError || achievementsError;
-
-  const dashboardData: DashboardData = {
-    workoutsCompleted: workoutsData?.body?.completed ?? 0,
-    activePlan: profileData?.body?.activePlan ?? 'No active plan',
-    caloriesToday: nutritionData?.body?.caloriesToday ?? 0,
-    aiRecommendations: aiData?.body?.recommendations ?? 0,
-    currentStreak: profileData?.body?.currentStreak ?? 0,
-    totalWorkoutTime: profileData?.body?.totalWorkoutTime ?? 0,
-    lastWorkoutDate: profileData?.body?.lastWorkoutDate ?? null,
-    weeklyProgress: 75, // Mock data
-    monthlyGoal: 20, // Mock data
-    achievements: achievementsData?.body?.achievements ?? []
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadUser();
-    setRefreshing(false);
+    await loadDashboardData();
   };
 
-  if (loading) {
-    return <LoadingSpinner message="Loading dashboard..." />;
-  }
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const name =
+      userProfile?.firstName || user?.email?.split('@')[0] || 'there';
 
-  if (error) {
-    return <ErrorMessage message={error} onRetry={onRefresh} />;
+    if (hour < 12) return `Good morning, ${name}!`;
+    if (hour < 17) return `Good afternoon, ${name}!`;
+    return `Good evening, ${name}!`;
+  };
+
+  if (loading && !data) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingSpinner />
+      </SafeAreaView>
+    );
   }
 
   return (
-    <ScrollView 
-      className="flex-1 bg-gray-50"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View className="p-4">
-        {/* Welcome Section */}
-        <View className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 mb-6">
-          <Text className="text-2xl font-bold text-white mb-2">
-            Welcome back, {user?.attributes?.given_name || 'User'}!
-          </Text>
-          <Text className="text-blue-100">
-            Ready to crush your fitness goals today?
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.subtitle}>
+            Let's crush your fitness goals today!
           </Text>
         </View>
 
-        {/* Stats Grid */}
-        <View className="flex-row flex-wrap -mx-2 mb-6">
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Workouts Completed"
-              value={dashboardData.workoutsCompleted}
-              icon={<Text className="text-lg">💪</Text>}
-              trend="+12% this week"
-              color="blue"
-            />
-          </View>
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Current Streak"
-              value={`${dashboardData.currentStreak} days`}
-              icon={<Text className="text-lg">🔥</Text>}
-              trend="Keep it up!"
-              color="orange"
-            />
-          </View>
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="Calories Today"
-              value={`${dashboardData.caloriesToday} kcal`}
-              icon={<Text className="text-lg">🎯</Text>}
-              trend="Goal: 2000 kcal"
-              color="green"
-            />
-          </View>
-          <View className="w-1/2 px-2">
-            <StatCard
-              title="AI Recommendations"
-              value={dashboardData.aiRecommendations}
-              icon={<Text className="text-lg">🧠</Text>}
-              trend="New insights available"
-              color="purple"
-            />
-          </View>
-        </View>
-
-        {/* Progress Overview */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-semibold text-gray-900">
-              Weekly Progress
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <Card style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {data?.recentWorkouts?.length || 0}
             </Text>
-            <Text className="text-lg">📈</Text>
-          </View>
-          <View className="space-y-4">
-            <View>
-              <View className="flex-row justify-between text-sm text-gray-600 mb-1">
-                <Text className="text-sm text-gray-600">Workouts this week</Text>
-                <Text className="text-sm text-gray-600">
-                  {dashboardData.workoutsCompleted} / {dashboardData.monthlyGoal}
-                </Text>
-              </View>
-              <View className="w-full bg-gray-200 rounded-full h-2">
-                <View 
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ 
-                    width: `${Math.min((dashboardData.workoutsCompleted / dashboardData.monthlyGoal) * 100, 100)}%` 
-                  }}
-                />
-              </View>
-            </View>
-            <View>
-              <View className="flex-row justify-between text-sm text-gray-600 mb-1">
-                <Text className="text-sm text-gray-600">Total workout time</Text>
-                <Text className="text-sm text-gray-600">
-                  {dashboardData.totalWorkoutTime} min
-                </Text>
-              </View>
-              <View className="w-full bg-gray-200 rounded-full h-2">
-                <View 
-                  className="bg-green-600 h-2 rounded-full"
-                  style={{ 
-                    width: `${Math.min((dashboardData.totalWorkoutTime / 300) * 100, 100)}%` 
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            Quick Actions
-          </Text>
-          <View className="space-y-3">
-            <TouchableOpacity className="w-full bg-blue-600 rounded-lg py-3">
-              <Text className="text-white font-semibold text-center">Start Workout</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="w-full bg-green-600 rounded-lg py-3">
-              <Text className="text-white font-semibold text-center">Log Nutrition</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="w-full bg-purple-600 rounded-lg py-3">
-              <Text className="text-white font-semibold text-center">View Analytics</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Recent Activity */}
-        <View className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
-            Recent Activity
-          </Text>
-          <View className="space-y-3">
-            <View className="flex-row items-center space-x-3">
-              <View className="w-2 h-2 bg-green-500 rounded-full" />
-              <Text className="text-sm text-gray-600 flex-1">
-                Completed chest workout
-              </Text>
-              <Text className="text-xs text-gray-500">2h ago</Text>
-            </View>
-            <View className="flex-row items-center space-x-3">
-              <View className="w-2 h-2 bg-blue-500 rounded-full" />
-              <Text className="text-sm text-gray-600 flex-1">
-                Logged 1,850 calories
-              </Text>
-              <Text className="text-xs text-gray-500">4h ago</Text>
-            </View>
-            <View className="flex-row items-center space-x-3">
-              <View className="w-2 h-2 bg-purple-500 rounded-full" />
-              <Text className="text-sm text-gray-600 flex-1">
-                New AI recommendation
-              </Text>
-              <Text className="text-xs text-gray-500">1d ago</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Achievements */}
-        {dashboardData.achievements.length > 0 && (
-          <View className="bg-white rounded-lg border border-gray-200 p-6">
-            <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-              <Text className="text-lg mr-2">🏆</Text>
-              Recent Achievements
+            <Text style={styles.statLabel}>Workouts This Week</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {data?.nutritionSummary?.todayCalories || 0}
             </Text>
-            <View className="flex-row flex-wrap">
-              {dashboardData.achievements.map((achievement, index) => (
-                <View key={index} className="flex-row items-center space-x-3 p-3 bg-yellow-50 rounded-lg mr-2 mb-2">
-                  <Text className="text-lg">🏆</Text>
-                  <Text className="text-sm font-medium text-gray-900">
-                    {achievement}
+            <Text style={styles.statLabel}>Calories Today</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {data?.achievements?.length || 0}
+            </Text>
+            <Text style={styles.statLabel}>Achievements</Text>
+          </Card>
+        </View>
+
+        {/* Recent Workouts */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Workouts</Text>
+          {data?.recentWorkouts && data.recentWorkouts.length > 0 ? (
+            data.recentWorkouts.map((workout, index) => (
+              <Card key={workout.id || index} style={styles.workoutCard}>
+                <View style={styles.workoutHeader}>
+                  <Text style={styles.workoutName}>
+                    {workout.workout?.name || 'Custom Workout'}
+                  </Text>
+                  <Text style={styles.workoutDate}>
+                    {new Date(workout.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
-              ))}
-            </View>
+                <Text style={styles.workoutStatus}>
+                  Status: {workout.status}
+                </Text>
+                {workout.exercises && (
+                  <Text style={styles.workoutExercises}>
+                    {workout.exercises.length} exercises
+                  </Text>
+                )}
+              </Card>
+            ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No recent workouts</Text>
+              <Text style={styles.emptySubtext}>
+                Start your first workout today!
+              </Text>
+            </Card>
+          )}
+        </View>
+
+        {/* Upcoming Workouts */}
+        {data?.upcomingWorkouts && data.upcomingWorkouts.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Upcoming Workouts</Text>
+            {data.upcomingWorkouts.map((workout, index) => (
+              <Card key={workout.id || index} style={styles.upcomingCard}>
+                <Text style={styles.upcomingName}>{workout.name}</Text>
+                <Text style={styles.upcomingTime}>
+                  {new Date(workout.scheduledTime).toLocaleDateString()} at{' '}
+                  {new Date(workout.scheduledTime).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </Text>
+              </Card>
+            ))}
           </View>
         )}
-      </View>
-    </ScrollView>
+
+        {/* Recent Achievements */}
+        {data?.achievements && data.achievements.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            {data.achievements.map((achievement) => (
+              <Card key={achievement.id} style={styles.achievementCard}>
+                <View style={styles.achievementContent}>
+                  <Text style={styles.achievementTitle}>
+                    {achievement.title}
+                  </Text>
+                  <Text style={styles.achievementDesc}>
+                    {achievement.description}
+                  </Text>
+                  <Text style={styles.achievementDate}>
+                    {new Date(achievement.unlockedAt).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Text style={styles.achievementEmoji}>🏆</Text>
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {/* Nutrition Summary */}
+        {data?.nutritionSummary && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Today's Nutrition</Text>
+            <Card style={styles.nutritionCard}>
+              <View style={styles.nutritionRow}>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionValue}>
+                    {data.nutritionSummary.calories || 0}
+                  </Text>
+                  <Text style={styles.nutritionLabel}>Calories</Text>
+                </View>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionValue}>
+                    {data.nutritionSummary.protein || 0}g
+                  </Text>
+                  <Text style={styles.nutritionLabel}>Protein</Text>
+                </View>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionValue}>
+                    {data.nutritionSummary.carbs || 0}g
+                  </Text>
+                  <Text style={styles.nutritionLabel}>Carbs</Text>
+                </View>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionValue}>
+                    {data.nutritionSummary.fat || 0}g
+                  </Text>
+                  <Text style={styles.nutritionLabel}>Fat</Text>
+                </View>
+              </View>
+            </Card>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    padding: 20,
+    paddingBottom: 10,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3b82f6',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  workoutCard: {
+    marginBottom: 8,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  workoutName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  workoutDate: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  workoutStatus: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 4,
+  },
+  workoutExercises: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  upcomingCard: {
+    marginBottom: 8,
+    paddingVertical: 12,
+  },
+  upcomingName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  upcomingTime: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  achievementCard: {
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  achievementContent: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  achievementDesc: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 4,
+  },
+  achievementDate: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  achievementEmoji: {
+    fontSize: 24,
+    marginLeft: 12,
+  },
+  nutritionCard: {
+    paddingVertical: 20,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  nutritionItem: {
+    alignItems: 'center',
+  },
+  nutritionValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  nutritionLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+});

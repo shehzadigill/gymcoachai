@@ -1,351 +1,316 @@
-# GymCoach AI Mobile App
+# GymCoach AI - Mobile App
 
-A comprehensive fitness tracking mobile application built with React Native and Expo, featuring real-time API integrations with AWS backend services.
+A React Native mobile application for fitness tracking and AI-powered coaching with push notifications support.
 
 ## 🚀 Features
 
-### **Dashboard**
-- **Welcome Section**: Personalized greeting with user's name
-- **Key Metrics**: Workouts completed, current streak, calories today, AI recommendations
-- **Progress Overview**: Weekly workout progress with visual progress bars
-- **Quick Actions**: Start workout, log nutrition, view analytics
-- **Recent Activity**: Timeline of recent fitness activities
-- **Achievements**: Display of earned fitness achievements
+### Core Functionality
 
-### **Workouts**
-- **Workout Library**: Browse and manage workout routines
-- **Workout Sessions**: Start, track, and complete workout sessions
-- **Exercise Details**: View exercise instructions, sets, reps, and weights
-- **Progress Tracking**: Track workout completion and duration
-- **Statistics**: Total workouts, completed sessions, total time, weekly progress
+- **Authentication**: AWS Cognito integration with secure token management
+- **Dashboard**: Overview of workouts, nutrition, and progress
+- **Workouts**: Session tracking, exercise library, and workout plans
+- **Nutrition**: Meal logging with macro tracking and water intake
+- **Analytics**: Progress tracking, strength records, and achievements
+- **Profile**: User settings and notification preferences
 
-### **Analytics**
-- **Key Metrics**: Workouts this week, current streak, calories, total workouts
-- **Weekly Activity Chart**: Visual representation of daily activity
-- **Body Composition**: Weight, body fat percentage, muscle mass tracking
-- **Achievements**: Recent fitness achievements and milestones
-- **AI Recommendations**: Personalized fitness and nutrition advice
+### Push Notifications
 
-### **Nutrition**
-- **Daily Overview**: Calories, protein, carbs, fat intake with progress bars
-- **Water Intake**: Track daily water consumption
-- **Meal Tracking**: Log breakfast, lunch, dinner, and snacks
-- **Food Search**: Search and add food items
-- **Macro Tracking**: Detailed macronutrient breakdown
-- **Meal History**: View past nutrition entries
+- **Nutrition Reminders**: Customizable meal logging reminders
+- **Workout Reminders**: Scheduled workout notifications
+- **Progress Updates**: Achievement and milestone notifications
+- **Firebase Integration**: FCM for Android, APNs for iOS
 
-### **Profile**
-- **Personal Information**: Name, email, date of birth, height, weight
-- **Fitness Goals**: Set and manage fitness objectives
-- **Experience Level**: Beginner, intermediate, or advanced
-- **Preferences**: Units (metric/imperial), notification settings
-- **Privacy Settings**: Control profile visibility and sharing
+### Technical Features
 
-## 🛠 Technical Implementation
+- **Offline Support**: Local data caching with AsyncStorage
+- **API Integration**: Full integration with backend services
+- **Error Handling**: Graceful error handling with user-friendly messages
+- **Performance**: Optimized with React Query for data fetching
+- **Security**: Secure token storage with React Native Keychain
 
-### **Architecture**
-- **React Native**: Cross-platform mobile development
-- **Expo**: Development platform and build tools
-- **TypeScript**: Type-safe development
-- **NativeWind**: Tailwind CSS for React Native
-- **React Navigation**: Navigation between screens
-- **React Query**: Data fetching and caching
+## 🏗️ Architecture
 
-### **API Integration**
-- **Real API Endpoints**: Connected to AWS Lambda services
-- **Authentication**: JWT token-based authentication with AWS Cognito
-- **Error Handling**: Graceful fallbacks to mock data when APIs fail
-- **Offline Support**: Local state management for immediate UI updates
+### Technology Stack
 
-### **State Management**
-- **Local State**: React hooks for component state
-- **API State**: React Query for server state management
-- **User Context**: Global user authentication state
-- **Secure Storage**: Expo SecureStore for token persistence
+- **Framework**: React Native CLI (not Expo)
+- **Language**: TypeScript
+- **Navigation**: React Navigation 6
+- **State Management**: React Context + React Query
+- **Authentication**: AWS Amplify + Cognito
+- **Storage**: AsyncStorage + React Native Keychain
+- **Push Notifications**: Firebase Cloud Messaging + React Native Push Notification
+- **HTTP Client**: Fetch API with custom wrapper
 
-## 📱 Screens
+### Project Structure
 
-### **1. Dashboard Screen** (`src/screens/DashboardScreen.tsx`)
-- Displays key fitness metrics and progress
-- Shows recent activity and achievements
-- Provides quick action buttons
-- Real-time data from analytics APIs
+```
+src/
+├── components/           # Reusable UI components
+│   └── common/          # Common components (Button, Card, etc.)
+├── contexts/            # React contexts (Auth, Theme, etc.)
+├── hooks/               # Custom React hooks
+├── navigation/          # Navigation configuration
+├── screens/             # Screen components
+│   ├── auth/           # Authentication screens
+│   ├── workout/        # Workout-related screens
+│   └── nutrition/      # Nutrition-related screens
+├── services/            # API client and external services
+├── types/               # TypeScript type definitions
+└── utils/               # Utility functions
+```
 
-### **2. Workouts Screen** (`src/screens/WorkoutsScreen.tsx`)
-- Lists all available workout routines
-- Start and complete workout sessions
-- View exercise details and instructions
-- Track workout statistics
+## 🔧 Setup & Installation
 
-### **3. Analytics Screen** (`src/screens/AnalyticsScreen.tsx`)
-- Visual progress charts and metrics
-- Body composition tracking
-- Achievement display
-- AI recommendations
+### Prerequisites
 
-### **4. Nutrition Screen** (`src/screens/NutritionScreen.tsx`)
-- Daily nutrition overview
-- Meal logging and tracking
-- Food search and addition
-- Macro nutrient tracking
+- Node.js 18+
+- React Native CLI
+- Xcode (for iOS development)
+- Android Studio (for Android development)
+- Firebase account
+- AWS account with Cognito setup
 
-### **5. Profile Screen** (`src/screens/ProfileScreen.tsx`)
-- Personal information management
-- Fitness goals and preferences
-- Settings and privacy controls
-- Sign out functionality
+### Installation
 
-## 🔧 Components
+1. **Clone and navigate to mobile app**:
 
-### **Reusable Components**
-- **StatCard**: Display key metrics with icons and trends
-- **LoadingSpinner**: Loading states with customizable messages
-- **ErrorMessage**: Error display with retry functionality
+   ```bash
+   cd apps/mobile
+   ```
 
-### **Custom Hooks**
-- **useApi**: Generic API fetching hook with error handling
-- **useCurrentUser**: User authentication and profile management
+2. **Install dependencies**:
 
-## 🚀 Getting Started
+   ```bash
+   npm install
+   ```
 
-### **Prerequisites**
-- Node.js 18+ 
-- Expo CLI
-- iOS Simulator or Android Emulator (for testing)
+3. **iOS Setup**:
 
-### **Installation**
+   ```bash
+   cd ios && pod install && cd ..
+   ```
+
+4. **Android Setup**:
+   - Ensure Android SDK and build tools are installed
+   - Create debug keystore if needed
+
+5. **Environment Configuration**:
+   Create `.env` file:
+
+   ```env
+   API_BASE_URL=https://your-api-url.com
+   COGNITO_USER_POOL_ID=your_user_pool_id
+   COGNITO_CLIENT_ID=your_client_id
+   AWS_REGION=your_region
+   ```
+
+6. **Firebase Setup**:
+   - Follow instructions in `firebase-setup.md`
+   - Add `google-services.json` (Android)
+   - Add `GoogleService-Info.plist` (iOS)
+
+### Running the App
+
+**Start Metro bundler**:
+
 ```bash
-# Navigate to mobile app directory
-cd apps/mobile
-
-# Install dependencies
-npm install
-
-# Start development server
 npm start
 ```
 
-### **Environment Variables**
-Create a `.env` file in the mobile app root:
-```env
-EXPO_PUBLIC_USER_POOL_ID=your_user_pool_id
-EXPO_PUBLIC_USER_POOL_CLIENT_ID=your_client_id
-EXPO_PUBLIC_AWS_REGION=eu-north-1
-EXPO_PUBLIC_CLOUDFRONT_URL=https://your-cloudfront-url
-```
+**Run on iOS**:
 
-### **Running the App**
 ```bash
-# Start Expo development server
-npm start
-
-# Run on iOS simulator
 npm run ios
-
-# Run on Android emulator
-npm run android
-
-# Run on web browser
-npm run web
 ```
+
+**Run on Android**:
+
+```bash
+npm run android
+```
+
+## 📱 Push Notifications
+
+### Features
+
+- **Nutrition Reminders**: Configurable meal time reminders
+- **Workout Notifications**: Scheduled workout alerts
+- **Progress Updates**: Achievement notifications
+- **Smart Scheduling**: Automatic notification scheduling based on user preferences
+
+### Configuration
+
+Users can configure notifications in the Profile screen:
+
+- Enable/disable notification types
+- Set custom meal reminder times
+- Control notification frequency
+
+### Implementation Details
+
+- **Firebase Cloud Messaging** for Android
+- **Apple Push Notification Service** for iOS
+- **Local Notifications** for scheduled reminders
+- **Background Processing** for notification handling
 
 ## 🔌 API Integration
 
-### **Backend Services**
-The mobile app integrates with the following AWS Lambda services:
+### Backend Services
 
-- **User Profile Service**: `/api/user-profiles/profile`
+The mobile app integrates with the following backend services:
+
+- **User Profile Service**: `/api/user-profiles/*`
 - **Analytics Service**: `/api/analytics/*`
-- **Workout Service**: `/api/workouts/sessions`
-- **Nutrition Service**: `/api/users/{userId}/meals`
+- **Workout Service**: `/api/workouts/*`
+- **Nutrition Service**: `/api/nutrition/*`
 
-### **Authentication Flow**
+### Authentication Flow
+
 1. User signs in with AWS Cognito
-2. JWT token is stored securely using Expo SecureStore
+2. JWT token is stored securely
 3. Token is included in all API requests
-4. Token is refreshed automatically when needed
+4. Automatic token refresh when expired
 
-### **Error Handling**
-- API calls fail gracefully with fallback to mock data
+### Error Handling
+
+- Network error recovery
+- Token refresh on 401 errors
 - User-friendly error messages
-- Retry functionality for failed requests
-- Offline support with local state management
+- Offline data fallbacks
 
-## 📊 Data Flow
+## 🎨 UI/UX Design
 
-### **Dashboard Data**
-```typescript
-// Fetches data from multiple APIs
-const { data: workoutsData } = useApi('/api/analytics/strength-progress/me');
-const { data: profileData } = useApi('/api/user-profiles/profile');
-const { data: nutritionData } = useApi('/api/analytics/body-measurements/me');
-```
+### Design System
 
-### **Workout Management**
-```typescript
-// Fetch workout sessions
-const { data: workoutsResponse } = useApi('/api/workouts/sessions');
+- **Colors**: Blue primary (#3b82f6), consistent with web app
+- **Typography**: System fonts with proper scaling
+- **Spacing**: 4px grid system
+- **Components**: Reusable design components
 
-// Complete workout
-await apiFetch('/api/workouts/sessions', {
-  method: 'PUT',
-  body: JSON.stringify({ id, status: 'completed' })
-});
-```
+### Accessibility
 
-### **Nutrition Tracking**
-```typescript
-// Fetch meals for today
-const response = await apiFetch(`/api/users/${userId}/meals/date/${today}`);
+- Screen reader support
+- High contrast mode
+- Large text support
+- Touch target sizing
 
-// Add new meal
-await apiFetch(`/api/users/${userId}/meals`, {
-  method: 'POST',
-  body: JSON.stringify(mealData)
-});
-```
+### Responsive Design
 
-## 🎨 UI/UX Features
-
-### **Design System**
-- **Consistent Styling**: Tailwind CSS classes for consistent design
-- **Dark Mode Support**: Automatic theme switching
-- **Responsive Layout**: Adapts to different screen sizes
-- **Touch-Friendly**: Optimized for mobile interactions
-
-### **Navigation**
-- **Bottom Tab Navigation**: Easy access to main features
-- **Stack Navigation**: Hierarchical screen navigation
-- **Modal Presentations**: Full-screen modals for detailed views
-
-### **User Experience**
-- **Pull-to-Refresh**: Refresh data by pulling down
-- **Loading States**: Smooth loading indicators
-- **Error States**: Clear error messages with retry options
-- **Offline Support**: Works without internet connection
-
-## 🔒 Security
-
-### **Authentication**
-- **AWS Cognito**: Secure user authentication
-- **JWT Tokens**: Secure API communication
-- **Secure Storage**: Encrypted token storage
-- **Auto-Refresh**: Automatic token renewal
-
-### **Data Protection**
-- **HTTPS Only**: All API calls use secure connections
-- **Token Expiration**: Automatic token refresh
-- **Secure Storage**: Sensitive data encrypted locally
-
-## 📱 Platform Support
-
-### **iOS**
-- iOS 13.0+
-- iPhone and iPad support
-- Native iOS navigation patterns
-
-### **Android**
-- Android 6.0+ (API level 23)
-- Material Design components
-- Android-specific optimizations
-
-### **Web**
-- Modern web browsers
-- Responsive web design
-- PWA capabilities
-
-## 🚀 Deployment
-
-### **Development Build**
-```bash
-# Create development build
-expo build:ios --type development
-expo build:android --type development
-```
-
-### **Production Build**
-```bash
-# Create production build
-expo build:ios --type production
-expo build:android --type production
-```
-
-### **App Store Deployment**
-1. Build production version
-2. Submit to App Store Connect (iOS)
-3. Submit to Google Play Console (Android)
-4. Configure app store metadata
-5. Release to users
+- Portrait and landscape support
+- Different screen sizes (phones, tablets)
+- Safe area handling
+- Keyboard avoidance
 
 ## 🧪 Testing
 
-### **Manual Testing**
-- Test all screens and navigation
-- Verify API integrations
-- Test offline functionality
-- Check error handling
+### Unit Tests
 
-### **Device Testing**
-- Test on real iOS and Android devices
-- Verify performance on different screen sizes
-- Test with different network conditions
+```bash
+npm test
+```
 
-## 🔄 Updates and Maintenance
+### End-to-End Tests
 
-### **Code Updates**
-- Regular dependency updates
-- Bug fixes and improvements
-- New feature additions
-- Performance optimizations
+```bash
+npm run test:e2e
+```
 
-### **API Updates**
-- Backend service updates
-- New API endpoints
-- Schema changes
-- Authentication updates
+### Manual Testing Checklist
 
-## 📈 Performance
+- [ ] Authentication flow
+- [ ] Navigation between screens
+- [ ] API data loading
+- [ ] Push notification receiving
+- [ ] Offline functionality
+- [ ] Error handling
 
-### **Optimizations**
-- **Lazy Loading**: Load screens only when needed
-- **Image Optimization**: Optimized images for mobile
-- **API Caching**: React Query for efficient data caching
-- **Bundle Splitting**: Optimized JavaScript bundles
+## 📦 Building & Deployment
 
-### **Monitoring**
-- **Error Tracking**: Monitor app crashes and errors
-- **Performance Metrics**: Track app performance
-- **User Analytics**: Understand user behavior
-- **API Monitoring**: Monitor backend service health
+### Debug Builds
 
-## 🎯 Future Enhancements
+- Automatic when running with `npm run android/ios`
+- Includes debugging tools and logging
 
-### **Planned Features**
-- **Push Notifications**: Workout reminders and achievements
-- **Social Features**: Share workouts and progress
-- **Wearable Integration**: Apple Watch and Android Wear support
-- **Advanced Analytics**: More detailed progress tracking
-- **AI Coaching**: Personalized workout recommendations
+### Release Builds
 
-### **Technical Improvements**
-- **Offline Sync**: Better offline data synchronization
-- **Performance**: Further performance optimizations
-- **Accessibility**: Enhanced accessibility features
-- **Testing**: Comprehensive test coverage
+**Android**:
 
-## 📞 Support
+```bash
+cd android && ./gradlew assembleRelease
+```
 
-For technical support or questions:
-- Check the documentation
-- Review error logs
-- Test with different network conditions
-- Verify environment variables
-- Check API service status
+**iOS**:
+
+1. Open `ios/mobile.xcworkspace` in Xcode
+2. Select "mobile" scheme
+3. Product → Archive
+4. Follow App Store distribution process
+
+### App Store Submission
+
+- Follow platform-specific guidelines
+- Ensure push notification permissions are properly requested
+- Include proper app descriptions and screenshots
+
+## 🔐 Security
+
+### Data Protection
+
+- Sensitive data encrypted at rest
+- Secure HTTP communication (HTTPS only)
+- Token storage in secure keychain
+- No sensitive data in logs
+
+### Permissions
+
+- Camera: Progress photos
+- Photo Library: Saving images
+- Notifications: Push notifications
+- Network: API communication
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Metro bundler issues**:
+
+```bash
+npm start -- --reset-cache
+```
+
+**iOS build issues**:
+
+```bash
+cd ios && pod install && cd ..
+```
+
+**Android build issues**:
+
+```bash
+cd android && ./gradlew clean && cd ..
+```
+
+**Push notifications not working**:
+
+- Check Firebase configuration
+- Verify device registration
+- Test with Firebase Console
+
+### Logs and Debugging
+
+- Use React Native Debugger
+- Check device logs in Xcode/Android Studio
+- Enable network request logging
+- Use Flipper for advanced debugging
+
+## 🤝 Contributing
+
+1. Follow TypeScript best practices
+2. Use existing component patterns
+3. Add proper error handling
+4. Update documentation
+5. Test on both platforms
 
 ## 📄 License
 
-This project is part of the GymCoach AI fitness platform. All rights reserved.
-
----
-
-**Built with ❤️ using React Native, Expo, and AWS services.**
+This project is part of the GymCoach AI application suite.

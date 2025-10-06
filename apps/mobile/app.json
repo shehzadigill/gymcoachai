@@ -1,17 +1,4 @@
 {
-  "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "platforms": ["ios", "android", "web"],
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "extra": {
-      "EXPO_PUBLIC_CLOUDFRONT_URL": "https://d12pveuxxq3vvn.cloudfront.net"
-    }
-  }
+  "name": "mobile",
+  "displayName": "GymCoach AI"
 }

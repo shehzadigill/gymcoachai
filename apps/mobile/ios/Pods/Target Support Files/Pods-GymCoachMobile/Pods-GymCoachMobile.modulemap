@@ -1,0 +1,6 @@
+module Pods_GymCoachMobile {
+  umbrella header "Pods-GymCoachMobile-umbrella.h"
+
+  export *
+  module * { export * }
+}
