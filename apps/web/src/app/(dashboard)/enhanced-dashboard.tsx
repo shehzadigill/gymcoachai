@@ -96,6 +96,7 @@ interface DashboardData {
   progressPhotos: any[];
 
   // Goals and milestones
+  dailyGoals: any[];
   weeklyGoals: any[];
   monthlyGoals: any[];
   upcomingWorkouts: any[];
@@ -410,26 +411,15 @@ export default function DashboardPage() {
 
         console.log('Active days this week:', activeDaysThisWeek);
 
-        // Dynamic weekly goals based on user profile and nutrition stats
-        const weeklyGoals = [
-          {
-            name: 'Workouts',
-            current: workoutsThisWeek,
-            target:
-              userProfile?.body?.weeklyWorkoutGoal ||
-              userProfile?.weeklyWorkoutGoal ||
-              (workoutPlans && workoutPlans.length > 0
-                ? workoutPlans[0].weeklyTarget || 4
-                : 4),
-            unit: 'sessions',
-          },
+        // Separate daily and weekly goals for better organization
+        const dailyGoals = [
           {
             name: 'Calories',
             current: Math.round(todaysCalories),
             target:
-              nutritionData.weekly_goal ||
               userProfile?.body?.dailyCalorieGoal ||
               userProfile?.dailyCalorieGoal ||
+              nutritionData.daily_goal ||
               2000,
             unit: 'kcal',
           },
@@ -446,6 +436,20 @@ export default function DashboardPage() {
               userProfile?.dailyWaterGoal ||
               8,
             unit: 'glasses',
+          },
+        ];
+
+        const weeklyGoals = [
+          {
+            name: 'Workouts',
+            current: workoutsThisWeek,
+            target:
+              userProfile?.body?.weeklyWorkoutGoal ||
+              userProfile?.weeklyWorkoutGoal ||
+              (workoutPlans && workoutPlans.length > 0
+                ? workoutPlans[0].weeklyTarget || 4
+                : 4),
+            unit: 'sessions',
           },
           {
             name: 'Active Days',
@@ -532,6 +536,7 @@ export default function DashboardPage() {
               : [],
 
           // Goals and milestones
+          dailyGoals,
           weeklyGoals,
           monthlyGoals: Array.isArray(milestones?.body)
             ? milestones.body.slice(0, 3)
@@ -562,7 +567,7 @@ export default function DashboardPage() {
     if (workoutData.length === 0) return 0;
 
     const sortedSessions = workoutData
-      .filter((s) => {
+      .filter((s: any) => {
         // More comprehensive completion check
         return (
           s.completed === true ||
@@ -573,7 +578,7 @@ export default function DashboardPage() {
           s.end_time
         );
       })
-      .map((session) => {
+      .map((session: any) => {
         const dateString =
           session.completedAt || session.completed_at || session.createdAt;
         if (!dateString) return null;
@@ -625,7 +630,7 @@ export default function DashboardPage() {
     if (workoutData.length === 0) return null;
 
     const completedSessions = workoutData
-      .filter((s) => {
+      .filter((s: any) => {
         // More comprehensive completion check
         return (
           s.completed === true ||
@@ -636,7 +641,7 @@ export default function DashboardPage() {
           s.end_time
         );
       })
-      .map((session) => {
+      .map((session: any) => {
         const dateString =
           session.completedAt || session.completed_at || session.createdAt;
         if (!dateString) return null;
@@ -1443,6 +1448,35 @@ export default function DashboardPage() {
               </DashboardSection>
             </div>
 
+            {/* Daily Goals Progress */}
+            <DashboardSection
+              title="Today's Goals"
+              subtitle="Track your daily nutrition and hydration"
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+                  {data?.dailyGoals?.map((goal: any, index: number) => (
+                    <div key={index} className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-medium text-gray-900 dark:text-white">
+                          {goal.name}
+                        </h4>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {goal.current}/{goal.target} {goal.unit}
+                        </span>
+                      </div>
+                      <ProgressRing
+                        progress={(goal.current / goal.target) * 100}
+                        size={80}
+                        color={['#10B981', '#3B82F6'][index % 2]}
+                        showPercentage={false}
+                      />
+                    </div>
+                  )) || []}
+                </div>
+              </div>
+            </DashboardSection>
+
             {/* Weekly Goals Progress */}
             <DashboardSection
               title="Weekly Goals"
@@ -1463,11 +1497,7 @@ export default function DashboardPage() {
                       <ProgressRing
                         progress={(goal.current / goal.target) * 100}
                         size={80}
-                        color={
-                          ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'][
-                            index % 4
-                          ]
-                        }
+                        color={['#F59E0B', '#EF4444'][index % 2]}
                         showPercentage={false}
                       />
                     </div>

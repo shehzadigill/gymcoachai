@@ -447,7 +447,7 @@ class ApiClient {
 
   async getScheduledWorkouts(userId?: string): Promise<any[]> {
     const id = userId || (await this.getCurrentUserId());
-    return this.apiFetch<any[]>(`/api/workouts/schedule?userId=${id}`);
+    return this.apiFetch<any[]>(`/api/workouts/schedules?userId=${id}`);
   }
 
   // Sleep tracking methods

@@ -22,6 +22,93 @@ interface DashboardData {
   upcomingWorkouts: any[];
 }
 
+// Helper function to safely format dates
+const formatDate = (dateInput: any): string => {
+  if (!dateInput) {
+    console.log('formatDate: No date input provided');
+    return 'N/A';
+  }
+
+  try {
+    console.log(
+      'formatDate: Attempting to format date:',
+      dateInput,
+      typeof dateInput
+    );
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) {
+      console.warn('formatDate: Invalid date created from input:', dateInput);
+      return 'N/A';
+    }
+    const formatted = date.toLocaleDateString();
+    console.log('formatDate: Successfully formatted to:', formatted);
+    return formatted;
+  } catch (error) {
+    console.warn('formatDate: Error formatting date:', dateInput, error);
+    return 'N/A';
+  }
+};
+
+// Helper function to safely format time
+const formatTime = (dateInput: any): string => {
+  if (!dateInput) {
+    console.log('formatTime: No date input provided');
+    return 'N/A';
+  }
+
+  try {
+    console.log(
+      'formatTime: Attempting to format time:',
+      dateInput,
+      typeof dateInput
+    );
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) {
+      console.warn('formatTime: Invalid date created from input:', dateInput);
+      return 'N/A';
+    }
+    const formatted = date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    console.log('formatTime: Successfully formatted to:', formatted);
+    return formatted;
+  } catch (error) {
+    console.warn('formatTime: Error formatting time:', dateInput, error);
+    return 'N/A';
+  }
+};
+
+// Helper function to extract date from workout object with multiple possible field names
+const getWorkoutDate = (workout: any): any => {
+  // Try different possible date field names
+  const possibleFields = [
+    'scheduledTime',
+    'scheduled_time',
+    'date',
+    'startTime',
+    'start_time',
+    'createdAt',
+    'created_at',
+  ];
+
+  for (const field of possibleFields) {
+    if (workout[field]) {
+      console.log(
+        `getWorkoutDate: Found date in field '${field}':`,
+        workout[field]
+      );
+      return workout[field];
+    }
+  }
+
+  console.warn(
+    'getWorkoutDate: No date field found in workout:',
+    Object.keys(workout)
+  );
+  return null;
+};
+
 export default function DashboardScreen() {
   const { user, userProfile } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -50,6 +137,19 @@ export default function DashboardScreen() {
         apiClient.getAchievements(),
         apiClient.getScheduledWorkouts(),
       ]);
+
+      // Debug log the scheduled workouts data
+      if (scheduledWorkouts.status === 'fulfilled') {
+        console.log(
+          'Dashboard: Scheduled workouts data:',
+          JSON.stringify(scheduledWorkouts.value, null, 2)
+        );
+      } else {
+        console.log(
+          'Dashboard: Scheduled workouts failed:',
+          scheduledWorkouts.reason
+        );
+      }
 
       setData({
         recentWorkouts:
@@ -151,7 +251,7 @@ export default function DashboardScreen() {
                     {workout.workout?.name || 'Custom Workout'}
                   </Text>
                   <Text style={styles.workoutDate}>
-                    {new Date(workout.createdAt).toLocaleDateString()}
+                    {formatDate(workout.createdAt)}
                   </Text>
                 </View>
                 <Text style={styles.workoutStatus}>
@@ -178,18 +278,22 @@ export default function DashboardScreen() {
         {data?.upcomingWorkouts && data.upcomingWorkouts.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Upcoming Workouts</Text>
-            {data.upcomingWorkouts.map((workout, index) => (
-              <Card key={workout.id || index} style={styles.upcomingCard}>
-                <Text style={styles.upcomingName}>{workout.name}</Text>
-                <Text style={styles.upcomingTime}>
-                  {new Date(workout.scheduledTime).toLocaleDateString()} at{' '}
-                  {new Date(workout.scheduledTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </Card>
-            ))}
+            {data.upcomingWorkouts.map((workout, index) => {
+              const workoutDate = getWorkoutDate(workout);
+              console.log(`Upcoming workout ${index}:`, workout);
+              console.log(`Extracted date for workout ${index}:`, workoutDate);
+
+              return (
+                <Card key={workout.id || index} style={styles.upcomingCard}>
+                  <Text style={styles.upcomingName}>
+                    {workout.name || workout.workoutName || 'Unnamed Workout'}
+                  </Text>
+                  <Text style={styles.upcomingTime}>
+                    {formatDate(workoutDate)} at {formatTime(workoutDate)}
+                  </Text>
+                </Card>
+              );
+            })}
           </View>
         )}
 
@@ -207,7 +311,7 @@ export default function DashboardScreen() {
                     {achievement.description}
                   </Text>
                   <Text style={styles.achievementDate}>
-                    {new Date(achievement.unlockedAt).toLocaleDateString()}
+                    {formatDate(achievement.unlockedAt)}
                   </Text>
                 </View>
                 <Text style={styles.achievementEmoji}>🏆</Text>
