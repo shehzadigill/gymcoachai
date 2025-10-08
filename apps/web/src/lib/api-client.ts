@@ -7,8 +7,16 @@ export async function apiFetch<T>(
   init: RequestInit = {}
 ): Promise<T> {
   const isLocal =
-    typeof window !== 'undefined' && window.location.hostname === 'localhost';
-  const finalBase = isLocal ? '' : baseUrl;
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1');
+
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isStaticExport = process.env.NEXT_EXPORT === 'true';
+
+  // Use local proxy only in development mode and when not doing static export
+  const shouldUseProxy = isLocal && isDevelopment && !isStaticExport;
+  const finalBase = shouldUseProxy ? '/api/proxy' : baseUrl;
   const authHeaders = await tokenManager.getAuthHeaders();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -16,11 +24,20 @@ export async function apiFetch<T>(
     ...(init.headers || {}),
   };
 
-  const res = await fetch(`${finalBase}${path}`, {
+  const fetchOptions: RequestInit = {
     ...init,
     headers,
     cache: 'no-store',
-  });
+  };
+
+  // Add CORS mode when making direct cross-origin requests
+  if (!shouldUseProxy && isLocal) {
+    fetchOptions.mode = 'cors';
+    fetchOptions.credentials = 'omit';
+  }
+
+  console.log(`API Request: ${finalBase}${path}`, fetchOptions);
+  const res = await fetch(`${finalBase}${path}`, fetchOptions);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(text || `Request failed: ${res.status}`);
@@ -189,15 +206,42 @@ export const api = {
 
   // User profile endpoints
   async getUserProfile(userId?: string) {
-    const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/user-profiles/profile/${id}`);
+    // Don't include user ID in path - let backend authenticate from JWT token
+    return apiFetch<any>('/api/user-profiles/profile');
   },
 
   async updateUserProfile(data: any, userId?: string) {
-    const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/user-profiles/profile/${id}`, {
+    // Don't include user ID in path - let backend authenticate from JWT token
+    return apiFetch<any>('/api/user-profiles/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  },
+
+  // Goals and preferences specific methods
+  async updateDailyGoals(dailyGoals: {
+    calories: number;
+    water: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }) {
+    return this.updateUserProfile({
+      preferences: {
+        dailyGoals: dailyGoals,
+      },
+    });
+  },
+
+  async updateFitnessGoals(goals: string[]) {
+    return this.updateUserProfile({
+      goals: goals,
+    });
+  },
+
+  async updateUserPreferences(preferences: any) {
+    return this.updateUserProfile({
+      preferences: preferences,
     });
   },
 
@@ -544,19 +588,25 @@ export const api = {
           : session.body;
     }
 
+    console.log('Web completeWorkoutSession - sessionData:', sessionData);
+    console.log(
+      'Web completeWorkoutSession - exercises:',
+      sessionData.exercises
+    );
+
     return apiFetch<any>(`/api/workouts/sessions`, {
       method: 'PUT',
       body: JSON.stringify({
         id: sessionId,
         userId: id,
-        name: sessionData.name,
+        name: sessionData.name || 'Workout Session',
         startedAt:
           sessionData.started_at ||
           sessionData.created_at ||
           new Date().toISOString(),
         completedAt: new Date().toISOString(), // This marks the session as completed
         completed: true, // Explicitly mark as completed for clarity
-        exercises: sessionData.exercises || [],
+        exercises: sessionData.exercises || [], // Preserve exercises data
         notes: sessionData.notes || null,
         rating: sessionData.rating || null,
         createdAt: sessionData.created_at || new Date().toISOString(),

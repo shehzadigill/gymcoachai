@@ -127,6 +127,7 @@ export default function NutritionPage() {
     carbs: number;
     fat: number;
   }>({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [userProfileData, setUserProfileData] = useState<any>(null);
 
   // All useEffect hooks must also be called before conditional returns
   useEffect(() => {
@@ -235,7 +236,17 @@ export default function NutritionPage() {
       setLoading(true);
       setError(null);
 
-      const response = await api.getMealsByDate(selectedDate);
+      // Fetch both meals and user profile to get daily goals
+      const [response, userProfile] = await Promise.all([
+        api.getMealsByDate(selectedDate),
+        api.getUserProfile().catch((e) => {
+          console.warn('Failed to fetch user profile:', e);
+          return null;
+        }),
+      ]);
+      console.log('UserProfile response:', userProfile);
+      // Store user profile data for use throughout the component
+      setUserProfileData(userProfile);
 
       if (response) {
         // Handle both response formats: new API format { meals: [] } and old format { body: [] }
@@ -275,11 +286,17 @@ export default function NutritionPage() {
         }));
 
         setMeals(apiMeals);
-        calculateDailyNutrition(apiMeals, currentWaterCount ?? waterCount);
+        calculateDailyNutrition(
+          apiMeals,
+          currentWaterCount ?? waterCount,
+          userProfile
+        );
       } else {
         // Fallback to empty state
         setMeals([]);
-        setDailyNutrition(getDefaultNutrition(currentWaterCount ?? waterCount));
+        setDailyNutrition(
+          getDefaultNutrition(currentWaterCount ?? waterCount, userProfile)
+        );
       }
     } catch (e: any) {
       console.error('Failed to fetch nutrition data:', e);
@@ -317,22 +334,35 @@ export default function NutritionPage() {
     }
   };
 
-  const getDefaultNutrition = (currentWater: number = 0): DailyNutrition => ({
-    calories: 0,
-    caloriesGoal: 2000,
-    protein: 0,
-    proteinGoal: 150,
-    carbs: 0,
-    carbsGoal: 250,
-    fat: 0,
-    fatGoal: 67,
-    fiber: 0,
-    fiberGoal: 25,
-    water: currentWater,
-    waterGoal: 8,
-  });
+  const getDefaultNutrition = (
+    currentWater: number = 0,
+    userProfile?: any
+  ): DailyNutrition => {
+    const profileData = userProfile?.body || userProfile || {};
+    console.log('Calculating default nutrition with profile:', profileData);
+    const dailyGoals = profileData?.preferences?.dailyGoals;
 
-  const calculateDailyNutrition = (meals: Meal[], currentWater: number = 0) => {
+    return {
+      calories: 0,
+      caloriesGoal: dailyGoals?.calories || 2000,
+      protein: 0,
+      proteinGoal: dailyGoals?.protein || 150,
+      carbs: 0,
+      carbsGoal: dailyGoals?.carbs || 200,
+      fat: 0,
+      fatGoal: dailyGoals?.fat || 67,
+      fiber: 0,
+      fiberGoal: 25, // fiber goal is not in profile yet, keep default
+      water: currentWater,
+      waterGoal: dailyGoals?.water || 8,
+    };
+  };
+
+  const calculateDailyNutrition = (
+    meals: Meal[],
+    currentWater: number = 0,
+    userProfile?: any
+  ) => {
     const totals = meals.reduce(
       (acc, meal) => ({
         calories: acc.calories + meal.calories,
@@ -354,19 +384,23 @@ export default function NutritionPage() {
       }
     );
 
+    // Get daily goals from user profile preferences
+    const profileData = userProfile?.body || userProfile || {};
+    const dailyGoals = profileData?.preferences?.dailyGoals;
+
     setDailyNutrition({
       calories: Math.round(totals.calories),
-      caloriesGoal: 2000,
+      caloriesGoal: dailyGoals?.calories || 2000,
       protein: Math.round(totals.protein * 10) / 10,
-      proteinGoal: 150,
+      proteinGoal: dailyGoals?.protein || 150,
       carbs: Math.round(totals.carbs * 10) / 10,
-      carbsGoal: 250,
+      carbsGoal: dailyGoals?.carbs || 200,
       fat: Math.round(totals.fat * 10) / 10,
-      fatGoal: 67,
+      fatGoal: dailyGoals?.fat || 67,
       fiber: Math.round(totals.fiber * 10) / 10,
-      fiberGoal: 25,
+      fiberGoal: 25, // fiber goal not in profile yet, keep default
       water: currentWater,
-      waterGoal: 8,
+      waterGoal: dailyGoals?.water || 8,
     });
   };
 
@@ -524,7 +558,11 @@ export default function NutritionPage() {
         };
 
         setMeals((prev) => [...prev, newMeal]);
-        calculateDailyNutrition([...meals, newMeal], waterCount);
+        calculateDailyNutrition(
+          [...meals, newMeal],
+          waterCount,
+          userProfileData
+        );
         setShowCustomMealForm(false);
 
         // Refresh the meal data from backend to ensure consistency
@@ -612,7 +650,11 @@ export default function NutritionPage() {
         };
 
         setMeals((prev) => [...prev, newMeal]);
-        calculateDailyNutrition([...meals, newMeal], waterCount);
+        calculateDailyNutrition(
+          [...meals, newMeal],
+          waterCount,
+          userProfileData
+        );
 
         // Update recent foods list
         setRecentFoods((prev) => {
@@ -696,7 +738,7 @@ export default function NutritionPage() {
       await api.deleteMeal(mealId);
       const updatedMeals = meals.filter((meal) => meal.id !== mealId);
       setMeals(updatedMeals);
-      calculateDailyNutrition(updatedMeals, waterCount);
+      calculateDailyNutrition(updatedMeals, waterCount, userProfileData);
     } catch (e: any) {
       console.error('Failed to delete meal:', e);
       setError('Failed to delete meal');

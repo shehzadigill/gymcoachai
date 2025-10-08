@@ -56,6 +56,13 @@ interface UserProfile {
       workoutSharing: boolean;
       progressSharing: boolean;
     };
+    dailyGoals?: {
+      calories: number;
+      water: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+    };
   };
 }
 
@@ -85,6 +92,13 @@ const createDefaultProfile = (user: any): UserProfile => ({
       profileVisibility: 'private',
       workoutSharing: false,
       progressSharing: false,
+    },
+    dailyGoals: {
+      calories: 2000,
+      water: 8,
+      protein: 150,
+      carbs: 200,
+      fat: 65,
     },
   },
 });
@@ -194,14 +208,28 @@ export default function ProfilePage() {
     }
   };
 
-  const handleProfileUpdate = (updates: Partial<UserProfile>) => {
+  const handleProfileUpdate = async (updates: Partial<UserProfile>) => {
     if (profile) {
       const updatedProfile = { ...profile, ...updates };
       setProfile(updatedProfile);
+
+      // Save to backend if fitness goals are being updated
+      if (updates.fitnessGoals) {
+        try {
+          await api.updateFitnessGoals(updates.fitnessGoals);
+          console.log(
+            'Fitness goals saved successfully:',
+            updates.fitnessGoals
+          );
+        } catch (error) {
+          console.error('Error saving fitness goals:', error);
+          alert('Failed to save fitness goals. Please try again.');
+        }
+      }
     }
   };
 
-  const handlePreferencesUpdate = (
+  const handlePreferencesUpdate = async (
     updates: Partial<UserProfile['preferences']>
   ) => {
     if (profile) {
@@ -210,6 +238,14 @@ export default function ProfilePage() {
         preferences: { ...profile.preferences, ...updates },
       };
       setProfile(updatedProfile);
+
+      try {
+        await api.updateUserPreferences(updates);
+        console.log('Preferences saved successfully:', updates);
+      } catch (error) {
+        console.error('Error saving preferences:', error);
+        alert('Failed to save preferences. Please try again.');
+      }
     }
   };
 
@@ -772,6 +808,13 @@ function GoalsTab({
     fat: 65, // grams
   });
 
+  // Sync daily goals with profile data
+  useEffect(() => {
+    if (profile.preferences.dailyGoals) {
+      setDailyGoals(profile.preferences.dailyGoals);
+    }
+  }, [profile.preferences.dailyGoals]);
+
   const addGoal = () => {
     if (newGoal.trim() && profile.fitnessGoals) {
       onUpdate({
@@ -796,10 +839,15 @@ function GoalsTab({
     }));
   };
 
-  const saveDailyGoals = () => {
-    // For now, just show success message
-    console.log('Daily goals saved:', dailyGoals);
-    alert('Daily goals saved successfully!');
+  const saveDailyGoals = async () => {
+    try {
+      await api.updateDailyGoals(dailyGoals);
+      console.log('Daily goals saved successfully:', dailyGoals);
+      alert('Daily goals saved successfully!');
+    } catch (error) {
+      console.error('Error saving daily goals:', error);
+      alert('Failed to save daily goals. Please try again.');
+    }
   };
 
   return (

@@ -337,13 +337,42 @@ export default function DashboardScreen() {
         }
       }).length;
 
+      // Extract daily goals from user profile preferences
+      const profileData =
+        userProfileData.status === 'fulfilled'
+          ? (userProfileData.value as any)?.body || userProfileData.value || {}
+          : {};
+      const dailyGoalsFromPrefs = profileData?.preferences?.dailyGoals;
+
       // Separate daily and weekly goals
       const dailyGoals = [
         {
           name: 'Calories',
           current: Math.round(todaysCalories),
-          target: nutritionData.daily_goal || nutritionData.weekly_goal || 2000,
+          target:
+            dailyGoalsFromPrefs?.calories ||
+            nutritionData.daily_goal ||
+            nutritionData.weekly_goal ||
+            2000,
           unit: 'kcal',
+        },
+        {
+          name: 'Protein',
+          current: Math.round(nutritionData.today_protein || 0),
+          target: dailyGoalsFromPrefs?.protein || 150,
+          unit: 'g',
+        },
+        {
+          name: 'Carbs',
+          current: Math.round(nutritionData.today_carbs || 0),
+          target: dailyGoalsFromPrefs?.carbs || 200,
+          unit: 'g',
+        },
+        {
+          name: 'Fat',
+          current: Math.round(nutritionData.today_fat || 0),
+          target: dailyGoalsFromPrefs?.fat || 67,
+          unit: 'g',
         },
         {
           name: 'Water',
@@ -351,7 +380,7 @@ export default function DashboardScreen() {
             waterIntake.status === 'fulfilled'
               ? waterIntake.value?.glasses || 0
               : 0,
-          target: nutritionData.water_goal || 8,
+          target: dailyGoalsFromPrefs?.water || nutritionData.water_goal || 8,
           unit: 'glasses',
         },
       ];
@@ -371,12 +400,13 @@ export default function DashboardScreen() {
         totalWorkouts: workoutData.length,
         activePlan: 'Custom Plan', // Can be enhanced later
         caloriesToday: todaysCalories,
-        calorieGoal: nutritionData.weekly_goal || 2000,
+        calorieGoal:
+          dailyGoalsFromPrefs?.calories || nutritionData.weekly_goal || 2000,
         waterIntake:
           waterIntake.status === 'fulfilled'
             ? waterIntake.value?.glasses || 0
             : 0,
-        waterGoal: nutritionData.water_goal || 8,
+        waterGoal: dailyGoalsFromPrefs?.water || nutritionData.water_goal || 8,
         currentStreak,
         totalWorkoutTime,
         lastWorkoutDate,

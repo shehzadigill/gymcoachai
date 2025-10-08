@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,29 +9,126 @@ import {
   Alert,
 } from 'react-native';
 import {Button, Card} from '../../components/common/UI';
+import apiClient from '../../services/api';
 
-export default function CreatePlanScreen({navigation}: any) {
+export default function CreatePlanScreen({navigation, route}: any) {
+  const {editPlan, isTemplate, fromTemplate} = route.params || {};
+  const isEditMode = !!editPlan;
+  const isTemplateMode = isTemplate || fromTemplate;
+
   const [planName, setPlanName] = useState('');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<
     'beginner' | 'intermediate' | 'advanced'
   >('beginner');
+
+  // Map form difficulty to API difficulty
+  const mapDifficultyToApi = (formDifficulty: string) => {
+    switch (formDifficulty) {
+      case 'beginner':
+        return 'easy';
+      case 'intermediate':
+        return 'medium';
+      case 'advanced':
+        return 'hard';
+      default:
+        return 'easy';
+    }
+  };
+
+  // Map API difficulty to form difficulty
+  const mapDifficultyFromApi = (apiDifficulty: string) => {
+    switch (apiDifficulty) {
+      case 'easy':
+        return 'beginner';
+      case 'medium':
+        return 'intermediate';
+      case 'hard':
+        return 'advanced';
+      default:
+        return 'beginner';
+    }
+  };
   const [durationWeeks, setDurationWeeks] = useState('4');
   const [frequencyPerWeek, setFrequencyPerWeek] = useState('3');
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  // Populate form when editing
+  useEffect(() => {
+    if (isEditMode && editPlan) {
+      setPlanName(editPlan.name || '');
+      setDescription(editPlan.description || '');
+      setDifficulty(mapDifficultyFromApi(editPlan.difficulty || 'easy'));
+      setDurationWeeks(editPlan.durationWeeks?.toString() || '4');
+      setFrequencyPerWeek(editPlan.frequencyPerWeek?.toString() || '3');
+    } else if (fromTemplate) {
+      // Pre-populate from template
+      setPlanName(fromTemplate.name || '');
+      setDescription(fromTemplate.description || '');
+      setDifficulty(mapDifficultyFromApi(fromTemplate.difficulty || 'easy'));
+      setDurationWeeks(fromTemplate.durationWeeks?.toString() || '4');
+      setFrequencyPerWeek(fromTemplate.frequencyPerWeek?.toString() || '3');
+    }
+  }, [isEditMode, editPlan, fromTemplate]);
+
+  const handleSave = async () => {
     if (!planName.trim()) {
       Alert.alert('Error', 'Please enter a plan name');
       return;
     }
 
-    // TODO: Implement actual save functionality
-    Alert.alert('Success', 'Workout plan created successfully!', [
-      {
-        text: 'OK',
-        onPress: () => navigation.goBack(),
-      },
-    ]);
+    setLoading(true);
+
+    try {
+      const planData = {
+        name: planName.trim(),
+        description: description.trim(),
+        difficulty: mapDifficultyToApi(difficulty) as
+          | 'easy'
+          | 'medium'
+          | 'hard',
+        durationWeeks: parseInt(durationWeeks) || 4,
+        frequencyPerWeek: parseInt(frequencyPerWeek) || 3,
+        exercises: editPlan?.exercises || [], // Preserve existing exercises
+        isTemplate: isTemplateMode,
+      };
+
+      if (isEditMode) {
+        // Update existing plan
+        await apiClient.updateWorkoutPlan(editPlan.id, planData);
+        Alert.alert('Success', 'Workout plan updated successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]);
+      } else {
+        // Create new plan
+        await apiClient.createWorkout(planData);
+        Alert.alert(
+          'Success',
+          isTemplateMode
+            ? 'Workout template created successfully!'
+            : 'Workout plan created successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      }
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      Alert.alert(
+        'Error',
+        `Failed to ${
+          isEditMode ? 'update' : 'create'
+        } workout plan. Please try again.`,
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const DifficultyButton = ({level, selected, onPress}: any) => (
@@ -48,7 +145,13 @@ export default function CreatePlanScreen({navigation}: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          <Text style={styles.title}>Create Workout Plan</Text>
+          <Text style={styles.title}>
+            {isEditMode
+              ? 'Edit Workout Plan'
+              : isTemplateMode
+              ? 'Create Workout Template'
+              : 'Create Workout Plan'}
+          </Text>
 
           <Card style={styles.formCard}>
             <View style={styles.formGroup}>
@@ -129,9 +232,18 @@ export default function CreatePlanScreen({navigation}: any) {
               style={styles.cancelButton}
             />
             <Button
-              title="Create Plan"
+              title={
+                loading
+                  ? 'Saving...'
+                  : isEditMode
+                  ? 'Update Plan'
+                  : isTemplateMode
+                  ? 'Create Template'
+                  : 'Create Plan'
+              }
               onPress={handleSave}
               style={styles.saveButton}
+              disabled={loading}
             />
           </View>
         </View>

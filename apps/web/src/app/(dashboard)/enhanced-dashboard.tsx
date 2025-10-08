@@ -412,16 +412,34 @@ export default function DashboardPage() {
         console.log('Active days this week:', activeDaysThisWeek);
 
         // Separate daily and weekly goals for better organization
+        // Extract daily goals from user profile preferences
+        const profileData = userProfile?.body || userProfile || {};
+        const dailyGoalsFromPrefs = profileData?.preferences?.dailyGoals;
+
         const dailyGoals = [
           {
             name: 'Calories',
             current: Math.round(todaysCalories),
-            target:
-              userProfile?.body?.dailyCalorieGoal ||
-              userProfile?.dailyCalorieGoal ||
-              nutritionData.daily_goal ||
-              2000,
+            target: dailyGoalsFromPrefs?.calories || 2000,
             unit: 'kcal',
+          },
+          {
+            name: 'Protein',
+            current: Math.round(todaysProtein),
+            target: dailyGoalsFromPrefs?.protein || 150,
+            unit: 'g',
+          },
+          {
+            name: 'Carbs',
+            current: Math.round(todaysCarbs),
+            target: dailyGoalsFromPrefs?.carbs || 200,
+            unit: 'g',
+          },
+          {
+            name: 'Fat',
+            current: Math.round(todaysFat),
+            target: dailyGoalsFromPrefs?.fat || 67,
+            unit: 'g',
           },
           {
             name: 'Water',
@@ -430,11 +448,7 @@ export default function DashboardPage() {
               waterIntake?.body?.glasses ||
               waterIntake?.glasses ||
               0,
-            target:
-              nutritionData.water_goal ||
-              userProfile?.body?.dailyWaterGoal ||
-              userProfile?.dailyWaterGoal ||
-              8,
+            target: dailyGoalsFromPrefs?.water || 8,
             unit: 'glasses',
           },
         ];
@@ -480,9 +494,9 @@ export default function DashboardPage() {
           weeklyCalorieAvg: nutritionData.weekly_average || 0,
           monthlyCalorieAvg: nutritionData.monthly_average || 0,
           mealsToday: nutritionData.meals_today || 0,
-          calorieGoal: userProfile?.calorieGoal || 2000,
+          calorieGoal: dailyGoalsFromPrefs?.calories || 2000,
           waterIntake: nutritionData.water_intake || waterIntake?.glasses || 0,
-          waterGoal: 8,
+          waterGoal: dailyGoalsFromPrefs?.water || 8,
           aiRecommendations: Array.isArray(achievements?.body)
             ? Math.min(achievements.body.length, 5)
             : 0,
@@ -1384,7 +1398,10 @@ export default function DashboardPage() {
               title="Workout Progress"
               subtitle="Your training consistency over the last 7 days"
               action={
-                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                <button
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => (window.location.href = '/workouts/history')}
+                >
                   View Details
                 </button>
               }

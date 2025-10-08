@@ -8,18 +8,33 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  TextInput,
+  Modal,
 } from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {Card, LoadingSpinner, Button} from '../components/common/UI';
+import {useAuth} from '../contexts/AuthContext';
 import apiClient from '../services/api';
 import notificationService from '../services/notifications';
 
 export default function NutritionScreen({navigation}: any) {
+  const {user} = useAuth();
   const [todaysMeals, setTodaysMeals] = useState<any>(null);
   const [nutritionStats, setNutritionStats] = useState<any>(null);
   const [waterIntake, setWaterIntake] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Custom meal modal state
+  const [showCustomMealModal, setShowCustomMealModal] = useState(false);
+  const [customMealName, setCustomMealName] = useState('');
+  const [customMealCalories, setCustomMealCalories] = useState('');
+  const [customMealProtein, setCustomMealProtein] = useState('');
+  const [customMealCarbs, setCustomMealCarbs] = useState('');
+  const [customMealFat, setCustomMealFat] = useState('');
+  const [customMealType, setCustomMealType] = useState('breakfast');
+  const [savingCustomMeal, setSavingCustomMeal] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -40,11 +55,13 @@ export default function NutritionScreen({navigation}: any) {
     try {
       setLoading(true);
 
-      const [mealsData, statsData, waterData] = await Promise.allSettled([
-        apiClient.getMealsByDate(today),
-        apiClient.getNutritionStats(),
-        apiClient.getWater(today),
-      ]);
+      const [mealsData, statsData, waterData, profileData] =
+        await Promise.allSettled([
+          apiClient.getMealsByDate(today),
+          apiClient.getNutritionStats(),
+          apiClient.getWater(today),
+          apiClient.getUserProfile(user?.id || ''),
+        ]);
 
       console.log('NutritionScreen: Meals data response:', mealsData);
       console.log('NutritionScreen: Nutrition stats response:', statsData);
@@ -90,6 +107,17 @@ export default function NutritionScreen({navigation}: any) {
         );
         setWaterIntake(null);
       }
+
+      if (profileData.status === 'fulfilled') {
+        console.log('NutritionScreen: User profile value:', profileData.value);
+        setUserProfile(profileData.value);
+      } else {
+        console.log(
+          'NutritionScreen: User profile request failed (this is expected if API is not implemented):',
+          profileData.reason,
+        );
+        setUserProfile(null);
+      }
     } catch (error) {
       console.error('Error loading nutrition data:', error);
     } finally {
@@ -127,6 +155,32 @@ export default function NutritionScreen({navigation}: any) {
     return totals;
   };
 
+  // Helper functions to get goals from user profile preferences
+  const getCalorieGoal = () => {
+    const profileData = (userProfile as any)?.body || userProfile || {};
+    return profileData?.preferences?.dailyGoals?.calories || 2000;
+  };
+
+  const getProteinGoal = () => {
+    const profileData = (userProfile as any)?.body || userProfile || {};
+    return profileData?.preferences?.dailyGoals?.protein || 150;
+  };
+
+  const getCarbsGoal = () => {
+    const profileData = (userProfile as any)?.body || userProfile || {};
+    return profileData?.preferences?.dailyGoals?.carbs || 200;
+  };
+
+  const getFatGoal = () => {
+    const profileData = (userProfile as any)?.body || userProfile || {};
+    return profileData?.preferences?.dailyGoals?.fat || 67;
+  };
+
+  const getWaterGoal = () => {
+    const profileData = (userProfile as any)?.body || userProfile || {};
+    return profileData?.preferences?.dailyGoals?.water || 8;
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadNutritionData();
@@ -137,6 +191,83 @@ export default function NutritionScreen({navigation}: any) {
       date: today,
       mealType,
     });
+  };
+
+  const openCustomMealModal = (mealType: string) => {
+    setCustomMealType(mealType);
+    setCustomMealName('');
+    setCustomMealCalories('');
+    setCustomMealProtein('');
+    setCustomMealCarbs('');
+    setCustomMealFat('');
+    setShowCustomMealModal(true);
+  };
+
+  const saveCustomMeal = async () => {
+    if (!customMealName.trim()) {
+      Alert.alert('Error', 'Please enter a meal name');
+      return;
+    }
+
+    if (!customMealCalories.trim()) {
+      Alert.alert('Error', 'Please enter calories');
+      return;
+    }
+
+    setSavingCustomMeal(true);
+
+    try {
+      // Map meal type to proper capitalization like the web app
+      const mapMealTypeToEnum = (m: string) => {
+        switch (m) {
+          case 'breakfast':
+            return 'Breakfast';
+          case 'lunch':
+            return 'Lunch';
+          case 'dinner':
+            return 'Dinner';
+          case 'snack':
+            return 'Snack';
+          default:
+            return 'Breakfast';
+        }
+      };
+
+      const mealData = {
+        name: customMealName.trim(),
+        meal_type: mapMealTypeToEnum(customMealType),
+        meal_date: today + 'T00:00:00Z',
+        foods: [], // Empty foods array for custom meals
+        notes: 'Custom meal entry',
+        // Custom nutrition values for when foods is empty
+        custom_nutrition: {
+          calories: parseFloat(customMealCalories) || 0,
+          protein: parseFloat(customMealProtein) || 0,
+          total_carbs: parseFloat(customMealCarbs) || 0,
+          total_fat: parseFloat(customMealFat) || 0,
+          dietary_fiber: 0, // Not collected in mobile form
+          total_sugars: 0, // Not collected in mobile form
+          sodium: 0, // Not collected in mobile form
+        },
+      };
+
+      await apiClient.createMeal(mealData);
+
+      Alert.alert('Success', 'Custom meal added successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setShowCustomMealModal(false);
+            loadNutritionData(); // Refresh the data
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving custom meal:', error);
+      Alert.alert('Error', 'Failed to save custom meal. Please try again.');
+    } finally {
+      setSavingCustomMeal(false);
+    }
   };
 
   const editMeal = (meal: any) => {
@@ -181,7 +312,7 @@ export default function NutritionScreen({navigation}: any) {
       setWaterIntake({...waterIntake, glasses: newGlasses});
 
       // Send progress notification
-      if (newGlasses === 8) {
+      if (newGlasses >= getWaterGoal()) {
         notificationService.sendProgressNotification(
           '💧 Hydration Goal Achieved!',
           "Great job! You've reached your daily water intake goal.",
@@ -271,7 +402,7 @@ export default function NutritionScreen({navigation}: any) {
                     ((nutritionStats?.today_calories ||
                       nutritionStats?.consumed?.calories ||
                       0) /
-                      2000) *
+                      getCalorieGoal()) *
                       100,
                   )}
                   %
@@ -284,7 +415,7 @@ export default function NutritionScreen({navigation}: any) {
                     nutritionStats?.consumed?.calories ||
                     0,
                 )}{' '}
-                / 2000 kcal
+                / {getCalorieGoal()} kcal
               </Text>
               <View style={styles.progressBarContainer}>
                 <View
@@ -296,7 +427,7 @@ export default function NutritionScreen({navigation}: any) {
                         ((nutritionStats?.today_calories ||
                           nutritionStats?.consumed?.calories ||
                           0) /
-                          2000) *
+                          getCalorieGoal()) *
                           100,
                         100,
                       )}%`,
@@ -315,7 +446,7 @@ export default function NutritionScreen({navigation}: any) {
                     ((nutritionStats?.today_protein ||
                       nutritionStats?.consumed?.protein ||
                       0) /
-                      150) *
+                      getProteinGoal()) *
                       100,
                   )}
                   %
@@ -328,7 +459,7 @@ export default function NutritionScreen({navigation}: any) {
                     nutritionStats?.consumed?.protein ||
                     0,
                 )}{' '}
-                / 150 g
+                / {getProteinGoal()} g
               </Text>
               <View style={styles.progressBarContainer}>
                 <View
@@ -340,7 +471,7 @@ export default function NutritionScreen({navigation}: any) {
                         ((nutritionStats?.today_protein ||
                           nutritionStats?.consumed?.protein ||
                           0) /
-                          150) *
+                          getProteinGoal()) *
                           100,
                         100,
                       )}%`,
@@ -359,7 +490,7 @@ export default function NutritionScreen({navigation}: any) {
                     ((nutritionStats?.today_carbs ||
                       nutritionStats?.consumed?.carbs ||
                       0) /
-                      250) *
+                      getCarbsGoal()) *
                       100,
                   )}
                   %
@@ -372,7 +503,7 @@ export default function NutritionScreen({navigation}: any) {
                     nutritionStats?.consumed?.carbs ||
                     0,
                 )}{' '}
-                / 250 g
+                / {getCarbsGoal()} g
               </Text>
               <View style={styles.progressBarContainer}>
                 <View
@@ -384,7 +515,7 @@ export default function NutritionScreen({navigation}: any) {
                         ((nutritionStats?.today_carbs ||
                           nutritionStats?.consumed?.carbs ||
                           0) /
-                          250) *
+                          getCarbsGoal()) *
                           100,
                         100,
                       )}%`,
@@ -403,7 +534,7 @@ export default function NutritionScreen({navigation}: any) {
                     ((nutritionStats?.today_fat ||
                       nutritionStats?.consumed?.fat ||
                       0) /
-                      67) *
+                      getFatGoal()) *
                       100,
                   )}
                   %
@@ -416,7 +547,7 @@ export default function NutritionScreen({navigation}: any) {
                     nutritionStats?.consumed?.fat ||
                     0,
                 )}{' '}
-                / 67 g
+                / {getFatGoal()} g
               </Text>
               <View style={styles.progressBarContainer}>
                 <View
@@ -428,7 +559,7 @@ export default function NutritionScreen({navigation}: any) {
                         ((nutritionStats?.today_fat ||
                           nutritionStats?.consumed?.fat ||
                           0) /
-                          67) *
+                          getFatGoal()) *
                           100,
                         100,
                       )}%`,
@@ -450,10 +581,10 @@ export default function NutritionScreen({navigation}: any) {
           </View>
           <View style={styles.waterProgress}>
             <Text style={styles.waterText}>
-              {waterIntake?.glasses || 0} / 8 glasses today
+              {waterIntake?.glasses || 0} / {getWaterGoal()} glasses today
             </Text>
             <View style={styles.waterGlasses}>
-              {Array.from({length: 8}).map((_, index) => (
+              {Array.from({length: getWaterGoal()}).map((_, index) => (
                 <Text
                   key={index}
                   style={[
@@ -505,11 +636,18 @@ export default function NutritionScreen({navigation}: any) {
                       </Text>
                     )}
                   </View>
-                  <TouchableOpacity
-                    onPress={() => addMeal(mealType)}
-                    style={styles.addMealButton}>
-                    <Text style={styles.addMealText}>Add</Text>
-                  </TouchableOpacity>
+                  <View style={styles.mealActions}>
+                    <TouchableOpacity
+                      onPress={() => openCustomMealModal(mealType)}
+                      style={styles.addCustomMealButton}>
+                      <Text style={styles.addCustomMealText}>Custom</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => addMeal(mealType)}
+                      style={styles.addMealButton}>
+                      <Text style={styles.addMealText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {mealsForType.length > 0 ? (
@@ -566,6 +704,131 @@ export default function NutritionScreen({navigation}: any) {
           })}
         </View>
       </ScrollView>
+
+      {/* Custom Meal Modal */}
+      <Modal
+        visible={showCustomMealModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCustomMealModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Custom Meal</Text>
+              <TouchableOpacity
+                onPress={() => setShowCustomMealModal(false)}
+                style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Meal Name *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={customMealName}
+                  onChangeText={setCustomMealName}
+                  placeholder="Enter meal name"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Meal Type</Text>
+                <View style={styles.mealTypeContainer}>
+                  {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.mealTypeButton,
+                        customMealType === type && styles.selectedMealType,
+                      ]}
+                      onPress={() => setCustomMealType(type)}>
+                      <Text
+                        style={[
+                          styles.mealTypeText,
+                          customMealType === type &&
+                            styles.selectedMealTypeText,
+                        ]}>
+                        {getMealTypeEmoji(type)}{' '}
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.nutritionInputs}>
+                <View style={styles.nutritionInputRow}>
+                  <View style={styles.nutritionInput}>
+                    <Text style={styles.label}>Calories *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customMealCalories}
+                      onChangeText={setCustomMealCalories}
+                      placeholder="0"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.nutritionInput}>
+                    <Text style={styles.label}>Protein (g)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customMealProtein}
+                      onChangeText={setCustomMealProtein}
+                      placeholder="0"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.nutritionInputRow}>
+                  <View style={styles.nutritionInput}>
+                    <Text style={styles.label}>Carbs (g)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customMealCarbs}
+                      onChangeText={setCustomMealCarbs}
+                      placeholder="0"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.nutritionInput}>
+                    <Text style={styles.label}>Fat (g)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customMealFat}
+                      onChangeText={setCustomMealFat}
+                      placeholder="0"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => setShowCustomMealModal(false)}
+                style={styles.cancelButton}
+              />
+              <Button
+                title={savingCustomMeal ? 'Saving...' : 'Add Meal'}
+                onPress={saveCustomMeal}
+                disabled={savingCustomMeal}
+                style={styles.saveButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -892,5 +1155,132 @@ const styles = StyleSheet.create({
   },
   fatProgress: {
     backgroundColor: '#8b5cf6',
+  },
+  // Custom meal modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContainer: {
+    backgroundColor: '#ffffff',
+    margin: 16,
+    borderRadius: 12,
+    padding: 20,
+    maxHeight: '85%',
+    width: '95%',
+    alignSelf: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    width: '100%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: '#6b7280',
+  },
+  modalContent: {
+    maxHeight: 400,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#ffffff',
+  },
+  mealTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  mealTypeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#ffffff',
+  },
+  selectedMealType: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  mealTypeText: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  selectedMealTypeText: {
+    color: '#ffffff',
+  },
+  nutritionInputs: {
+    gap: 12,
+  },
+  nutritionInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  nutritionInput: {
+    flex: 1,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#10b981',
+  },
+  // Meal actions styles
+  // mealActions: {
+  //   flexDirection: 'row',
+  //   gap: 8,
+  // },
+  addCustomMealButton: {
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  addCustomMealText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

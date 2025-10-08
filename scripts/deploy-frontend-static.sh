@@ -7,7 +7,7 @@ echo "🚀 Deploying frontend static export to S3..."
 # Build the app with static export
 echo "📦 Building Next.js app with static export..."
 cd /Users/babar/projects/gymcoach-ai/apps/web
-NEXT_EXPORT=true npm run build
+npm run build:static
 
 # Check if out directory exists
 if [ ! -d "out" ]; then

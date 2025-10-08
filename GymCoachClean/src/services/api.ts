@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CognitoAuthService from './cognitoAuth';
 import {
   User,
   UserProfile,
@@ -57,7 +58,7 @@ class ApiClient {
     };
   }
 
-  private async getCurrentUserId(): Promise<string> {
+  async getCurrentUserId(): Promise<string> {
     const isDemo = await this.isDemoMode();
     if (isDemo) {
       // Return demo user ID without calling AWS
@@ -162,84 +163,100 @@ class ApiClient {
   }
 
   private async apiFetch<T>(
-    path: string,
+    endpoint: string,
     options: RequestInit = {},
   ): Promise<T> {
     const isDemo = await this.isDemoMode();
+
     if (isDemo) {
-      // Return mock data for demo mode
-      console.log(`Demo mode: Mocking API call to ${path}`);
-
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Return appropriate mock data based on the path
-      if (path.includes('workouts/plans')) {
-        return [
-          {
-            id: 'demo-workout-1',
-            name: 'Upper Body Strength',
-            description: 'Focus on building upper body strength',
-            difficulty: 'intermediate',
-            duration: 45,
-            exercises: [],
-          },
-          {
-            id: 'demo-workout-2',
-            name: 'Cardio HIIT',
-            description: 'High intensity interval training',
-            difficulty: 'hard',
-            duration: 30,
-            exercises: [],
-          },
-        ] as T;
-      } else if (path.includes('workouts/sessions')) {
-        return [] as T;
-      } else if (path.includes('workouts/exercises')) {
-        return [] as T;
-      } else if (path.includes('nutrition/meals')) {
-        return {
-          meals: [],
-          totalCalories: 0,
-          totalProtein: 0,
-          totalCarbs: 0,
-          totalFat: 0,
-        } as T;
-      } else if (path.includes('nutrition/stats')) {
-        return {
-          dailyGoals: {calories: 2000, protein: 150, carbs: 200, fat: 65},
-          consumed: {calories: 1200, protein: 80, carbs: 100, fat: 40},
-        } as T;
-      } else if (path.includes('nutrition/water')) {
-        return {
-          glasses: 4,
-          goal: 8,
-          date: new Date().toISOString().split('T')[0],
-        } as T;
-      } else if (path.includes('analytics/strength-progress')) {
-        return [] as T;
-      } else if (path.includes('analytics/body-measurements')) {
-        return [] as T;
-      } else if (path.includes('analytics/milestones')) {
-        return [] as T;
-      } else if (path.includes('analytics/achievements')) {
-        return [] as T;
-      } else if (path.includes('user-profiles')) {
-        return {
-          id: 'demo-profile-1',
-          userId: 'demo-user-1',
-          firstName: 'Demo',
-          lastName: 'User',
-          height: 175,
-          weight: 70,
-          fitnessLevel: 'intermediate',
-          goals: ['weight_loss', 'strength_gain'],
-        } as T;
-      }
-
-      return [] as T;
+      console.log('API Client: Demo mode active, intercepting API call');
+      // Use demo mode handling here
+      throw new Error('Demo mode not implemented for this endpoint');
     }
 
+    const url = `${baseUrl}${endpoint}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    try {
+      const token = await AsyncStorage.getItem('idToken');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Failed to get token for authorization:', error);
+    }
+
+    const fetchOptions: RequestInit = {
+      ...options,
+      headers,
+    };
+
+    try {
+      console.log('Making API request:', url);
+      console.log('Request options:', {
+        method: fetchOptions.method,
+        headers: fetchOptions.headers,
+        body: fetchOptions.body,
+      });
+
+      const response = await fetch(url, fetchOptions);
+
+      if (response.status === 401 || response.status === 403) {
+        // Token might be expired, try to refresh and retry
+        console.log('Received 401/403, attempting token refresh...');
+        try {
+          await CognitoAuthService.refreshTokens();
+
+          // Get the new token and retry
+          const newToken = await AsyncStorage.getItem('idToken');
+          if (newToken) {
+            headers.Authorization = `Bearer ${newToken}`;
+            fetchOptions.headers = headers;
+
+            console.log('Retrying API request with refreshed token...');
+            const retryResponse = await fetch(url, fetchOptions);
+
+            if (!retryResponse.ok) {
+              const errorText = await retryResponse.text();
+              console.error(
+                'API retry failed:',
+                retryResponse.status,
+                errorText,
+              );
+              throw new Error(`HTTP ${retryResponse.status}: ${errorText}`);
+            }
+
+            return retryResponse.json();
+          }
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          throw new Error('Authentication failed. Please log in again.');
+        }
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API request failed:', response.status, errorText);
+        console.error('Request URL:', url);
+        console.error('Request body:', options.body);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Network error:', error);
+      throw error;
+    }
+  }
+
+  private async makeAuthenticatedRequest<T>(
+    path: string,
+    options: RequestInit = {},
+    isRetry: boolean = false,
+  ): Promise<T> {
     try {
       const headers = await this.getAuthHeaders();
       const finalHeaders = {
@@ -268,6 +285,29 @@ class ApiClient {
       );
 
       if (!response.ok) {
+        // Check if it's an authentication error
+        if (response.status === 401 && !isRetry) {
+          console.log(
+            'API Client: Authentication error, attempting token refresh...',
+          );
+
+          // Attempt to refresh tokens
+          const refreshedUser = await CognitoAuthService.refreshTokens();
+
+          if (refreshedUser) {
+            console.log(
+              'API Client: Token refresh successful, retrying request...',
+            );
+            // Retry the request with new tokens
+            return this.makeAuthenticatedRequest<T>(path, options, true);
+          } else {
+            console.log(
+              'API Client: Token refresh failed, user needs to re-authenticate',
+            );
+            throw new Error('Authentication failed. Please sign in again.');
+          }
+        }
+
         const errorText = await response.text().catch(() => '');
         console.log(`API Client: Error response for ${path}:`, errorText);
         throw new Error(errorText || `Request failed: ${response.status}`);
@@ -485,6 +525,17 @@ class ApiClient {
     });
   }
 
+  async updateWorkoutPlan(
+    planId: string,
+    data: Partial<Workout>,
+  ): Promise<Workout> {
+    const userId = await this.getCurrentUserId();
+    return this.apiFetch<Workout>(`/api/workouts/plans/${planId}`, {
+      method: 'PUT',
+      body: JSON.stringify({...data, userId}),
+    });
+  }
+
   async getWorkoutSessions(userId?: string): Promise<WorkoutSession[]> {
     const id = userId || (await this.getCurrentUserId());
     return this.apiFetch<WorkoutSession[]>(
@@ -492,13 +543,34 @@ class ApiClient {
     );
   }
 
+  async getWorkoutSession(
+    sessionId: string,
+    userId?: string,
+  ): Promise<WorkoutSession> {
+    const id = userId || (await this.getCurrentUserId());
+    return this.apiFetch<WorkoutSession>(
+      `/api/workouts/sessions/${sessionId}?userId=${id}`,
+    );
+  }
+
   async createWorkoutSession(
     data: Partial<WorkoutSession>,
   ): Promise<WorkoutSession> {
     const userId = await this.getCurrentUserId();
+    console.log('CreateWorkoutSession - userId:', userId);
+    console.log('CreateWorkoutSession - data:', data);
+
+    // Ensure required fields are present
+    const requestBody = {
+      ...data,
+      userId,
+      name: (data as any).name || 'Workout Session', // Ensure name is always present
+    };
+    console.log('CreateWorkoutSession - requestBody:', requestBody);
+
     return this.apiFetch<WorkoutSession>('/api/workouts/sessions', {
       method: 'POST',
-      body: JSON.stringify({...data, userId}),
+      body: JSON.stringify(requestBody),
     });
   }
 
@@ -516,12 +588,130 @@ class ApiClient {
   }
 
   async completeWorkoutSession(sessionId: string): Promise<WorkoutSession> {
-    return this.apiFetch<WorkoutSession>(
-      `/api/workouts/sessions/${sessionId}/complete`,
-      {
-        method: 'POST',
-      },
-    );
+    console.log('CompleteWorkoutSession called with sessionId:', sessionId);
+
+    const userId = await this.getCurrentUserId();
+    console.log('Got userId:', userId);
+
+    try {
+      // First get the session to preserve existing data
+      console.log('Fetching session data for sessionId:', sessionId);
+      console.log('Using userId:', userId);
+      const session = await this.getWorkoutSession(sessionId);
+      console.log('Session fetch result:', session);
+
+      let sessionData = session;
+
+      // Handle different response formats
+      if (session && typeof session === 'object' && 'body' in session) {
+        sessionData =
+          typeof session.body === 'string'
+            ? JSON.parse(session.body)
+            : session.body;
+      }
+
+      console.log('Processed session data:', sessionData);
+
+      // Preserve exercises data - don't transform if already in correct format
+      let exercisesToSend = sessionData.exercises || [];
+
+      // Only transform if exercises are in the old format
+      if (
+        exercisesToSend.length > 0 &&
+        exercisesToSend[0] &&
+        !exercisesToSend[0].exerciseId
+      ) {
+        console.log('Transforming exercises from old format...');
+        exercisesToSend = exercisesToSend.map(
+          (exercise: any, index: number) => ({
+            exerciseId:
+              exercise.exerciseId || exercise.exercise_id || exercise.id,
+            name:
+              exercise.name ||
+              exercise.exercise?.name ||
+              exercise.exerciseName ||
+              'Unknown Exercise',
+            order: index,
+            notes: exercise.notes || null,
+            exercise: exercise.exercise || {
+              id: exercise.exerciseId || exercise.exercise_id || exercise.id,
+              name:
+                exercise.name || exercise.exerciseName || 'Unknown Exercise',
+            },
+            sets: (exercise.sets || []).map((set: any, setIndex: number) => ({
+              setNumber: set.setNumber || set.set_number || setIndex + 1,
+              reps: set.reps || null,
+              weight: set.weight || null,
+              durationSeconds:
+                set.duration ||
+                set.durationSeconds ||
+                set.duration_seconds ||
+                null,
+              restSeconds:
+                set.restTime || set.restSeconds || set.rest_seconds || null,
+              completed: set.completed || false,
+              notes: set.notes || null,
+            })),
+          }),
+        );
+      }
+
+      console.log('Exercises to send:', exercisesToSend);
+
+      const requestBody = {
+        id: sessionId,
+        userId: userId,
+        // Use proper field names matching web app and backend expectations
+        name: (sessionData as any).name || 'Workout Session',
+        startedAt:
+          (sessionData as any).started_at ||
+          sessionData.startTime ||
+          sessionData.createdAt ||
+          new Date().toISOString(),
+        completedAt: new Date().toISOString(), // This marks the session as completed
+        completed: true, // Explicitly mark as completed for clarity
+        exercises: exercisesToSend as any, // Use preserved exercises
+        notes: sessionData.notes || null,
+        rating: (sessionData as any).rating || null,
+        createdAt:
+          sessionData.createdAt ||
+          (sessionData as any).created_at ||
+          new Date().toISOString(),
+        workoutPlanId:
+          (sessionData as any).workout_plan_id || sessionData.workoutId || null,
+        durationMinutes: (sessionData as any).duration_minutes || null,
+      };
+
+      console.log(
+        'Request body for completion:',
+        JSON.stringify(requestBody, null, 2),
+      );
+      console.log('Session ID being sent:', sessionId);
+      console.log('User ID being sent:', userId);
+      console.log(
+        'Session name being sent:',
+        (sessionData as any).name || 'Workout Session',
+      );
+      console.log(
+        'Exercises being sent:',
+        JSON.stringify(exercisesToSend, null, 2),
+      );
+
+      // Use the correct endpoint for updating/completing sessions
+      const result = await this.apiFetch<WorkoutSession>(
+        '/api/workouts/sessions',
+        {
+          method: 'PUT',
+          body: JSON.stringify(requestBody),
+        },
+      );
+
+      console.log('Completion API result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in completeWorkoutSession:', error);
+      throw error;
+    }
   }
 
   async getExercises(): Promise<any[]> {

@@ -892,7 +892,7 @@ export default function EnhancedWorkoutHistoryPage() {
                         <button
                           onClick={() =>
                             router.push(
-                              `/workouts/sessions/${enhancedSession.id}`
+                              `/workouts/sessions/start?id=${enhancedSession.id}`
                             )
                           }
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"

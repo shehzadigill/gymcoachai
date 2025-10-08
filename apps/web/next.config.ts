@@ -17,29 +17,29 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: isStaticExport, // Skip ESLint for static export
   },
-  async rewrites() {
-    // Rewrites don't work with static export
-    if (isStaticExport) {
-      return [];
-    }
-    const nutritionUrl = process.env.NEXT_PUBLIC_NUTRITION_URL;
-    const cfBase = process.env.NEXT_PUBLIC_CLOUDFRONT_URL;
-    const rules: any[] = [];
-    // Prefer direct Nutrition service URL in dev if provided
-    if (nutritionUrl) {
-      rules.push({
-        source: '/api/nutrition/:path*',
-        destination: `${nutritionUrl}/api/nutrition/:path*`,
-      });
-    }
-    if (cfBase) {
-      rules.push({
-        source: '/api/:path*',
-        destination: `${cfBase}/api/:path*`,
-      });
-    }
-    return rules;
-  },
+  // async rewrites() {
+  //   // Rewrites don't work with static export
+  //   if (isStaticExport) {
+  //     return [];
+  //   }
+  //   const nutritionUrl = process.env.NEXT_PUBLIC_NUTRITION_URL;
+  //   const cfBase = process.env.NEXT_PUBLIC_CLOUDFRONT_URL;
+  //   const rules: any[] = [];
+  //   // Prefer direct Nutrition service URL in dev if provided
+  //   if (nutritionUrl) {
+  //     rules.push({
+  //       source: '/api/nutrition/:path*',
+  //       destination: `${nutritionUrl}/api/nutrition/:path*`,
+  //     });
+  //   }
+  //   if (cfBase) {
+  //     rules.push({
+  //       source: '/api/:path*',
+  //       destination: `${cfBase}/api/:path*`,
+  //     });
+  //   }
+  //   return rules;
+  // },
 };
 
 export default nextConfig;
