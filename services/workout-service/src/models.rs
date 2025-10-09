@@ -167,6 +167,19 @@ pub struct UploadRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub struct WorkoutInsights {
+    pub user_id: String,
+    pub time_range: String,
+    pub overall_score: i32,
+    pub insights: Vec<String>,
+    pub recommendations: Vec<String>,
+    pub achievements: Vec<String>,
+    pub risk_factors: Vec<String>,
+    pub risk_recommendations: Vec<String>,
+    pub generated_at: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct UploadResponse {
     pub upload_url: String,
     pub key: String,
