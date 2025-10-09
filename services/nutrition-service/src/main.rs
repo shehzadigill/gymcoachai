@@ -1,19 +1,23 @@
 use lambda_runtime::{service_fn, Error, LambdaEvent};
-use serde_json::{json, Value};
+use serde_json::Value;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use aws_sdk_s3::Client as S3Client;
 use aws_config::meta::region::RegionProviderChain;
+use tracing::error;
 use std::sync::Arc;
 use once_cell::sync::{OnceCell, Lazy};
-use tracing::{info, error};
-use anyhow::Result;
 
 mod models;
-mod database;
-mod handlers;
+mod repository;
+mod service;
+mod controller;
+mod utils;
 
-use handlers::*;
+use repository::{MealRepository, FoodRepository, NutritionPlanRepository, WaterRepository, FavoriteRepository};
+use service::{MealService, FoodService, NutritionPlanService, WaterService, FavoriteService, NutritionStatsService};
+use controller::{MealController, FoodController, NutritionPlanController, WaterController, FavoriteController, NutritionStatsController};
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
+use utils::{ResponseBuilder, is_cors_preflight_request, RouteMatcher, Route, extract_user_id_from_path};
 
 // Global clients for cold start optimization
 static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
@@ -46,7 +50,11 @@ async fn main() -> Result<(), Error> {
 async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let (event, _context) = event.into_parts();
 
-    info!("Nutrition service event: {:?}", event);
+    // Read method and path early so they are available for auth
+    let http_method = event["requestContext"]["http"]["method"]
+        .as_str()
+        .unwrap_or("GET");
+    let path = event["rawPath"].as_str().unwrap_or("/");
 
     // Convert to auth event format
     let auth_event = AuthLambdaEvent {
@@ -78,170 +86,133 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
             .map(|s| s.to_string()),
     };
 
+    // Handle CORS preflight early
+    if is_cors_preflight_request(http_method) {
+        return Ok(ResponseBuilder::cors_preflight());
+    }
+
     // Authenticate request
     let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
         Ok(auth_result) => {
             if !auth_result.is_authorized {
-                return Ok(json!({
-                    "statusCode": 403,
-                    "headers": get_cors_headers(),
-                    "body": json!({
-                        "error": "Forbidden",
-                        "message": auth_result.error.unwrap_or("Access denied".to_string())
-                    })
-                }));
+                return Ok(ResponseBuilder::forbidden(
+                    &auth_result.error.unwrap_or("Access denied".to_string())
+                ));
             }
-            auth_result.context.unwrap()
+            let ctx = auth_result.context.unwrap();
+            ctx
         }
         Err(e) => {
             error!("Authentication error: {}", e);
-            return Ok(json!({
-                "statusCode": 401,
-                "headers": get_cors_headers(),
-                "body": json!({
-                    "error": "Unauthorized",
-                    "message": "Authentication failed"
-                })
-            }));
+            return Ok(ResponseBuilder::unauthorized(None));
         }
     };
-
-    let http_method = event["requestContext"]["http"]["method"]
-        .as_str()
-        .unwrap_or("GET");
-
-    let path = event["rawPath"]
-        .as_str()
-        .unwrap_or("/");
-
-    info!("Processing path: {}", path);
 
     let body = event["body"]
         .as_str()
         .unwrap_or("{}");
 
-    let qp_obj = event["queryStringParameters"].as_object().cloned().unwrap_or_default();
-    let query_params = qp_obj;
-
-    // Extract user ID and other parameters from path
-    let path_parts: Vec<&str> = path.split('/').collect();
-    info!("Path parts: {:?}", path_parts);
-    
-    let user_id = if path_parts.len() >= 3 && path_parts[1] == "users" {
-        Some(path_parts[2].to_string())
-    } else if path_parts.len() >= 4 && path_parts[2] == "users" {
-        Some(path_parts[3].to_string())
-    } else if path_parts.len() >= 2 && path_parts[1] == "me" {
-        // Handle /me endpoints - get user ID from auth context
-        Some(auth_context.user_id.clone())
-    } else if path_parts.len() >= 4 && path_parts[1] == "api" && path_parts[2] == "nutrition" && path_parts[3] == "me" {
-        // Handle /api/nutrition/me endpoints - get user ID from auth context
-        Some(auth_context.user_id.clone())
-    } else if path_parts.len() >= 5 && path_parts[1] == "api" && path_parts[2] == "nutrition" && path_parts[3] == "users" {
-        // Handle /api/nutrition/users/{userId} endpoints
-        Some(path_parts[4].to_string())
-    } else {
-        None
-    };
-    
-    info!("Extracted user_id: {:?}", user_id);
-
-    // Initialize nutrition repository
+    // Initialize repositories
     let table_name = std::env::var("DYNAMODB_TABLE").unwrap_or_else(|_| "gymcoach-ai".to_string());
-    let nutrition_repo = database::NutritionRepository::new(DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref().clone(), table_name);
+    let dynamodb_client = DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref();
+    
+    let meal_repository = MealRepository::new(dynamodb_client.clone(), table_name.clone());
+    let food_repository = FoodRepository::new(dynamodb_client.clone(), table_name.clone());
+    let nutrition_plan_repository = NutritionPlanRepository::new(dynamodb_client.clone(), table_name.clone());
+    let water_repository = WaterRepository::new(dynamodb_client.clone(), table_name.clone());
+    let favorite_repository = FavoriteRepository::new(dynamodb_client.clone(), table_name.clone());
 
-    let response = match (http_method, path) {
-        // Meal endpoints
-        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/meals") => {
-            handle_create_meal(&user_id.unwrap_or_default(), body, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/") && !path.contains("/date") => {
-            let meal_id = path_parts.last().map_or("", |v| v);
-            handle_get_meal(&user_id.unwrap_or_default(), meal_id, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/date/") => {
-            let date = path_parts.last().map_or("", |v| v);
-            handle_get_meals_by_date(&user_id.unwrap_or_default(), date, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/meals") => {
-            handle_get_user_meals(&user_id.unwrap_or_default(), &nutrition_repo, &auth_context).await
-        }
-        ("PUT", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/") && !path.contains("/date") => {
-            let meal_id = path_parts.last().map_or("", |v| v);
-            handle_update_meal(&user_id.unwrap_or_default(), meal_id, body, &nutrition_repo, &auth_context).await
-        }
-        ("DELETE", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/meals/") && !path.contains("/date") => {
-            let meal_id = path_parts.last().map_or("", |v| v);
-            handle_delete_meal(&user_id.unwrap_or_default(), meal_id, &nutrition_repo, &auth_context).await
-        }
-        
-        // Food endpoints
-        ("POST", path) if path == "/api/foods" || path == "/foods" || path == "/api/nutrition/foods" => {
-            handle_create_food(body, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if (path.starts_with("/api/foods/") || path.starts_with("/foods/") || path.starts_with("/api/nutrition/foods/")) && !path.contains("/search") => {
-            let food_id = path_parts.last().map_or("", |v| v);
-            handle_get_food(food_id, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if path == "/api/foods/search" || path == "/foods/search" || path == "/api/nutrition/foods/search" => {
-            let query = query_params.get("q")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let limit = query_params.get("limit")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u32>().ok());
-            let cursor = query_params.get("cursor").and_then(|v| v.as_str()).map(|s| s.to_string());
-            handle_search_foods(query, limit, &nutrition_repo, &auth_context, cursor).await
-        }
+    // Initialize services
+    let meal_service = MealService::new(meal_repository.clone(), food_repository.clone());
+    let food_service = FoodService::new(food_repository.clone());
+    let nutrition_plan_service = NutritionPlanService::new(nutrition_plan_repository);
+    let water_service = WaterService::new(water_repository.clone());
+    let favorite_service = FavoriteService::new(favorite_repository, food_repository.clone());
+    let nutrition_stats_service = NutritionStatsService::new(meal_repository, water_repository);
 
-        // Favorite food endpoints
-        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/favorites/foods/") => {
-            let food_id = path_parts.last().map_or("", |v| v);
-            handle_add_favorite_food(&user_id.unwrap_or_default(), food_id, &nutrition_repo, &auth_context).await
-        }
-        ("DELETE", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/favorites/foods/") => {
-            let food_id = path_parts.last().map_or("", |v| v);
-            handle_remove_favorite_food(&user_id.unwrap_or_default(), food_id, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/favorites/foods") => {
-            handle_list_favorite_foods(&user_id.unwrap_or_default(), &nutrition_repo, &auth_context).await
-        }
-        
-        // Nutrition plan endpoints
-        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/nutrition-plans") => {
-            handle_create_nutrition_plan(&user_id.unwrap_or_default(), body, &nutrition_repo, &auth_context).await
-        }
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/nutrition-plans/") => {
-            let plan_id = path_parts.last().map_or("", |v| v);
-            handle_get_nutrition_plan(&user_id.unwrap_or_default(), plan_id, &nutrition_repo, &auth_context).await
-        }
+    // Initialize controllers
+    let meal_controller = MealController::new(meal_service);
+    let food_controller = FoodController::new(food_service);
+    let nutrition_plan_controller = NutritionPlanController::new(nutrition_plan_service);
+    let water_controller = WaterController::new(water_service);
+    let favorite_controller = FavoriteController::new(favorite_service);
+    let nutrition_stats_controller = NutritionStatsController::new(nutrition_stats_service);
 
-        // Nutrition statistics endpoints
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.ends_with("/stats") => {
-            handle_get_nutrition_stats(&user_id.unwrap_or_default(), &nutrition_repo, &auth_context).await
-        }
+    // Extract user ID from path or use authenticated user's ID
+    let user_id = extract_user_id_from_path(path)
+        .map(|id| if id == "me" { auth_context.user_id.clone() } else { id })
+        .unwrap_or_else(|| auth_context.user_id.clone());
 
-        // Water intake endpoints
-        ("GET", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/water/date/") => {
-            let date = path_parts.last().map_or("", |v| v);
-            handle_get_water(&user_id.unwrap_or_default(), date, &nutrition_repo, &auth_context).await
+    let response = match RouteMatcher::match_route(http_method, path) {
+        Some(Route::CreateMeal) => {
+            meal_controller.create_meal(&user_id, body, &auth_context).await
         }
-        ("POST", path) if (path.starts_with("/api/nutrition/users/") || path.starts_with("/api/users/") || path.starts_with("/users/") || path.starts_with("/api/nutrition/me/") || path.starts_with("/me/")) && path.contains("/water/date/") => {
-            let date = path_parts.last().map_or("", |v| v);
-            handle_set_water(&user_id.unwrap_or_default(), date, body, &nutrition_repo, &auth_context).await
+        Some(Route::GetMeal) => {
+            let meal_id = path.split('/').last().unwrap_or("");
+            meal_controller.get_meal(&user_id, meal_id, &auth_context).await
         }
-        
-        _ => {
-            Ok(json!({
-                "statusCode": 404,
-                "headers": get_cors_headers(),
-                "body": json!({
-                    "error": "Not Found",
-                    "message": "Endpoint not found"
-                })
-            }))
+        Some(Route::GetMealsByDate) => {
+            let date = path.split('/').last().unwrap_or("");
+            meal_controller.get_meals_by_date(&user_id, date, &auth_context).await
+        }
+        Some(Route::GetUserMeals) => {
+            meal_controller.get_user_meals(&user_id, &auth_context).await
+        }
+        Some(Route::UpdateMeal) => {
+            let meal_id = path.split('/').last().unwrap_or("");
+            meal_controller.update_meal(&user_id, meal_id, body, &auth_context).await
+        }
+        Some(Route::DeleteMeal) => {
+            let meal_id = path.split('/').last().unwrap_or("");
+            meal_controller.delete_meal(&user_id, meal_id, &auth_context).await
+        }
+        Some(Route::CreateFood) => {
+            food_controller.create_food(body).await
+        }
+        Some(Route::GetFood) => {
+            let food_id = path.split('/').last().unwrap_or("");
+            food_controller.get_food(food_id).await
+        }
+        Some(Route::SearchFoods) => {
+            let query_params = RouteMatcher::extract_query_params(&event);
+            let query = query_params.get("q").map(|s| s.as_str()).unwrap_or("");
+            let limit = query_params.get("limit").and_then(|s| s.parse::<u32>().ok());
+            let cursor = query_params.get("cursor").map(|s| s.clone());
+            food_controller.search_foods(query, limit, cursor).await
+        }
+        Some(Route::AddFavoriteFood) => {
+            let food_id = path.split('/').last().unwrap_or("");
+            favorite_controller.add_favorite_food(&user_id, food_id, &auth_context).await
+        }
+        Some(Route::RemoveFavoriteFood) => {
+            let food_id = path.split('/').last().unwrap_or("");
+            favorite_controller.remove_favorite_food(&user_id, food_id, &auth_context).await
+        }
+        Some(Route::ListFavoriteFoods) => {
+            favorite_controller.list_favorite_foods(&user_id, &auth_context).await
+        }
+        Some(Route::CreateNutritionPlan) => {
+            nutrition_plan_controller.create_nutrition_plan(&user_id, body, &auth_context).await
+        }
+        Some(Route::GetNutritionPlan) => {
+            let plan_id = path.split('/').last().unwrap_or("");
+            nutrition_plan_controller.get_nutrition_plan(&user_id, plan_id, &auth_context).await
+        }
+        Some(Route::GetNutritionStats) => {
+            nutrition_stats_controller.get_nutrition_stats(&user_id, &auth_context).await
+        }
+        Some(Route::GetWater) => {
+            let date = path.split('/').last().unwrap_or("");
+            water_controller.get_water(&user_id, date, &auth_context).await
+        }
+        Some(Route::SetWater) => {
+            let date = path.split('/').last().unwrap_or("");
+            water_controller.set_water(&user_id, date, body, &auth_context).await
+        }
+        None => {
+            Ok(ResponseBuilder::not_found("Endpoint not found"))
         }
     };
-
-    Ok(response?)
+    
+    response
 }
