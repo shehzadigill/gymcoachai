@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::models::Achievement;
 
+#[derive(Clone)]
 pub struct AchievementRepository {
     client: DynamoDbClient,
     table_name: String,

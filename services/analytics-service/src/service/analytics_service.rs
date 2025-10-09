@@ -3,7 +3,7 @@ use chrono::Utc;
 use std::collections::HashMap;
 
 use crate::models::{
-    WorkoutAnalytics, WorkoutInsights, ProgressSummary, ExerciseStats,
+    WorkoutAnalytics, WorkoutInsights, ExerciseStats,
     StrengthProgress, BodyMeasurement, Milestone, PerformanceTrend, WorkoutSession
 };
 use crate::service::{

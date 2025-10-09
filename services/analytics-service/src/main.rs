@@ -292,5 +292,5 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         _ => Ok(ResponseBuilder::not_found("Endpoint not found")),
     };
 
-    response
+    Ok(response?)
 }

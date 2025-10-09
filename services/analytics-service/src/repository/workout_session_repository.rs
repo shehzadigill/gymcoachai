@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use crate::models::{WorkoutSession, SessionExercise, ExerciseSet};
 
+#[derive(Clone)]
 pub struct WorkoutSessionRepository {
     client: DynamoDbClient,
     table_name: String,

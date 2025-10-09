@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::models::{ProgressChart, ChartDataPoint};
 
+#[derive(Clone)]
 pub struct ProgressChartRepository {
     client: DynamoDbClient,
     table_name: String,

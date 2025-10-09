@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::Achievement;
 use crate::repository::AchievementRepository;
 
+#[derive(Clone)]
 pub struct AchievementService {
     repository: AchievementRepository,
 }

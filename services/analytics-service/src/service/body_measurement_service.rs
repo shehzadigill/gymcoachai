@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::BodyMeasurement;
 use crate::repository::BodyMeasurementRepository;
 
+#[derive(Clone)]
 pub struct BodyMeasurementService {
     repository: BodyMeasurementRepository,
 }
@@ -20,14 +21,14 @@ impl BodyMeasurementService {
         start_date: Option<&str>,
         end_date: Option<&str>,
     ) -> Result<Vec<BodyMeasurement>> {
-        let start = start_date.unwrap_or_else(|| {
-            (Utc::now() - chrono::Duration::days(30)).to_rfc3339().as_str()
+        let start = start_date.map(|s| s.to_string()).unwrap_or_else(|| {
+            (Utc::now() - chrono::Duration::days(30)).to_rfc3339()
         });
-        let end = end_date.unwrap_or_else(|| {
-            Utc::now().to_rfc3339().as_str()
+        let end = end_date.map(|s| s.to_string()).unwrap_or_else(|| {
+            Utc::now().to_rfc3339()
         });
 
-        self.repository.get_body_measurements(user_id, start, end).await
+        self.repository.get_body_measurements(user_id, &start, &end).await
     }
 
     pub async fn create_body_measurement(

@@ -1,5 +1,5 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 // Types from workout-service for compatibility
@@ -123,7 +123,7 @@ pub struct WorkoutAnalytics {
     pub total_exercises: u32,
     pub total_sets: u32,
     pub total_reps: u32,
-    pub total_volume: u64, // weight * reps for all exercises
+    pub total_volume: u64,         // weight * reps for all exercises
     pub avg_workout_duration: u32, // in minutes
     pub total_duration_minutes: u32,
     pub average_workout_duration: f32,
@@ -154,7 +154,7 @@ pub struct WorkoutInsights {
     pub warnings: Vec<String>,
     pub achievements_unlocked: Vec<String>,
     pub next_milestones: Vec<String>,
-    pub plateau_risk: f32, // 0.0 to 1.0
+    pub plateau_risk: f32,      // 0.0 to 1.0
     pub overtraining_risk: f32, // 0.0 to 1.0
     pub improvement_areas: Vec<String>,
     pub strength_predictions: Vec<PredictedMax>,
@@ -221,18 +221,18 @@ pub struct AdvancedMetrics {
     pub volume_per_muscle_group: HashMap<String, u32>,
     pub volume_trend_7d: f32, // percentage change
     pub volume_trend_30d: f32,
-    pub intensity_score: f32, // average relative intensity (0.0-1.0)
-    pub frequency_score: f32, // workouts per week normalized
-    pub consistency_score: f32, // regularity of workouts (0.0-1.0)
-    pub progression_rate: f32, // strength gains per week (%)
-    pub recovery_score: f32, // based on rest days and volume (0.0-1.0)
-    pub variety_score: f32, // exercise variety (0.0-1.0)
-    pub balance_score: f32, // muscle group balance (0.0-1.0)
-    pub efficiency_score: f32, // results per time invested (0.0-1.0)
-    pub adaptation_score: f32, // how well user is adapting to training (0.0-1.0)
-    pub fatigue_index: f32, // estimated fatigue level (0.0-1.0)
+    pub intensity_score: f32,         // average relative intensity (0.0-1.0)
+    pub frequency_score: f32,         // workouts per week normalized
+    pub consistency_score: f32,       // regularity of workouts (0.0-1.0)
+    pub progression_rate: f32,        // strength gains per week (%)
+    pub recovery_score: f32,          // based on rest days and volume (0.0-1.0)
+    pub variety_score: f32,           // exercise variety (0.0-1.0)
+    pub balance_score: f32,           // muscle group balance (0.0-1.0)
+    pub efficiency_score: f32,        // results per time invested (0.0-1.0)
+    pub adaptation_score: f32,        // how well user is adapting to training (0.0-1.0)
+    pub fatigue_index: f32,           // estimated fatigue level (0.0-1.0)
     pub peak_performance_day: String, // day of week with best performance
-    pub optimal_rest_days: f32, // recommended rest days between sessions
+    pub optimal_rest_days: f32,       // recommended rest days between sessions
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -247,8 +247,8 @@ pub struct PeriodComparison {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PeerComparison {
-    pub percentile: u8, // 0-100, where user ranks among peers
-    pub comparison_group: String, // "similar_experience", "same_age", "same_goals"
+    pub percentile: u8,                // 0-100, where user ranks among peers
+    pub comparison_group: String,      // "similar_experience", "same_age", "same_goals"
     pub metrics: HashMap<String, f32>, // metric_name -> user_vs_peer_ratio
     pub insights: Vec<String>,
 }
@@ -461,7 +461,7 @@ pub struct Prediction {
 pub struct Trend {
     pub metric: String,
     pub direction: String, // "increasing", "decreasing", "stable", "volatile"
-    pub strength: f32, // 0-1 scale
+    pub strength: f32,     // 0-1 scale
     pub duration_days: u32,
     pub slope: f32,
     pub r_squared: f32,

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::models::Milestone;
 
+#[derive(Clone)]
 pub struct MilestoneRepository {
     client: DynamoDbClient,
     table_name: String,

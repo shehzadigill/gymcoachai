@@ -2,9 +2,10 @@ use anyhow::Result;
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::models::{ProgressPhoto, PhotoMetadata};
+use crate::models::ProgressPhoto;
 use crate::repository::ProgressPhotoRepository;
 
+#[derive(Clone)]
 pub struct ProgressPhotoService {
     repository: ProgressPhotoRepository,
 }

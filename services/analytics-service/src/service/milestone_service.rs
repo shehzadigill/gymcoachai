@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::Milestone;
 use crate::repository::MilestoneRepository;
 
+#[derive(Clone)]
 pub struct MilestoneService {
     repository: MilestoneRepository,
 }

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::{ProgressChart, ChartDataPoint};
 use crate::repository::ProgressChartRepository;
 
+#[derive(Clone)]
 pub struct ProgressChartService {
     repository: ProgressChartRepository,
 }

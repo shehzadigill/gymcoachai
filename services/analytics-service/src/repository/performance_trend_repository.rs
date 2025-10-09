@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use crate::models::{PerformanceTrend, TrendDataPoint};
 
+#[derive(Clone)]
 pub struct PerformanceTrendRepository {
     client: DynamoDbClient,
     table_name: String,

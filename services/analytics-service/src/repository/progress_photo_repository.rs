@@ -1,11 +1,14 @@
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_s3::Client as S3Client;
+use aws_sdk_s3::presigning::PresigningConfig;
 use anyhow::Result;
+use base64::Engine;
 use std::collections::HashMap;
 
 use crate::models::ProgressPhoto;
 
+#[derive(Clone)]
 pub struct ProgressPhotoRepository {
     dynamodb_client: DynamoDbClient,
     s3_client: S3Client,
@@ -149,7 +152,7 @@ impl ProgressPhotoRepository {
             .get_object()
             .bucket(&self.bucket_name)
             .key(&key)
-            .presigned(aws_sdk_s3::presigning::config::PresigningConfig::expires_in(std::time::Duration::from_secs(3600))?)
+            .presigned(PresigningConfig::expires_in(std::time::Duration::from_secs(3600))?)
             .await?;
         
         Ok(presigned_url.uri().to_string())

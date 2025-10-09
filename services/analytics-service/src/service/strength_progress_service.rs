@@ -4,6 +4,7 @@ use chrono::Utc;
 use crate::models::StrengthProgress;
 use crate::repository::StrengthProgressRepository;
 
+#[derive(Clone)]
 pub struct StrengthProgressService {
     repository: StrengthProgressRepository,
 }
@@ -19,14 +20,14 @@ impl StrengthProgressService {
         start_date: Option<&str>,
         end_date: Option<&str>,
     ) -> Result<Vec<StrengthProgress>> {
-        let start = start_date.unwrap_or_else(|| {
-            (Utc::now() - chrono::Duration::days(30)).to_rfc3339().as_str()
+        let start = start_date.map(|s| s.to_string()).unwrap_or_else(|| {
+            (Utc::now() - chrono::Duration::days(30)).to_rfc3339()
         });
-        let end = end_date.unwrap_or_else(|| {
-            Utc::now().to_rfc3339().as_str()
+        let end = end_date.map(|s| s.to_string()).unwrap_or_else(|| {
+            Utc::now().to_rfc3339()
         });
 
-        self.repository.get_strength_progress(user_id, start, end).await
+        self.repository.get_strength_progress(user_id, &start, &end).await
     }
 
     pub async fn create_strength_progress(

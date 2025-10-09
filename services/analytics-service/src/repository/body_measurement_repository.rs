@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::models::BodyMeasurement;
 
+#[derive(Clone)]
 pub struct BodyMeasurementRepository {
     client: DynamoDbClient,
     table_name: String,

@@ -1,11 +1,11 @@
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use aws_sdk_dynamodb::types::AttributeValue;
-use serde_json::Value;
 use anyhow::Result;
 use std::collections::HashMap;
 
 use crate::models::StrengthProgress;
 
+#[derive(Clone)]
 pub struct StrengthProgressRepository {
     client: DynamoDbClient,
     table_name: String,
