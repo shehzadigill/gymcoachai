@@ -1,22 +1,23 @@
 use lambda_runtime::{service_fn, Error, LambdaEvent};
-use serde_json::{json, Value};
-use aws_sdk_dynamodb::{Client as DynamoDbClient, types::AttributeValue};
-use aws_sdk_s3::{Client as S3Client, presigning::PresigningConfig};
+use serde_json::Value;
+use aws_sdk_dynamodb::Client as DynamoDbClient;
+use aws_sdk_s3::Client as S3Client;
 use aws_config::meta::region::RegionProviderChain;
-use uuid::Uuid;
-use chrono::Utc;
-use validator::Validate;
-use anyhow::Result;
-use tracing::{info, error};
+use tracing::error;
 use std::sync::Arc;
 use once_cell::sync::{OnceCell, Lazy};
 
 mod models;
-mod handlers;
-mod database;
+mod repository;
+mod service;
+mod controller;
+mod utils;
 
-use handlers::*;
+use repository::{UserProfileRepository, SleepRepository};
+use service::{UserProfileService, SleepService, UploadService};
+use controller::{UserProfileController, SleepController, UploadController};
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
+use utils::{ResponseBuilder, is_cors_preflight_request, RouteMatcher, Route};
 
 // Global clients for cold start optimization
 static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
@@ -48,11 +49,8 @@ async fn main() -> Result<(), Error> {
 
 async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let (event, _context) = event.into_parts();
-    
-    info!("User profile service event: {:?}", event);
 
-
-    // Read method and path early so they are available for logging/auth
+    // Read method and path early so they are available for auth
     let http_method = event["requestContext"]["http"]["method"]
         .as_str()
         .unwrap_or("GET");
@@ -89,40 +87,24 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     };
 
     // Handle CORS preflight early
-    if http_method == "OPTIONS" {
-        return Ok(json!({
-            "statusCode": 200,
-            "headers": get_cors_headers()
-        }));
+    if is_cors_preflight_request(http_method) {
+        return Ok(ResponseBuilder::cors_preflight());
     }
     
     // Authenticate request
     let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
         Ok(auth_result) => {
             if !auth_result.is_authorized {
-                return Ok(json!({
-                    "statusCode": 403,
-                    "headers": get_cors_headers(),
-                    "body": json!({
-                        "error": "Forbidden",
-                        "message": auth_result.error.unwrap_or("Access denied".to_string())
-                    })
-                }));
+                return Ok(ResponseBuilder::forbidden(
+                    &auth_result.error.unwrap_or("Access denied".to_string())
+                ));
             }
             let ctx = auth_result.context.unwrap();
-            info!("Auth ok: user_id={}, path={} method={}", ctx.user_id, path, http_method);
             ctx
         }
         Err(e) => {
             error!("Authentication error: {}", e);
-            return Ok(json!({
-                "statusCode": 401,
-                "headers": get_cors_headers(),
-                "body": json!({
-                    "error": "Unauthorized",
-                    "message": "Authentication failed"
-                })
-            }));
+            return Ok(ResponseBuilder::unauthorized(None));
         }
     };
     
@@ -130,7 +112,24 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         .as_str()
         .unwrap_or("{}");
 
-     
+    // Initialize services
+    let dynamodb_client = DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref();
+    let s3_client = S3_CLIENT.get().expect("S3 not initialized").as_ref();
+
+    // Create repositories
+    let user_profile_repository = UserProfileRepository::new(dynamodb_client.clone(), s3_client.clone());
+    let sleep_repository = SleepRepository::new(dynamodb_client.clone());
+
+    // Create services
+    let user_profile_service = UserProfileService::new(user_profile_repository, sleep_repository.clone());
+    let sleep_service = SleepService::new(sleep_repository);
+    let upload_service = UploadService::new(s3_client.clone());
+
+    // Create controllers
+    let user_profile_controller = UserProfileController::new(user_profile_service);
+    let sleep_controller = SleepController::new(sleep_service);
+    let upload_controller = UploadController::new(upload_service);
+
     // Ensure pathParameters.userId is available for handlers. If the path ends with
     // '/me', substitute the authenticated user's id. Otherwise, try to parse from path.
     let mut payload = event.clone();
@@ -161,104 +160,52 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         path_params.insert("userId".to_string(), JsonValue::String(candidate.clone()));
         payload["pathParameters"] = JsonValue::Object(path_params);
 
-        // Log derived path parameters for debugging
-        info!("Resolved userId for request: {}", candidate);
     }    
-    info!("Path: {}", path);
-    let response = match (http_method, path) {
-        ("GET", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
-            info!("Route: GET user profile");
-            handle_get_user_profile(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+    
+    let response = match RouteMatcher::match_route(http_method, path) {
+        Some(Route::GetUserProfile) => {
+            user_profile_controller.get_user_profile(path, &auth_context).await
         }
-        ("PUT", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
-            info!("Route: PUT user profile");
-            handle_partial_update_user_profile(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::UpdateUserProfile) => {
+            user_profile_controller.partial_update_user_profile(path, body, &auth_context).await
         }
-        ("POST", "/api/user-profiles/profile/upload") => {
-            info!("Route: POST upload");
-            handle_generate_upload_url(body, S3_CLIENT.get().expect("S3 not initialized").as_ref(), &auth_context).await
+        Some(Route::DeleteUserProfile) => {
+            user_profile_controller.delete_user_profile(path, &auth_context).await
         }
-        ("GET", "/api/user-profiles/profile/stats") => {
-            info!("Route: GET user stats");
-            handle_get_user_stats(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::UploadProfile) => {
+            upload_controller.generate_upload_url(body).await
         }
-        ("DELETE", path) if path == "/api/user-profiles/profile" || path.starts_with("/api/user-profiles/profile/") => {
-            info!("Route: DELETE user profile");
-            handle_delete_user_profile(
-                path,
-                DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(),
-                S3_CLIENT.get().expect("S3 not initialized").as_ref(),
-                &auth_context,
-            ).await
+        Some(Route::GetUserStats) => {
+            user_profile_controller.get_user_stats(path, &auth_context).await
         }
-        ("GET", "/api/user-profiles/profile/preferences") => {
-            info!("Route: GET user preferences");
-            handle_get_user_preferences(path, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::GetUserPreferences) => {
+            user_profile_controller.get_user_preferences(path, &auth_context).await
         }
-        ("PUT", "/api/user-profiles/profile/preferences") => {
-            info!("Route: PUT user preferences");
-            handle_update_user_preferences(path, body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::UpdateUserPreferences) => {
+            user_profile_controller.update_user_preferences(path, body, &auth_context).await
         }
-        ("GET", "/api/user-profiles/sleep") => {
-            info!("Route: GET sleep data");
-            let query_params = parse_query_string(&event);
-            handle_get_sleep_data(&query_params, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::GetSleepData) => {
+            let query_params = RouteMatcher::extract_sleep_query_params(&event);
+            sleep_controller.get_sleep_data(&query_params, &auth_context).await
         }
-        ("POST", "/api/user-profiles/sleep") => {
-            info!("Route: POST sleep data");
-            handle_save_sleep_data(body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::SaveSleepData) => {
+            sleep_controller.save_sleep_data(body, &auth_context).await
         }
-        ("PUT", "/api/user-profiles/sleep") => {
-            info!("Route: PUT sleep data");
-            handle_update_sleep_data(body, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::UpdateSleepData) => {
+            sleep_controller.update_sleep_data(body, &auth_context).await
         }
-        ("GET", "/api/user-profiles/sleep/history") => {
-            info!("Route: GET sleep history");
-            let query_params = parse_query_string(&event);
-            handle_get_sleep_history(&query_params, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::GetSleepHistory) => {
+            let query_params = RouteMatcher::extract_sleep_query_params(&event);
+            sleep_controller.get_sleep_history(&query_params, &auth_context).await
         }
-        ("GET", "/api/user-profiles/sleep/stats") => {
-            info!("Route: GET sleep stats");
-            let query_params = parse_query_string(&event);
-            handle_get_sleep_stats(&query_params, DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref(), &auth_context).await
+        Some(Route::GetSleepStats) => {
+            let query_params = RouteMatcher::extract_sleep_query_params(&event);
+            sleep_controller.get_sleep_stats(&query_params, &auth_context).await
         }
-        _ => {
-            info!("Route: Not Found {}", path);
-            Ok(json!({
-                "statusCode": 404,
-                "headers": get_cors_headers(),
-                "body": json!({
-                    "error": "Not Found",
-                    "message": "Endpoint not found"
-                })
-            }))
+        None => {
+            Ok(ResponseBuilder::not_found("Endpoint not found"))
         }
     };
     
     response
-}
-
-pub fn get_cors_headers() -> serde_json::Map<String, Value> {
-    let mut headers = serde_json::Map::new();
-    headers.insert("Content-Type".to_string(), "application/json".into());
-    headers.insert("Access-Control-Allow-Origin".to_string(), "*".into());
-    headers.insert("Access-Control-Allow-Headers".to_string(), "Content-Type, Authorization".into());
-    headers.insert("Access-Control-Allow-Methods".to_string(), "OPTIONS,POST,GET,PUT,DELETE".into());
-    headers
-}
-
-fn parse_query_string(event: &Value) -> std::collections::HashMap<String, String> {
-    let mut params = std::collections::HashMap::new();
-    
-    if let Some(query_params) = event.get("queryStringParameters") {
-        if let Some(query_obj) = query_params.as_object() {
-            for (key, value) in query_obj {
-                if let Some(value_str) = value.as_str() {
-                    params.insert(key.clone(), value_str.to_string());
-                }
-            }
-        }
-    }
-    
-    params
 }
