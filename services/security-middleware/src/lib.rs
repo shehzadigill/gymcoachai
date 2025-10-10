@@ -1,8 +1,7 @@
+use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SecurityContext {
@@ -49,28 +48,37 @@ pub struct RateLimitConfig {
 impl SecurityMiddleware {
     pub fn new() -> Self {
         let mut rate_limits = HashMap::new();
-        
+
         // Default rate limits for different endpoints
-        rate_limits.insert("auth".to_string(), RateLimitConfig {
-            requests_per_minute: 5,
-            requests_per_hour: 20,
-            requests_per_day: 100,
-            burst_limit: 10,
-        });
-        
-        rate_limits.insert("api".to_string(), RateLimitConfig {
-            requests_per_minute: 60,
-            requests_per_hour: 1000,
-            requests_per_day: 10000,
-            burst_limit: 100,
-        });
-        
-        rate_limits.insert("upload".to_string(), RateLimitConfig {
-            requests_per_minute: 10,
-            requests_per_hour: 100,
-            requests_per_day: 500,
-            burst_limit: 20,
-        });
+        rate_limits.insert(
+            "auth".to_string(),
+            RateLimitConfig {
+                requests_per_minute: 5,
+                requests_per_hour: 20,
+                requests_per_day: 100,
+                burst_limit: 10,
+            },
+        );
+
+        rate_limits.insert(
+            "api".to_string(),
+            RateLimitConfig {
+                requests_per_minute: 60,
+                requests_per_hour: 1000,
+                requests_per_day: 10000,
+                burst_limit: 100,
+            },
+        );
+
+        rate_limits.insert(
+            "upload".to_string(),
+            RateLimitConfig {
+                requests_per_minute: 10,
+                requests_per_hour: 100,
+                requests_per_day: 500,
+                burst_limit: 20,
+            },
+        );
 
         Self {
             rate_limits,
@@ -134,7 +142,10 @@ impl SecurityMiddleware {
         }
     }
 
-    pub async fn validate_request(&self, context: &SecurityContext) -> Result<SecurityValidationResult> {
+    pub async fn validate_request(
+        &self,
+        context: &SecurityContext,
+    ) -> Result<SecurityValidationResult> {
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
         let mut rate_limit_info = None;
@@ -192,7 +203,8 @@ impl SecurityMiddleware {
 
         // Validate request size
         if let Some(body) = context.security_headers.get("body") {
-            if body.len() > 10 * 1024 * 1024 { // 10MB limit
+            if body.len() > 10 * 1024 * 1024 {
+                // 10MB limit
                 errors.push("Request body too large".to_string());
             }
         }
@@ -212,8 +224,12 @@ impl SecurityMiddleware {
 
     async fn check_rate_limit(&self, context: &SecurityContext) -> Result<Option<RateLimitInfo>> {
         let endpoint_type = self.get_endpoint_type(&context.security_headers);
-        let config = self.rate_limits.get(&endpoint_type)
-            .ok_or_else(|| anyhow!("No rate limit configuration found for endpoint type: {}", endpoint_type))?;
+        let config = self.rate_limits.get(&endpoint_type).ok_or_else(|| {
+            anyhow!(
+                "No rate limit configuration found for endpoint type: {}",
+                endpoint_type
+            )
+        })?;
 
         // In a real implementation, you would check against a cache like Redis
         // For now, we'll simulate the rate limit check
@@ -244,7 +260,9 @@ impl SecurityMiddleware {
 
     fn contains_xss_patterns(&self, input: &str) -> bool {
         let input_lower = input.to_lowercase();
-        self.suspicious_patterns.iter().any(|pattern| input_lower.contains(pattern))
+        self.suspicious_patterns
+            .iter()
+            .any(|pattern| input_lower.contains(pattern))
     }
 
     fn contains_sql_injection_patterns(&self, input: &str) -> bool {
@@ -295,7 +313,9 @@ impl SecurityMiddleware {
         ];
 
         let input_lower = input.to_lowercase();
-        sql_patterns.iter().any(|pattern| input_lower.contains(pattern))
+        sql_patterns
+            .iter()
+            .any(|pattern| input_lower.contains(pattern))
     }
 
     fn contains_nosql_injection_patterns(&self, input: &str) -> bool {
@@ -342,7 +362,9 @@ impl SecurityMiddleware {
         ];
 
         let input_lower = input.to_lowercase();
-        nosql_patterns.iter().any(|pattern| input_lower.contains(pattern))
+        nosql_patterns
+            .iter()
+            .any(|pattern| input_lower.contains(pattern))
     }
 
     fn is_suspicious_user_agent(&self, user_agent: &str) -> bool {
@@ -387,7 +409,9 @@ impl SecurityMiddleware {
         ];
 
         let user_agent_lower = user_agent.to_lowercase();
-        suspicious_agents.iter().any(|agent| user_agent_lower.contains(agent))
+        suspicious_agents
+            .iter()
+            .any(|agent| user_agent_lower.contains(agent))
     }
 
     pub fn add_blocked_ip(&mut self, ip: String) {
@@ -407,10 +431,22 @@ impl SecurityMiddleware {
         headers.insert("X-Content-Type-Options".to_string(), "nosniff".to_string());
         headers.insert("X-Frame-Options".to_string(), "DENY".to_string());
         headers.insert("X-XSS-Protection".to_string(), "1; mode=block".to_string());
-        headers.insert("Strict-Transport-Security".to_string(), "max-age=31536000; includeSubDomains".to_string());
-        headers.insert("Content-Security-Policy".to_string(), "default-src 'self'".to_string());
-        headers.insert("Referrer-Policy".to_string(), "strict-origin-when-cross-origin".to_string());
-        headers.insert("Permissions-Policy".to_string(), "geolocation=(), microphone=(), camera=()".to_string());
+        headers.insert(
+            "Strict-Transport-Security".to_string(),
+            "max-age=31536000; includeSubDomains".to_string(),
+        );
+        headers.insert(
+            "Content-Security-Policy".to_string(),
+            "default-src 'self'".to_string(),
+        );
+        headers.insert(
+            "Referrer-Policy".to_string(),
+            "strict-origin-when-cross-origin".to_string(),
+        );
+        headers.insert(
+            "Permissions-Policy".to_string(),
+            "geolocation=(), microphone=(), camera=()".to_string(),
+        );
         headers
     }
 }
@@ -445,7 +481,8 @@ mod tests {
     #[test]
     fn test_nosql_injection_detection() {
         let middleware = SecurityMiddleware::new();
-        assert!(middleware.contains_nosql_injection_patterns("{\"$where\": \"this.password == this.username\"}"));
+        assert!(middleware
+            .contains_nosql_injection_patterns("{\"$where\": \"this.password == this.username\"}"));
         assert!(middleware.contains_nosql_injection_patterns("{\"$ne\": null}"));
         assert!(!middleware.contains_nosql_injection_patterns("{\"username\": \"test\"}"));
     }
@@ -455,18 +492,20 @@ mod tests {
         let middleware = SecurityMiddleware::new();
         assert!(middleware.is_suspicious_user_agent("sqlmap/1.0"));
         assert!(middleware.is_suspicious_user_agent("curl/7.68.0"));
-        assert!(!middleware.is_suspicious_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"));
+        assert!(!middleware.is_suspicious_user_agent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        ));
     }
 
     #[test]
     fn test_ip_blocking() {
         let mut middleware = SecurityMiddleware::new();
         let ip = "192.168.1.1";
-        
+
         assert!(!middleware.is_ip_blocked(ip));
         middleware.add_blocked_ip(ip.to_string());
         assert!(middleware.is_ip_blocked(ip));
-        
+
         middleware.remove_blocked_ip(ip);
         assert!(!middleware.is_ip_blocked(ip));
     }

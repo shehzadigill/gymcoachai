@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use tracing::{info, error, warn, debug, instrument};
-use std::collections::HashMap;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tracing::{debug, error, info, instrument, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LogContext {
@@ -110,6 +110,7 @@ impl LogContext {
     }
 }
 
+#[derive(Debug)]
 pub struct Logger {
     service_name: String,
 }
@@ -128,13 +129,17 @@ impl Logger {
 
     #[instrument]
     pub fn end_request(&self, mut context: LogContext, status_code: u16, duration_ms: u64) {
-        context = context.with_status_code(status_code).with_duration(duration_ms);
+        context = context
+            .with_status_code(status_code)
+            .with_duration(duration_ms);
         context.log_info("Request completed");
     }
 
     #[instrument]
     pub fn log_error(&self, mut context: LogContext, error_message: String, status_code: u16) {
-        context = context.with_error(error_message).with_status_code(status_code);
+        context = context
+            .with_error(error_message)
+            .with_status_code(status_code);
         context.log_error("Request failed");
     }
 

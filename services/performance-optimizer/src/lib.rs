@@ -1,8 +1,8 @@
+use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use anyhow::{Result, anyhow};
-use chrono::{DateTime, Utc};
+use std::time::Instant;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
@@ -21,7 +21,7 @@ pub struct PerformanceMetrics {
     pub status_code: u16,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizationConfig {
     pub enable_caching: bool,
     pub cache_ttl_seconds: u64,
@@ -77,12 +77,15 @@ struct ConnectionPool {
 
 impl PerformanceOptimizer {
     pub fn new(config: OptimizationConfig) -> Self {
+        let enable_connection_pooling = config.enable_connection_pooling;
+        let max_connections = config.max_connections;
+
         Self {
             config,
             cache: HashMap::new(),
-            connection_pool: if config.enable_connection_pooling {
+            connection_pool: if enable_connection_pooling {
                 Some(ConnectionPool {
-                    max_connections: config.max_connections,
+                    max_connections,
                     active_connections: 0,
                     idle_connections: 0,
                 })
@@ -105,8 +108,8 @@ impl PerformanceOptimizer {
     {
         let start_time = Utc::now();
         let start_instant = Instant::now();
-        let mut memory_before = self.get_memory_usage();
-        let mut cpu_before = self.get_cpu_usage();
+        let memory_before = self.get_memory_usage();
+        let cpu_before = self.get_cpu_usage();
 
         let result = handler.await;
 
@@ -125,8 +128,8 @@ impl PerformanceOptimizer {
             memory_usage_mb: memory_after - memory_before,
             cpu_usage_percent: cpu_after - cpu_before,
             database_queries: 0, // This would be tracked by the database layer
-            cache_hits: 0, // This would be tracked by the cache layer
-            cache_misses: 0, // This would be tracked by the cache layer
+            cache_hits: 0,       // This would be tracked by the cache layer
+            cache_misses: 0,     // This would be tracked by the cache layer
             error_count: if result.is_err() { 1 } else { 0 },
             status_code: if result.is_ok() { 200 } else { 500 },
         };
@@ -154,7 +157,12 @@ impl PerformanceOptimizer {
         None
     }
 
-    pub async fn set_cached<T>(&mut self, key: &str, value: &T, ttl_seconds: Option<u64>) -> Result<()>
+    pub async fn set_cached<T>(
+        &mut self,
+        key: &str,
+        value: &T,
+        ttl_seconds: Option<u64>,
+    ) -> Result<()>
     where
         T: serde::Serialize,
     {
@@ -183,14 +191,12 @@ impl PerformanceOptimizer {
         Ok(())
     }
 
-    pub async fn batch_process<T, F>(
-        &self,
-        items: Vec<T>,
-        processor: F,
-    ) -> Result<Vec<Result<T>>>
+    pub async fn batch_process<T, F>(&self, items: Vec<T>, processor: F) -> Result<Vec<Result<T>>>
     where
-        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>> + Send + Sync,
-        T: Send + Sync,
+        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>>
+            + Send
+            + Sync,
+        T: Send + Sync + Clone,
     {
         if !self.config.enable_batch_processing {
             return Err(anyhow!("Batch processing is disabled"));
@@ -207,14 +213,12 @@ impl PerformanceOptimizer {
         Ok(results)
     }
 
-    async fn process_chunk<T, F>(
-        &self,
-        chunk: &[T],
-        processor: &F,
-    ) -> Result<Vec<Result<T>>>
+    async fn process_chunk<T, F>(&self, chunk: &[T], processor: &F) -> Result<Vec<Result<T>>>
     where
-        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>> + Send + Sync,
-        T: Send + Sync,
+        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>>
+            + Send
+            + Sync,
+        T: Send + Sync + Clone,
     {
         if self.config.enable_async_processing {
             self.process_chunk_async(chunk, processor).await
@@ -223,22 +227,22 @@ impl PerformanceOptimizer {
         }
     }
 
-    async fn process_chunk_async<T, F>(
-        &self,
-        chunk: &[T],
-        processor: &F,
-    ) -> Result<Vec<Result<T>>>
+    async fn process_chunk_async<T, F>(&self, chunk: &[T], processor: &F) -> Result<Vec<Result<T>>>
     where
-        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>> + Send + Sync,
-        T: Send + Sync,
+        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>>
+            + Send
+            + Sync,
+        T: Send + Sync + Clone,
     {
         let mut handles = Vec::new();
+        let mut results = Vec::new();
         let max_concurrent = self.config.max_concurrent_requests;
 
         for item in chunk {
             if handles.len() >= max_concurrent as usize {
                 // Wait for some handles to complete
-                let completed = futures::future::join_all(handles.drain(..max_concurrent as usize)).await;
+                let completed =
+                    futures::future::join_all(handles.drain(..max_concurrent as usize)).await;
                 results.extend(completed);
             }
 
@@ -248,17 +252,16 @@ impl PerformanceOptimizer {
 
         // Process remaining handles
         let remaining_results = futures::future::join_all(handles).await;
-        Ok(remaining_results)
+        results.extend(remaining_results);
+        Ok(results)
     }
 
-    async fn process_chunk_sync<T, F>(
-        &self,
-        chunk: &[T],
-        processor: &F,
-    ) -> Result<Vec<Result<T>>>
+    async fn process_chunk_sync<T, F>(&self, chunk: &[T], processor: &F) -> Result<Vec<Result<T>>>
     where
-        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>> + Send + Sync,
-        T: Send + Sync,
+        F: Fn(T) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T>> + Send>>
+            + Send
+            + Sync,
+        T: Send + Sync + Clone,
     {
         let mut results = Vec::new();
 
@@ -285,7 +288,11 @@ impl PerformanceOptimizer {
             0.0
         };
         let average_cpu = if total_requests > 0 {
-            self.metrics.iter().map(|m| m.cpu_usage_percent).sum::<f64>() / total_requests as f64
+            self.metrics
+                .iter()
+                .map(|m| m.cpu_usage_percent)
+                .sum::<f64>()
+                / total_requests as f64
         } else {
             0.0
         };
@@ -303,9 +310,10 @@ impl PerformanceOptimizer {
             average_memory_mb: average_memory,
             average_cpu_percent: average_cpu,
             cache_hit_rate: if total_requests > 0 {
-                self.metrics.iter().map(|m| m.cache_hits).sum::<u32>() as f64 /
-                (self.metrics.iter().map(|m| m.cache_hits).sum::<u32>() +
-                 self.metrics.iter().map(|m| m.cache_misses).sum::<u32>()) as f64
+                self.metrics.iter().map(|m| m.cache_hits).sum::<u32>() as f64
+                    / (self.metrics.iter().map(|m| m.cache_hits).sum::<u32>()
+                        + self.metrics.iter().map(|m| m.cache_misses).sum::<u32>())
+                        as f64
             } else {
                 0.0
             },
@@ -318,12 +326,16 @@ impl PerformanceOptimizer {
     }
 
     fn cleanup_oldest_cache_entries(&mut self) {
-        let mut entries: Vec<_> = self.cache.iter().collect();
+        let mut entries: Vec<_> = self
+            .cache
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         entries.sort_by_key(|(_, entry)| entry.last_accessed);
-        
+
         let to_remove = entries.len() - self.config.max_cache_size;
         for (key, _) in entries.iter().take(to_remove) {
-            self.cache.remove(*key);
+            self.cache.remove(key);
         }
     }
 
@@ -383,28 +395,29 @@ impl DatabaseOptimizer {
 
         // Optimize query
         let optimized = self.optimize_query_structure(query)?;
-        
+
         // Cache optimized query
-        self.query_cache.insert(query.to_string(), optimized.clone());
-        
+        self.query_cache
+            .insert(query.to_string(), optimized.clone());
+
         Ok(optimized)
     }
 
     fn optimize_query_structure(&self, query: &str) -> Result<String> {
         // Basic query optimization
         let mut optimized = query.to_string();
-        
+
         // Remove unnecessary whitespace
         optimized = optimized.split_whitespace().collect::<Vec<_>>().join(" ");
-        
+
         // Convert to lowercase for consistency
         optimized = optimized.to_lowercase();
-        
+
         // Add query hints if needed
         if optimized.contains("select") && !optimized.contains("limit") {
             optimized.push_str(" LIMIT 1000");
         }
-        
+
         Ok(optimized)
     }
 
@@ -418,7 +431,10 @@ impl DatabaseOptimizer {
         if let Some(query) = self.prepared_statements.get(name) {
             // In a real implementation, this would execute the prepared statement
             // with the provided parameters
-            Ok(format!("Executing prepared statement: {} with params: {:?}", query, params))
+            Ok(format!(
+                "Executing prepared statement: {} with params: {:?}",
+                query, params
+            ))
         } else {
             Err(anyhow!("Prepared statement not found: {}", name))
         }
@@ -440,11 +456,11 @@ mod tests {
     #[test]
     fn test_cache_operations() {
         let mut optimizer = PerformanceOptimizer::new(OptimizationConfig::default());
-        
+
         // Test cache set
         let result = optimizer.set_cached("test_key", &"test_value", None);
         assert!(result.is_ok());
-        
+
         // Test cache get
         let cached_value: Option<String> = optimizer.get_cached("test_key");
         assert_eq!(cached_value, Some("test_value".to_string()));
@@ -453,12 +469,12 @@ mod tests {
     #[test]
     fn test_database_optimizer() {
         let mut db_optimizer = DatabaseOptimizer::new(true, 10);
-        
+
         // Test query optimization
         let query = "SELECT * FROM users WHERE id = 1";
         let optimized = db_optimizer.optimize_query(query);
         assert!(optimized.is_ok());
-        
+
         // Test prepared statement
         let result = db_optimizer.prepare_statement("get_user", query);
         assert!(result.is_ok());
@@ -467,7 +483,7 @@ mod tests {
     #[test]
     fn test_performance_summary() {
         let mut optimizer = PerformanceOptimizer::new(OptimizationConfig::default());
-        
+
         // Add some test metrics
         optimizer.metrics.push(PerformanceMetrics {
             request_id: "req1".to_string(),
@@ -484,7 +500,7 @@ mod tests {
             error_count: 0,
             status_code: 200,
         });
-        
+
         let summary = optimizer.get_performance_summary();
         assert_eq!(summary.total_requests, 1);
         assert_eq!(summary.successful_requests, 1);

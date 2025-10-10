@@ -1,36 +1,40 @@
+mod controller;
 mod models;
 mod repository;
 mod service;
-mod controller;
 mod utils;
 
-use lambda_runtime::{service_fn, Error, LambdaEvent};
-use serde_json::Value;
+use anyhow::Result;
+use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use aws_sdk_s3::Client as S3Client;
-use aws_config::meta::region::RegionProviderChain;
-use anyhow::Result;
-use tracing::error;
+use chrono::Utc;
+use lambda_runtime::{service_fn, Error, LambdaEvent};
+use once_cell::sync::{Lazy, OnceCell};
+use serde_json::Value;
 use std::sync::Arc;
-use once_cell::sync::{OnceCell, Lazy};
+use tracing::error;
 
+use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
+use controller::{
+    AchievementController, BodyMeasurementController, MilestoneController,
+    PerformanceTrendController, ProgressChartController, ProgressPhotoController,
+    StrengthProgressController, WorkoutAnalyticsController,
+};
 use repository::{
-    StrengthProgressRepository, BodyMeasurementRepository, ProgressChartRepository,
-    MilestoneRepository, AchievementRepository, PerformanceTrendRepository,
-    WorkoutSessionRepository, ProgressPhotoRepository,
+    AchievementRepository, BodyMeasurementRepository, MilestoneRepository,
+    PerformanceTrendRepository, ProgressChartRepository, ProgressPhotoRepository,
+    StrengthProgressRepository, WorkoutSessionRepository,
 };
 use service::{
-    StrengthProgressService, BodyMeasurementService, ProgressChartService,
-    MilestoneService, AchievementService, PerformanceTrendService,
-    WorkoutSessionService, ProgressPhotoService, AnalyticsService,
+    AchievementService, AnalyticsService, BodyMeasurementService, MilestoneService,
+    PerformanceTrendService, ProgressChartService, ProgressPhotoService, StrengthProgressService,
+    WorkoutSessionService,
 };
-use controller::{
-    StrengthProgressController, BodyMeasurementController, ProgressChartController,
-    MilestoneController, AchievementController, PerformanceTrendController,
-    WorkoutAnalyticsController, ProgressPhotoController,
+use utils::{
+    routing::extract_path_parameters, routing::parse_query_string, DataHelper, ResponseBuilder,
+    RouteMatcher,
 };
-use utils::{ResponseBuilder, RouteMatcher, DataHelper, routing::extract_path_parameters, routing::parse_query_string};
-use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 
 // Global clients for cold start optimization
 static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
@@ -79,30 +83,32 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
     // Convert to auth event format
     let auth_event = AuthLambdaEvent {
-        headers: event.get("headers")
-            .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                    .collect()
-            }),
-        request_context: event.get("requestContext")
+        headers: event.get("headers").and_then(|v| v.as_object()).map(|obj| {
+            obj.iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                .collect()
+        }),
+        request_context: event
+            .get("requestContext")
             .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        path_parameters: event.get("pathParameters")
+        path_parameters: event
+            .get("pathParameters")
             .and_then(|v| v.as_object())
             .map(|obj| {
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
                     .collect()
             }),
-        query_string_parameters: event.get("queryStringParameters")
+        query_string_parameters: event
+            .get("queryStringParameters")
             .and_then(|v| v.as_object())
             .map(|obj| {
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
                     .collect()
             }),
-        body: event.get("body")
+        body: event
+            .get("body")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
     };
@@ -111,7 +117,9 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
         Ok(auth_result) => {
             if !auth_result.is_authorized {
-                return Ok(ResponseBuilder::forbidden(&auth_result.error.unwrap_or("Access denied".to_string())));
+                return Ok(ResponseBuilder::forbidden(
+                    &auth_result.error.unwrap_or("Access denied".to_string()),
+                ));
             }
             auth_result.context.unwrap()
         }
@@ -121,23 +129,29 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
         }
     };
 
-    let body = event["body"]
-        .as_str()
-        .unwrap_or("{}");
+    let body = event["body"].as_str().unwrap_or("{}");
 
     // Initialize repositories
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "gymcoach-ai-main".to_string());
-    let bucket_name = std::env::var("PROGRESS_PHOTOS_BUCKET").unwrap_or_else(|_| "gymcoach-ai-progress-photos".to_string());
+    let bucket_name = std::env::var("PROGRESS_PHOTOS_BUCKET")
+        .unwrap_or_else(|_| "gymcoach-ai-progress-photos".to_string());
     let dynamodb_client = DYNAMODB_CLIENT.get().expect("DynamoDB not initialized");
     let s3_client = S3_CLIENT.get().expect("S3 not initialized");
 
-    let strength_progress_repository = StrengthProgressRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
-    let body_measurement_repository = BodyMeasurementRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
-    let progress_chart_repository = ProgressChartRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
-    let milestone_repository = MilestoneRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
-    let achievement_repository = AchievementRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
-    let performance_trend_repository = PerformanceTrendRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
-    let workout_session_repository = WorkoutSessionRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let strength_progress_repository =
+        StrengthProgressRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let body_measurement_repository =
+        BodyMeasurementRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let progress_chart_repository =
+        ProgressChartRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let milestone_repository =
+        MilestoneRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let achievement_repository =
+        AchievementRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let performance_trend_repository =
+        PerformanceTrendRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
+    let workout_session_repository =
+        WorkoutSessionRepository::new(dynamodb_client.as_ref().clone(), table_name.clone());
     let progress_photo_repository = ProgressPhotoRepository::new(
         dynamodb_client.as_ref().clone(),
         s3_client.as_ref().clone(),
@@ -177,36 +191,50 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
     // Extract path parameters and query parameters
     let path_params = extract_path_parameters(path);
-    let query_params = parse_query_string(event.get("queryStringParameters").and_then(|v| v.as_str()));
+    let query_params =
+        parse_query_string(event.get("queryStringParameters").and_then(|v| v.as_str()));
 
     // Route the request
     let response = match RouteMatcher::match_route(http_method, path) {
         // Strength Progress routes
         Some(utils::routing::Route::GetStrengthProgress) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             let start_date = DataHelper::extract_start_date(&query_params);
             let end_date = DataHelper::extract_end_date(&query_params);
-            strength_progress_controller.get_strength_progress(&user_id, start_date.as_deref(), end_date.as_deref()).await
+            strength_progress_controller
+                .get_strength_progress(&user_id, start_date.as_deref(), end_date.as_deref())
+                .await
         }
         Some(utils::routing::Route::CreateStrengthProgress) => {
-            strength_progress_controller.create_strength_progress(body).await
+            strength_progress_controller
+                .create_strength_progress(body)
+                .await
         }
 
         // Body Measurement routes
         Some(utils::routing::Route::GetBodyMeasurements) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             let start_date = DataHelper::extract_start_date(&query_params);
             let end_date = DataHelper::extract_end_date(&query_params);
-            body_measurement_controller.get_body_measurements(&user_id, start_date.as_deref(), end_date.as_deref()).await
+            body_measurement_controller
+                .get_body_measurements(&user_id, start_date.as_deref(), end_date.as_deref())
+                .await
         }
         Some(utils::routing::Route::CreateBodyMeasurement) => {
-            body_measurement_controller.create_body_measurement(body).await
+            body_measurement_controller
+                .create_body_measurement(body)
+                .await
         }
 
         // Progress Chart routes
         Some(utils::routing::Route::GetProgressCharts) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
-            progress_chart_controller.get_progress_charts(&user_id).await
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            progress_chart_controller
+                .get_progress_charts(&user_id)
+                .await
         }
         Some(utils::routing::Route::CreateProgressChart) => {
             progress_chart_controller.create_progress_chart(body).await
@@ -214,7 +242,8 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
         // Milestone routes
         Some(utils::routing::Route::GetMilestones) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             milestone_controller.get_milestones(&user_id).await
         }
         Some(utils::routing::Route::CreateMilestone) => {
@@ -223,7 +252,8 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
         // Achievement routes
         Some(utils::routing::Route::GetAchievements) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             achievement_controller.get_achievements(&user_id).await
         }
         Some(utils::routing::Route::CreateAchievement) => {
@@ -232,61 +262,125 @@ async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
 
         // Performance Trend routes
         Some(utils::routing::Route::GetPerformanceTrends) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             let start_date = DataHelper::extract_start_date(&query_params);
             let end_date = DataHelper::extract_end_date(&query_params);
-            performance_trend_controller.get_performance_trends(&user_id, start_date.as_deref(), end_date.as_deref()).await
+            performance_trend_controller
+                .get_performance_trends(&user_id, start_date.as_deref(), end_date.as_deref())
+                .await
         }
 
         // Workout Analytics routes
         Some(utils::routing::Route::GetWorkoutAnalytics) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             let period = DataHelper::extract_period(&query_params);
-            workout_analytics_controller.get_workout_analytics(&user_id, period.as_deref()).await
+            workout_analytics_controller
+                .get_workout_analytics(&user_id, period.as_deref())
+                .await
         }
         Some(utils::routing::Route::GetWorkoutInsights) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             let period = DataHelper::extract_period(&query_params);
-            workout_analytics_controller.get_workout_insights(&user_id, period.as_deref()).await
+            workout_analytics_controller
+                .get_workout_insights(&user_id, period.as_deref())
+                .await
         }
         Some(utils::routing::Route::GenerateProgressReport) => {
             // For now, return not implemented
-            Ok(ResponseBuilder::not_found("Progress report generation not implemented"))
+            Ok(ResponseBuilder::not_found(
+                "Progress report generation not implemented",
+            ))
         }
 
         // Progress Photo routes
         Some(utils::routing::Route::GetProgressPhotos) => {
-            let user_id = DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
             let photo_type = DataHelper::extract_photo_type(&query_params);
             let start_date = DataHelper::extract_start_date(&query_params);
             let end_date = DataHelper::extract_end_date(&query_params);
             let limit = DataHelper::extract_limit(&query_params);
-            progress_photo_controller.get_progress_photos(
-                &user_id,
-                photo_type.as_deref(),
-                start_date.as_deref(),
-                end_date.as_deref(),
-                limit,
-            ).await
+            progress_photo_controller
+                .get_progress_photos(
+                    &user_id,
+                    photo_type.as_deref(),
+                    start_date.as_deref(),
+                    end_date.as_deref(),
+                    limit,
+                )
+                .await
         }
         Some(utils::routing::Route::UploadProgressPhoto) => {
             progress_photo_controller.upload_progress_photo(body).await
         }
         Some(utils::routing::Route::UpdateProgressPhoto) => {
-            // For now, return not implemented
-            Ok(ResponseBuilder::not_found("Progress photo update not implemented"))
+            let photo_id = DataHelper::extract_photo_id(&path_params);
+            if let Some(photo_id) = photo_id {
+                progress_photo_controller
+                    .update_progress_photo(&photo_id, body)
+                    .await
+            } else {
+                Ok(ResponseBuilder::bad_request("Photo ID is required"))
+            }
         }
         Some(utils::routing::Route::DeleteProgressPhoto) => {
-            // For now, return not implemented
-            Ok(ResponseBuilder::not_found("Progress photo deletion not implemented"))
+            let photo_id = DataHelper::extract_photo_id(&path_params);
+            if let Some(photo_id) = photo_id {
+                progress_photo_controller
+                    .delete_progress_photo(&photo_id)
+                    .await
+            } else {
+                Ok(ResponseBuilder::bad_request("Photo ID is required"))
+            }
         }
         Some(utils::routing::Route::GetProgressPhotoAnalytics) => {
-            // For now, return not implemented
-            Ok(ResponseBuilder::not_found("Progress photo analytics not implemented"))
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+
+            // Handle both time_range and startDate/endDate parameters
+            let (start_date, end_date) =
+                if let Some(time_range) = DataHelper::extract_time_range(&query_params) {
+                    DataHelper::time_range_to_dates(&time_range)
+                } else {
+                    let start_date = DataHelper::extract_start_date(&query_params);
+                    let end_date = DataHelper::extract_end_date(&query_params);
+                    (
+                        start_date.unwrap_or_else(|| {
+                            (chrono::Utc::now() - chrono::Duration::days(30)).to_rfc3339()
+                        }),
+                        end_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
+                    )
+                };
+
+            progress_photo_controller
+                .get_progress_photo_analytics(&user_id, Some(&start_date), Some(&end_date))
+                .await
         }
         Some(utils::routing::Route::GetProgressPhotoTimeline) => {
-            // For now, return not implemented
-            Ok(ResponseBuilder::not_found("Progress photo timeline not implemented"))
+            let user_id =
+                DataHelper::extract_user_id(&path_params, &query_params, &auth_context.user_id);
+
+            // Handle both time_range and startDate/endDate parameters
+            let (start_date, end_date) =
+                if let Some(time_range) = DataHelper::extract_time_range(&query_params) {
+                    DataHelper::time_range_to_dates(&time_range)
+                } else {
+                    let start_date = DataHelper::extract_start_date(&query_params);
+                    let end_date = DataHelper::extract_end_date(&query_params);
+                    (
+                        start_date.unwrap_or_else(|| {
+                            (chrono::Utc::now() - chrono::Duration::days(30)).to_rfc3339()
+                        }),
+                        end_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
+                    )
+                };
+
+            progress_photo_controller
+                .get_progress_photo_timeline(&user_id, Some(&start_date), Some(&end_date))
+                .await
         }
 
         _ => Ok(ResponseBuilder::not_found("Endpoint not found")),
