@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Force dynamic behavior for this API route (required for proxy functionality)
-export const dynamic = 'force-dynamic';
+// API route configuration for static export
+export const dynamic = 'force-static';
+export const revalidate = false;
 export const runtime = 'nodejs';
+
+// Required for static export
+export async function generateStaticParams() {
+  return [];
+}
 
 const CLOUDFRONT_URL =
   process.env.NEXT_PUBLIC_CLOUDFRONT_URL ||

@@ -15,6 +15,7 @@ import NutritionScreen from '../screens/NutritionScreen';
 import NutritionEntryScreen from '../screens/nutrition/NutritionEntryScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import AITrainerScreen from '../screens/AITrainerScreen';
 
 // Import workout-related screens
 import SessionScreen from '../screens/workout/SessionScreen';
@@ -36,6 +37,7 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Workouts: undefined;
+  AITrainer: undefined;
   Nutrition: undefined;
   Analytics: undefined;
   Profile: undefined;
@@ -195,6 +197,21 @@ function MainNavigator() {
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="fitness"
+              focused={focused}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AITrainer"
+        component={AITrainerScreen}
+        options={{
+          tabBarLabel: 'AI Trainer',
+          tabBarIcon: ({focused, color, size}) => (
+            <TabBarIcon
+              name="smart-toy"
               focused={focused}
               color={color}
               size={size}

@@ -26,6 +26,7 @@ import {
   ChevronRight,
   Play,
   BookOpen,
+  Bot,
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -61,6 +62,7 @@ export default function DashboardLayout({
         },
       ],
     },
+    { name: 'AI Trainer', href: '/ai-trainer', icon: Bot },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Nutrition', href: '/nutrition', icon: Apple },
     { name: 'Profile', href: '/profile', icon: User },

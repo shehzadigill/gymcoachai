@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import {Text, View} from 'react-native';
 
 interface TabBarIconProps {
   name: string;
@@ -11,6 +11,7 @@ interface TabBarIconProps {
 const iconMap: Record<string, string> = {
   home: '🏠',
   fitness: '💪',
+  'smart-toy': '🤖',
   nutrition: '🍎',
   analytics: '📊',
   profile: '👤',
@@ -26,13 +27,12 @@ export default function TabBarIcon({
   const icon = iconMap[name] || iconMap.unknown;
 
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{alignItems: 'center', justifyContent: 'center'}}>
       <Text
         style={{
           fontSize: size,
           opacity: focused ? 1 : 0.7,
-        }}
-      >
+        }}>
         {icon}
       </Text>
     </View>

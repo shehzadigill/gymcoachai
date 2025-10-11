@@ -819,6 +819,65 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // AI Trainer methods
+  async sendChatMessage(
+    message: string,
+    conversationId?: string,
+  ): Promise<any> {
+    return this.apiFetch<any>('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({message, conversationId}),
+    });
+  }
+
+  async getConversations(): Promise<any[]> {
+    return this.apiFetch<any[]>('/api/ai/conversations');
+  }
+
+  async getConversation(conversationId: string): Promise<any> {
+    return this.apiFetch<any>(`/api/ai/conversations/${conversationId}`);
+  }
+
+  async deleteConversation(conversationId: string): Promise<any> {
+    return this.apiFetch<any>(`/api/ai/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRateLimit(): Promise<any> {
+    return this.apiFetch<any>('/api/ai/rate-limit');
+  }
+
+  async generateWorkoutPlan(data: {
+    goals: string[];
+    duration: number;
+    daysPerWeek: number;
+    equipment: string[];
+  }): Promise<any> {
+    return this.apiFetch<any>('/api/ai/workout-plan/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async generateMealPlan(data: {
+    goals: string[];
+    dietaryRestrictions: string[];
+    duration: number;
+  }): Promise<any> {
+    return this.apiFetch<any>('/api/ai/meal-plan/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async analyzeProgress(): Promise<any> {
+    return this.apiFetch<any>('/api/ai/progress/analyze', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

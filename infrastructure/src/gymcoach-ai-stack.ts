@@ -442,10 +442,10 @@ export class GymCoachAIStack extends cdk.Stack {
       'NutritionService',
       'nutrition-service'
     );
-    // const aiServiceLambda = this.createPythonLambdaFunction(
-    //   'AIService',
-    //   'ai-service-python'
-    // );
+    const aiServiceLambda = this.createPythonLambdaFunction(
+      'AIService',
+      'ai-service-python'
+    );
 
     // Enable Lambda Function URLs
     // const userServiceUrl = userServiceLambda.addFunctionUrl({
@@ -508,15 +508,15 @@ export class GymCoachAIStack extends cdk.Stack {
       },
     });
 
-    // const aiServiceUrl = aiServiceLambda.addFunctionUrl({
-    //   authType: lambda.FunctionUrlAuthType.NONE,
-    //   cors: {
-    //     allowCredentials: false,
-    //     allowedHeaders: ['*'],
-    //     allowedMethods: [lambda.HttpMethod.ALL],
-    //     allowedOrigins: ['*'],
-    //   },
-    // });
+    const aiServiceUrl = aiServiceLambda.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowCredentials: false,
+        allowedHeaders: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedOrigins: ['*'],
+      },
+    });
 
     // Create CloudFront Distribution with Lambda Function URLs as origins
     const userProfileDomain = cdk.Fn.select(
@@ -539,6 +539,7 @@ export class GymCoachAIStack extends cdk.Stack {
       2,
       cdk.Fn.split('/', nutritionServiceUrl.url)
     );
+    const aiDomain = cdk.Fn.select(2, cdk.Fn.split('/', aiServiceUrl.url));
 
     // Create CloudFront Function for URL rewriting (handles SPA routing)
     const urlRewriteFunction = new cloudfront.Function(
@@ -668,6 +669,15 @@ export class GymCoachAIStack extends cdk.Stack {
             originRequestPolicy:
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
+          '/api/ai/*': {
+            origin: new origins.HttpOrigin(aiDomain),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+            originRequestPolicy:
+              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          },
           '/progress-photos/*': {
             origin: origins.S3BucketOrigin.withOriginAccessIdentity(
               this.progressPhotosBucket,
@@ -694,15 +704,6 @@ export class GymCoachAIStack extends cdk.Stack {
               }
             ),
           },
-          // '/api/ai/*': {
-          //   origin: new origins.HttpOrigin(aiServiceUrl.url),
-          //   viewerProtocolPolicy:
-          //     cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          //   allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-          //   cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          //   originRequestPolicy:
-          //     cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          // },
         },
         comment: 'GymCoach AI CloudFront Distribution',
       }
@@ -726,11 +727,13 @@ export class GymCoachAIStack extends cdk.Stack {
     this.mainTable.grantReadData(userProfileServiceLambda);
     this.mainTable.grantReadData(workoutServiceLambda);
     this.mainTable.grantReadData(coachingServiceLambda);
+    this.mainTable.grantReadData(aiServiceLambda);
     this.mainTable.grantWriteData(analyticsServiceLambda);
     this.mainTable.grantWriteData(nutritionServiceLambda);
     this.mainTable.grantWriteData(userProfileServiceLambda);
     this.mainTable.grantWriteData(workoutServiceLambda);
     this.mainTable.grantWriteData(coachingServiceLambda);
+    this.mainTable.grantWriteData(aiServiceLambda);
 
     // Ensure nutrition service can Query GSIs explicitly
     nutritionServiceLambda.addToRolePolicy(
@@ -741,6 +744,31 @@ export class GymCoachAIStack extends cdk.Stack {
           this.mainTable.tableArn,
           `${this.mainTable.tableArn}/index/*`,
         ],
+      })
+    );
+
+    // Grant AI service Bedrock permissions
+    aiServiceLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock:InvokeModel',
+          'bedrock:InvokeModelWithResponseStream',
+        ],
+        resources: ['arn:aws:bedrock:*::foundation-model/deepseek.v3-v1:0'],
+      })
+    );
+
+    // Grant AI service Cognito permissions
+    aiServiceLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'cognito-idp:AdminListGroupsForUser',
+          'cognito-idp:AdminGetUser',
+          'cognito-idp:ListUsers',
+        ],
+        resources: [this.userPool.userPoolArn],
       })
     );
 
@@ -803,10 +831,10 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'Nutrition Service Lambda Function URL',
     });
 
-    // new cdk.CfnOutput(this, 'AIServiceUrl', {
-    //   value: aiServiceUrl.url,
-    //   description: 'AI Service Lambda Function URL',
-    // });
+    new cdk.CfnOutput(this, 'AIServiceUrl', {
+      value: aiServiceUrl.url,
+      description: 'AI Service Lambda Function URL',
+    });
 
     new cdk.CfnOutput(this, 'UserUploadsBucketName', {
       value: this.userUploadsBucket.bucketName,
@@ -890,15 +918,21 @@ export class GymCoachAIStack extends cdk.Stack {
         JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
         COGNITO_REGION: this.region,
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
-        AWS_REGION: this.region,
         PYTHONPATH: '/var/runtime:/var/task',
+        // AI Service specific environment variables
+        BEDROCK_MODEL_ID: 'deepseek.v3-v1:0', // DeepSeek model available in eu-north-1
+        RATE_LIMIT_FREE_TIER: '10', // Requests per day for free tier
+        RATE_LIMIT_PREMIUM_TIER: '50', // Requests per day for premium tier
+        RATE_LIMIT_HARD_LIMIT: '100', // Hard limit to prevent abuse
+        CONVERSATION_TTL_DAYS: '30', // TTL for conversation history
+        RATE_LIMIT_TTL_DAYS: '7', // TTL for rate limit records
       },
       timeout: cdk.Duration.minutes(5), // AI functions may need more time
       memorySize: 1024, // AI functions need more memory
       reservedConcurrentExecutions: 5, // Limit concurrent executions for AI functions
       // Removed log retention to use free tier defaults (5GB/month free)
       // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
-      layers: [this.createPythonAuthLayer()],
+      // layers: [this.createPythonAuthLayer()], // Temporarily disabled
     });
   }
 
@@ -920,7 +954,7 @@ export class GymCoachAIStack extends cdk.Stack {
       return this.pythonAuthLayer;
     }
     this.pythonAuthLayer = new lambda.LayerVersion(this, 'PythonAuthLayer', {
-      code: lambda.Code.fromAsset('../services/ai-service-python'),
+      code: lambda.Code.fromAsset('../services/ai-service-python/layer'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       description: 'Python authentication layer for AI services',
     });

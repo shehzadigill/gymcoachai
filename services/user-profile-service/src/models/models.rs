@@ -48,6 +48,7 @@ pub struct UserPreferences {
     pub notifications: NotificationSettings,
     pub privacy: PrivacySettings,
     pub daily_goals: Option<DailyGoals>,
+    pub ai_trainer: Option<AITrainerPreferences>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -69,11 +70,27 @@ pub struct PrivacySettings {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct AITrainerPreferences {
+    pub enabled: bool,
+    pub coaching_style: String, // "motivational", "strict", "balanced", "technical"
+    pub communication_frequency: String, // "daily", "weekly", "on-demand"
+    pub focus_areas: Vec<String>, // ["strength", "cardio", "flexibility", "nutrition"]
+    pub injury_history: Vec<String>,
+    pub equipment_available: Vec<String>, // ["dumbbells", "barbell", "resistance_bands", "bodyweight"]
+    pub workout_duration_preference: i32, // minutes
+    pub workout_days_per_week: i32,
+    pub meal_preferences: Vec<String>, // ["vegetarian", "vegan", "keto", "paleo", "no_restrictions"]
+    pub allergies: Vec<String>,
+    pub supplement_preferences: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UserStats {
     pub total_workouts: i32,
     pub total_workout_time: i32, // in minutes
-    pub current_streak: i32, // days
-    pub longest_streak: i32, // days
+    pub current_streak: i32,     // days
+    pub longest_streak: i32,     // days
     pub favorite_exercises: Vec<String>,
     pub achievements: Vec<String>,
     pub last_workout_date: Option<String>,
@@ -105,7 +122,7 @@ pub struct SleepData {
     pub minutes: Option<u8>, // Additional minutes (0-59)
     #[validate(range(min = 1, max = 5))]
     pub quality: Option<u8>, // Sleep quality (1-5 scale)
-    pub bed_time: Option<String>, // Bedtime in HH:MM format
+    pub bed_time: Option<String>,  // Bedtime in HH:MM format
     pub wake_time: Option<String>, // Wake time in HH:MM format
     #[validate(length(max = 1000))]
     pub notes: Option<String>, // Optional sleep notes
@@ -126,7 +143,7 @@ pub struct SleepStats {
     pub best_night: SleepNight,
     pub worst_night: SleepNight,
     pub consistency: f32, // percentage (0-100)
-    pub trend: String, // "improving", "declining", "stable"
+    pub trend: String,    // "improving", "declining", "stable"
     pub calculated_at: String,
 }
 

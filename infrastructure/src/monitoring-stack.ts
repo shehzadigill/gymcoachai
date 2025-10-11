@@ -271,6 +271,109 @@ export class MonitoringStack extends cdk.Stack {
     });
 
     dashboard.addWidgets(errorRateWidget);
+
+    // AI Service specific metrics
+    this.createAIServiceDashboards(dashboard);
+  }
+
+  private createAIServiceDashboards(dashboard: cloudwatch.Dashboard) {
+    // AI Chat Metrics
+    const aiChatWidget = new cloudwatch.GraphWidget({
+      title: 'AI Chat Service Metrics',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'ChatRequests',
+          period: cdk.Duration.minutes(5),
+          statistic: 'Sum',
+        }),
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'ChatErrors',
+          period: cdk.Duration.minutes(5),
+          statistic: 'Sum',
+        }),
+      ],
+      leftYAxis: {
+        label: 'Count',
+      },
+      width: 12,
+      height: 6,
+    });
+
+    dashboard.addWidgets(aiChatWidget);
+
+    // Bedrock Token Usage
+    const tokenUsageWidget = new cloudwatch.GraphWidget({
+      title: 'Bedrock Token Usage',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'InputTokens',
+          period: cdk.Duration.minutes(5),
+          statistic: 'Sum',
+        }),
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'OutputTokens',
+          period: cdk.Duration.minutes(5),
+          statistic: 'Sum',
+        }),
+      ],
+      leftYAxis: {
+        label: 'Tokens',
+      },
+      width: 12,
+      height: 6,
+    });
+
+    dashboard.addWidgets(tokenUsageWidget);
+
+    // Rate Limiting Metrics
+    const rateLimitWidget = new cloudwatch.GraphWidget({
+      title: 'Rate Limiting & Usage',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'RateLimitHits',
+          period: cdk.Duration.minutes(5),
+          statistic: 'Sum',
+        }),
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'DailyUsage',
+          period: cdk.Duration.hours(1),
+          statistic: 'Average',
+        }),
+      ],
+      leftYAxis: {
+        label: 'Count',
+      },
+      width: 12,
+      height: 6,
+    });
+
+    dashboard.addWidgets(rateLimitWidget);
+
+    // Cost Estimation
+    const costWidget = new cloudwatch.GraphWidget({
+      title: 'Estimated AI Service Costs (USD)',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'GymCoachAI/AI',
+          metricName: 'EstimatedCost',
+          period: cdk.Duration.hours(1),
+          statistic: 'Sum',
+        }),
+      ],
+      leftYAxis: {
+        label: 'Cost (USD)',
+      },
+      width: 12,
+      height: 6,
+    });
+
+    dashboard.addWidgets(costWidget);
   }
 
   private createLambdaAlarms(functions: lambda.Function[]) {
@@ -491,6 +594,83 @@ export class MonitoringStack extends cdk.Stack {
     });
 
     userActivityAlarm.addAlarmAction(
+      new cloudwatch_actions.SnsAction(this.alarmTopic)
+    );
+
+    // AI Service specific alarms
+    this.createAIServiceAlarms();
+  }
+
+  private createAIServiceAlarms() {
+    // High AI service cost alarm
+    const aiCostAlarm = new cloudwatch.Alarm(this, 'AIServiceCostAlarm', {
+      alarmName: 'AI-Service-High-Cost',
+      metric: new cloudwatch.Metric({
+        namespace: 'GymCoachAI/AI',
+        metricName: 'EstimatedCost',
+        period: cdk.Duration.hours(1),
+        statistic: 'Sum',
+      }),
+      threshold: 5, // $5 per hour
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    aiCostAlarm.addAlarmAction(
+      new cloudwatch_actions.SnsAction(this.alarmTopic)
+    );
+
+    // High token usage alarm
+    const tokenUsageAlarm = new cloudwatch.Alarm(this, 'AITokenUsageAlarm', {
+      alarmName: 'AI-Service-High-Token-Usage',
+      metric: new cloudwatch.Metric({
+        namespace: 'GymCoachAI/AI',
+        metricName: 'InputTokens',
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 100000, // 100k tokens per 5 minutes
+      evaluationPeriods: 2,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    tokenUsageAlarm.addAlarmAction(
+      new cloudwatch_actions.SnsAction(this.alarmTopic)
+    );
+
+    // High rate limit hits alarm
+    const rateLimitAlarm = new cloudwatch.Alarm(this, 'AIRateLimitAlarm', {
+      alarmName: 'AI-Service-High-Rate-Limit-Hits',
+      metric: new cloudwatch.Metric({
+        namespace: 'GymCoachAI/AI',
+        metricName: 'RateLimitHits',
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 10, // 10 rate limit hits per 5 minutes
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    rateLimitAlarm.addAlarmAction(
+      new cloudwatch_actions.SnsAction(this.alarmTopic)
+    );
+
+    // AI service error rate alarm
+    const aiErrorAlarm = new cloudwatch.Alarm(this, 'AIServiceErrorAlarm', {
+      alarmName: 'AI-Service-High-Error-Rate',
+      metric: new cloudwatch.Metric({
+        namespace: 'GymCoachAI/AI',
+        metricName: 'ChatErrors',
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 5, // 5 errors per 5 minutes
+      evaluationPeriods: 2,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    aiErrorAlarm.addAlarmAction(
       new cloudwatch_actions.SnsAction(this.alarmTopic)
     );
   }

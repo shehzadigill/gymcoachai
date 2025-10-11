@@ -948,4 +948,60 @@ export const api = {
     // Handle Lambda proxy integration response format
     return res.body || res;
   },
+
+  // AI Trainer endpoints
+  async sendChatMessage(message: string, conversationId?: string) {
+    return apiFetch<any>('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversationId }),
+    });
+  },
+
+  async getConversations() {
+    return apiFetch<any[]>('/api/ai/conversations');
+  },
+
+  async getConversation(conversationId: string) {
+    return apiFetch<any>(`/api/ai/conversations/${conversationId}`);
+  },
+
+  async deleteConversation(conversationId: string) {
+    return apiFetch<any>(`/api/ai/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async getRateLimit() {
+    return apiFetch<any>('/api/ai/rate-limit');
+  },
+
+  async generateWorkoutPlan(data: {
+    goals: string[];
+    duration: number;
+    daysPerWeek: number;
+    equipment: string[];
+  }) {
+    return apiFetch<any>('/api/ai/workout-plan/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async generateMealPlan(data: {
+    goals: string[];
+    dietaryRestrictions: string[];
+    duration: number;
+  }) {
+    return apiFetch<any>('/api/ai/meal-plan/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async analyzeProgress() {
+    return apiFetch<any>('/api/ai/progress/analyze', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
 };
