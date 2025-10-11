@@ -23,6 +23,7 @@ import {
   EyeOff,
   CheckCircle,
   AlertCircle,
+  Bot,
 } from 'lucide-react';
 
 interface UserProfile {
@@ -63,6 +64,19 @@ interface UserProfile {
       carbs: number;
       fat: number;
     };
+    aiTrainer?: {
+      enabled: boolean;
+      coachingStyle: 'motivational' | 'strict' | 'balanced' | 'technical';
+      communicationFrequency: 'daily' | 'weekly' | 'on-demand';
+      focusAreas: string[];
+      injuryHistory: string[];
+      equipmentAvailable: string[];
+      workoutDurationPreference: number; // minutes
+      workoutDaysPerWeek: number;
+      mealPreferences: string[];
+      allergies: string[];
+      supplementPreferences: string[];
+    };
   };
 }
 
@@ -100,6 +114,19 @@ const createDefaultProfile = (user: any): UserProfile => ({
       carbs: 200,
       fat: 65,
     },
+    aiTrainer: {
+      enabled: false,
+      coachingStyle: 'balanced',
+      communicationFrequency: 'on-demand',
+      focusAreas: [],
+      injuryHistory: [],
+      equipmentAvailable: [],
+      workoutDurationPreference: 60, // 60 minutes
+      workoutDaysPerWeek: 3,
+      mealPreferences: [],
+      allergies: [],
+      supplementPreferences: [],
+    },
   },
 });
 
@@ -113,7 +140,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'preferences' | 'goals' | 'security'
+    'profile' | 'preferences' | 'goals' | 'ai-trainer' | 'security'
   >('profile');
   const [uploading, setUploading] = useState(false);
 
@@ -363,6 +390,7 @@ export default function ProfilePage() {
             { id: 'profile', name: 'Profile', icon: User },
             { id: 'preferences', name: 'Preferences', icon: Settings },
             { id: 'goals', name: 'Goals', icon: Target },
+            { id: 'ai-trainer', name: 'AI Trainer', icon: Bot },
             { id: 'security', name: 'Security', icon: Shield },
           ].map((tab) => (
             <button
@@ -399,6 +427,12 @@ export default function ProfilePage() {
         )}
         {activeTab === 'goals' && (
           <GoalsTab profile={profile} onUpdate={handleProfileUpdate} />
+        )}
+        {activeTab === 'ai-trainer' && (
+          <AITrainerTab
+            preferences={profile.preferences}
+            onUpdate={handlePreferencesUpdate}
+          />
         )}
         {activeTab === 'security' && <SecurityTab />}
       </div>
@@ -1022,6 +1056,566 @@ function GoalsTab({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AITrainerTab({
+  preferences,
+  onUpdate,
+}: {
+  preferences: UserProfile['preferences'];
+  onUpdate: (updates: Partial<UserProfile['preferences']>) => void;
+}) {
+  const [aiPreferences, setAiPreferences] = useState(
+    preferences.aiTrainer || {
+      enabled: false,
+      coachingStyle: 'balanced' as const,
+      communicationFrequency: 'on-demand' as const,
+      focusAreas: [],
+      injuryHistory: [],
+      equipmentAvailable: [],
+      workoutDurationPreference: 60,
+      workoutDaysPerWeek: 3,
+      mealPreferences: [],
+      allergies: [],
+      supplementPreferences: [],
+    }
+  );
+
+  const [newItem, setNewItem] = useState({
+    focusArea: '',
+    injury: '',
+    equipment: '',
+    mealPreference: '',
+    allergy: '',
+    supplement: '',
+  });
+
+  const focusAreaOptions = [
+    'Strength Training',
+    'Cardio',
+    'Flexibility',
+    'Nutrition',
+    'Weight Loss',
+    'Muscle Gain',
+    'Endurance',
+    'Rehabilitation',
+  ];
+
+  const equipmentOptions = [
+    'Dumbbells',
+    'Barbell',
+    'Resistance Bands',
+    'Kettlebells',
+    'Pull-up Bar',
+    'Gym Machines',
+    'Bodyweight',
+    'Cardio Equipment',
+    'Yoga Mat',
+    'Medicine Ball',
+  ];
+
+  const mealPreferenceOptions = [
+    'Vegetarian',
+    'Vegan',
+    'Keto',
+    'Paleo',
+    'Mediterranean',
+    'Low-Carb',
+    'High-Protein',
+    'No Restrictions',
+  ];
+
+  const addItem = (type: keyof typeof newItem, value: string) => {
+    if (value.trim()) {
+      const updatedPreferences = { ...aiPreferences };
+      switch (type) {
+        case 'focusArea':
+          updatedPreferences.focusAreas = [
+            ...updatedPreferences.focusAreas,
+            value.trim(),
+          ];
+          break;
+        case 'injury':
+          updatedPreferences.injuryHistory = [
+            ...updatedPreferences.injuryHistory,
+            value.trim(),
+          ];
+          break;
+        case 'equipment':
+          updatedPreferences.equipmentAvailable = [
+            ...updatedPreferences.equipmentAvailable,
+            value.trim(),
+          ];
+          break;
+        case 'mealPreference':
+          updatedPreferences.mealPreferences = [
+            ...updatedPreferences.mealPreferences,
+            value.trim(),
+          ];
+          break;
+        case 'allergy':
+          updatedPreferences.allergies = [
+            ...updatedPreferences.allergies,
+            value.trim(),
+          ];
+          break;
+        case 'supplement':
+          updatedPreferences.supplementPreferences = [
+            ...updatedPreferences.supplementPreferences,
+            value.trim(),
+          ];
+          break;
+      }
+      setAiPreferences(updatedPreferences);
+      onUpdate({ aiTrainer: updatedPreferences });
+      setNewItem({ ...newItem, [type]: '' });
+    }
+  };
+
+  const removeItem = (type: keyof typeof newItem, index: number) => {
+    const updatedPreferences = { ...aiPreferences };
+    switch (type) {
+      case 'focusArea':
+        updatedPreferences.focusAreas = updatedPreferences.focusAreas.filter(
+          (_, i) => i !== index
+        );
+        break;
+      case 'injury':
+        updatedPreferences.injuryHistory =
+          updatedPreferences.injuryHistory.filter((_, i) => i !== index);
+        break;
+      case 'equipment':
+        updatedPreferences.equipmentAvailable =
+          updatedPreferences.equipmentAvailable.filter((_, i) => i !== index);
+        break;
+      case 'mealPreference':
+        updatedPreferences.mealPreferences =
+          updatedPreferences.mealPreferences.filter((_, i) => i !== index);
+        break;
+      case 'allergy':
+        updatedPreferences.allergies = updatedPreferences.allergies.filter(
+          (_, i) => i !== index
+        );
+        break;
+      case 'supplement':
+        updatedPreferences.supplementPreferences =
+          updatedPreferences.supplementPreferences.filter(
+            (_, i) => i !== index
+          );
+        break;
+    }
+    setAiPreferences(updatedPreferences);
+    onUpdate({ aiTrainer: updatedPreferences });
+  };
+
+  const updatePreference = (key: keyof typeof aiPreferences, value: any) => {
+    const updatedPreferences = { ...aiPreferences, [key]: value };
+    setAiPreferences(updatedPreferences);
+    onUpdate({ aiTrainer: updatedPreferences });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Enable/Disable AI Trainer */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          AI Trainer Settings
+        </h3>
+        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center space-x-3">
+            <Bot className="h-6 w-6 text-blue-600" />
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">
+                Enable AI Trainer
+              </h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Get personalized workout and nutrition advice from our AI
+                trainer
+              </p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={aiPreferences.enabled}
+              onChange={(e) => updatePreference('enabled', e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+      </div>
+
+      {aiPreferences.enabled && (
+        <>
+          {/* Coaching Style */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Coaching Preferences
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Coaching Style
+                </label>
+                <select
+                  value={aiPreferences.coachingStyle}
+                  onChange={(e) =>
+                    updatePreference('coachingStyle', e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="motivational">Motivational</option>
+                  <option value="strict">Strict</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="technical">Technical</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Communication Frequency
+                </label>
+                <select
+                  value={aiPreferences.communicationFrequency}
+                  onChange={(e) =>
+                    updatePreference('communicationFrequency', e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="on-demand">On-Demand</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Focus Areas */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Focus Areas
+            </h3>
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <select
+                  value={newItem.focusArea}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, focusArea: e.target.value })
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select focus area</option>
+                  {focusAreaOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => addItem('focusArea', newItem.focusArea)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {aiPreferences.focusAreas.map((area, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                  >
+                    {area}
+                    <button
+                      onClick={() => removeItem('focusArea', index)}
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Equipment Available */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Available Equipment
+            </h3>
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <select
+                  value={newItem.equipment}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, equipment: e.target.value })
+                  }
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select equipment</option>
+                  {equipmentOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => addItem('equipment', newItem.equipment)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {aiPreferences.equipmentAvailable.map((equipment, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                  >
+                    {equipment}
+                    <button
+                      onClick={() => removeItem('equipment', index)}
+                      className="ml-2 text-green-600 hover:text-green-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Workout Preferences */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Workout Preferences
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Workout Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={aiPreferences.workoutDurationPreference}
+                  onChange={(e) =>
+                    updatePreference(
+                      'workoutDurationPreference',
+                      parseInt(e.target.value) || 60
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Workout Days per Week
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="7"
+                  value={aiPreferences.workoutDaysPerWeek}
+                  onChange={(e) =>
+                    updatePreference(
+                      'workoutDaysPerWeek',
+                      parseInt(e.target.value) || 3
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Nutrition Preferences */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Nutrition Preferences
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Meal Preferences
+                </label>
+                <div className="flex space-x-2">
+                  <select
+                    value={newItem.mealPreference}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, mealPreference: e.target.value })
+                    }
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select meal preference</option>
+                    {mealPreferenceOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() =>
+                      addItem('mealPreference', newItem.mealPreference)
+                    }
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {aiPreferences.mealPreferences.map((preference, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200"
+                    >
+                      {preference}
+                      <button
+                        onClick={() => removeItem('mealPreference', index)}
+                        className="ml-2 text-orange-600 hover:text-orange-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Allergies
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={newItem.allergy}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, allergy: e.target.value })
+                    }
+                    placeholder="Enter allergy"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    onKeyPress={(e) =>
+                      e.key === 'Enter' && addItem('allergy', newItem.allergy)
+                    }
+                  />
+                  <button
+                    onClick={() => addItem('allergy', newItem.allergy)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {aiPreferences.allergies.map((allergy, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
+                    >
+                      {allergy}
+                      <button
+                        onClick={() => removeItem('allergy', index)}
+                        className="ml-2 text-red-600 hover:text-red-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Supplement Preferences
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={newItem.supplement}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, supplement: e.target.value })
+                    }
+                    placeholder="Enter supplement"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    onKeyPress={(e) =>
+                      e.key === 'Enter' &&
+                      addItem('supplement', newItem.supplement)
+                    }
+                  />
+                  <button
+                    onClick={() => addItem('supplement', newItem.supplement)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {aiPreferences.supplementPreferences.map(
+                    (supplement, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200"
+                      >
+                        {supplement}
+                        <button
+                          onClick={() => removeItem('supplement', index)}
+                          className="ml-2 text-purple-600 hover:text-purple-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Injury History */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Injury History
+            </h3>
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={newItem.injury}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, injury: e.target.value })
+                  }
+                  placeholder="Enter injury or limitation"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onKeyPress={(e) =>
+                    e.key === 'Enter' && addItem('injury', newItem.injury)
+                  }
+                />
+                <button
+                  onClick={() => addItem('injury', newItem.injury)}
+                  className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {aiPreferences.injuryHistory.map((injury, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
+                  >
+                    {injury}
+                    <button
+                      onClick={() => removeItem('injury', index)}
+                      className="ml-2 text-yellow-600 hover:text-yellow-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

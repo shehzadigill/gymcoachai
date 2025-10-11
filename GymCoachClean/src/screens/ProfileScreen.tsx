@@ -19,9 +19,9 @@ import apiClient from '../services/api';
 export default function ProfileScreen() {
   const {user, userProfile, signOut, updateProfile, isLoading, refreshUser} =
     useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'goals' | 'settings'>(
-    'profile',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'profile' | 'goals' | 'ai-trainer' | 'settings'
+  >('profile');
   const [editing, setEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: '',
@@ -387,6 +387,17 @@ export default function ProfileScreen() {
               activeTab === 'goals' && styles.activeTabText,
             ]}>
             Goals
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'ai-trainer' && styles.activeTab]}
+          onPress={() => setActiveTab('ai-trainer')}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'ai-trainer' && styles.activeTabText,
+            ]}>
+            AI Trainer
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -770,6 +781,9 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* AI Trainer Tab Content */}
+        {activeTab === 'ai-trainer' && <AITrainerTabContent />}
+
         {/* Settings Tab Content */}
         {activeTab === 'settings' && (
           <Card style={styles.sectionCard}>
@@ -862,6 +876,489 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+// AI Trainer Tab Content Component
+function AITrainerTabContent() {
+  const [aiPreferences, setAiPreferences] = useState({
+    enabled: false,
+    coachingStyle: 'balanced' as
+      | 'motivational'
+      | 'strict'
+      | 'balanced'
+      | 'technical',
+    communicationFrequency: 'on-demand' as 'daily' | 'weekly' | 'on-demand',
+    focusAreas: [] as string[],
+    injuryHistory: [] as string[],
+    equipmentAvailable: [] as string[],
+    workoutDurationPreference: 60,
+    workoutDaysPerWeek: 3,
+    mealPreferences: [] as string[],
+    allergies: [] as string[],
+    supplementPreferences: [] as string[],
+  });
+
+  const [newItem, setNewItem] = useState({
+    focusArea: '',
+    injury: '',
+    equipment: '',
+    mealPreference: '',
+    allergy: '',
+    supplement: '',
+  });
+
+  const focusAreaOptions = [
+    'Strength Training',
+    'Cardio',
+    'Flexibility',
+    'Nutrition',
+    'Weight Loss',
+    'Muscle Gain',
+    'Endurance',
+    'Rehabilitation',
+  ];
+
+  const equipmentOptions = [
+    'Dumbbells',
+    'Barbell',
+    'Resistance Bands',
+    'Kettlebells',
+    'Pull-up Bar',
+    'Gym Machines',
+    'Bodyweight',
+    'Cardio Equipment',
+    'Yoga Mat',
+    'Medicine Ball',
+  ];
+
+  const mealPreferenceOptions = [
+    'Vegetarian',
+    'Vegan',
+    'Keto',
+    'Paleo',
+    'Mediterranean',
+    'Low-Carb',
+    'High-Protein',
+    'No Restrictions',
+  ];
+
+  const addItem = (type: keyof typeof newItem, value: string) => {
+    if (value.trim()) {
+      const updatedPreferences = {...aiPreferences};
+      switch (type) {
+        case 'focusArea':
+          updatedPreferences.focusAreas = [
+            ...updatedPreferences.focusAreas,
+            value.trim(),
+          ];
+          break;
+        case 'injury':
+          updatedPreferences.injuryHistory = [
+            ...updatedPreferences.injuryHistory,
+            value.trim(),
+          ];
+          break;
+        case 'equipment':
+          updatedPreferences.equipmentAvailable = [
+            ...updatedPreferences.equipmentAvailable,
+            value.trim(),
+          ];
+          break;
+        case 'mealPreference':
+          updatedPreferences.mealPreferences = [
+            ...updatedPreferences.mealPreferences,
+            value.trim(),
+          ];
+          break;
+        case 'allergy':
+          updatedPreferences.allergies = [
+            ...updatedPreferences.allergies,
+            value.trim(),
+          ];
+          break;
+        case 'supplement':
+          updatedPreferences.supplementPreferences = [
+            ...updatedPreferences.supplementPreferences,
+            value.trim(),
+          ];
+          break;
+      }
+      setAiPreferences(updatedPreferences);
+      setNewItem({...newItem, [type]: ''});
+    }
+  };
+
+  const removeItem = (type: keyof typeof newItem, index: number) => {
+    const updatedPreferences = {...aiPreferences};
+    switch (type) {
+      case 'focusArea':
+        updatedPreferences.focusAreas = updatedPreferences.focusAreas.filter(
+          (_, i) => i !== index,
+        );
+        break;
+      case 'injury':
+        updatedPreferences.injuryHistory =
+          updatedPreferences.injuryHistory.filter((_, i) => i !== index);
+        break;
+      case 'equipment':
+        updatedPreferences.equipmentAvailable =
+          updatedPreferences.equipmentAvailable.filter((_, i) => i !== index);
+        break;
+      case 'mealPreference':
+        updatedPreferences.mealPreferences =
+          updatedPreferences.mealPreferences.filter((_, i) => i !== index);
+        break;
+      case 'allergy':
+        updatedPreferences.allergies = updatedPreferences.allergies.filter(
+          (_, i) => i !== index,
+        );
+        break;
+      case 'supplement':
+        updatedPreferences.supplementPreferences =
+          updatedPreferences.supplementPreferences.filter(
+            (_, i) => i !== index,
+          );
+        break;
+    }
+    setAiPreferences(updatedPreferences);
+  };
+
+  const updatePreference = (key: keyof typeof aiPreferences, value: any) => {
+    const updatedPreferences = {...aiPreferences, [key]: value};
+    setAiPreferences(updatedPreferences);
+  };
+
+  return (
+    <>
+      {/* Enable/Disable AI Trainer */}
+      <Card style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>AI Trainer Settings</Text>
+
+        <View style={styles.settingItem}>
+          <View style={styles.settingInfo}>
+            <Text style={styles.settingName}>Enable AI Trainer</Text>
+            <Text style={styles.settingDescription}>
+              Get personalized workout and nutrition advice from our AI trainer
+            </Text>
+          </View>
+          <Switch
+            value={aiPreferences.enabled}
+            onValueChange={value => updatePreference('enabled', value)}
+          />
+        </View>
+      </Card>
+
+      {aiPreferences.enabled && (
+        <>
+          {/* Coaching Preferences */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Coaching Preferences</Text>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Coaching Style</Text>
+              <View style={styles.pickerContainer}>
+                {['motivational', 'strict', 'balanced', 'technical'].map(
+                  style => (
+                    <TouchableOpacity
+                      key={style}
+                      style={[
+                        styles.pickerOption,
+                        aiPreferences.coachingStyle === style &&
+                          styles.selectedPickerOption,
+                      ]}
+                      onPress={() => updatePreference('coachingStyle', style)}>
+                      <Text
+                        style={[
+                          styles.pickerOptionText,
+                          aiPreferences.coachingStyle === style &&
+                            styles.selectedPickerOptionText,
+                        ]}>
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ),
+                )}
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Communication Frequency</Text>
+              <View style={styles.pickerContainer}>
+                {['daily', 'weekly', 'on-demand'].map(frequency => (
+                  <TouchableOpacity
+                    key={frequency}
+                    style={[
+                      styles.pickerOption,
+                      aiPreferences.communicationFrequency === frequency &&
+                        styles.selectedPickerOption,
+                    ]}
+                    onPress={() =>
+                      updatePreference('communicationFrequency', frequency)
+                    }>
+                    <Text
+                      style={[
+                        styles.pickerOptionText,
+                        aiPreferences.communicationFrequency === frequency &&
+                          styles.selectedPickerOptionText,
+                      ]}>
+                      {frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </Card>
+
+          {/* Focus Areas */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Focus Areas</Text>
+
+            <View style={styles.addItemContainer}>
+              <View style={styles.pickerContainer}>
+                {focusAreaOptions.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.tagOption,
+                      aiPreferences.focusAreas.includes(option) &&
+                        styles.selectedTagOption,
+                    ]}
+                    onPress={() => {
+                      if (aiPreferences.focusAreas.includes(option)) {
+                        removeItem(
+                          'focusArea',
+                          aiPreferences.focusAreas.indexOf(option),
+                        );
+                      } else {
+                        addItem('focusArea', option);
+                      }
+                    }}>
+                    <Text
+                      style={[
+                        styles.tagOptionText,
+                        aiPreferences.focusAreas.includes(option) &&
+                          styles.selectedTagOptionText,
+                      ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </Card>
+
+          {/* Equipment Available */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Available Equipment</Text>
+
+            <View style={styles.addItemContainer}>
+              <View style={styles.pickerContainer}>
+                {equipmentOptions.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.tagOption,
+                      aiPreferences.equipmentAvailable.includes(option) &&
+                        styles.selectedTagOption,
+                    ]}
+                    onPress={() => {
+                      if (aiPreferences.equipmentAvailable.includes(option)) {
+                        removeItem(
+                          'equipment',
+                          aiPreferences.equipmentAvailable.indexOf(option),
+                        );
+                      } else {
+                        addItem('equipment', option);
+                      }
+                    }}>
+                    <Text
+                      style={[
+                        styles.tagOptionText,
+                        aiPreferences.equipmentAvailable.includes(option) &&
+                          styles.selectedTagOptionText,
+                      ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </Card>
+
+          {/* Workout Preferences */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Workout Preferences</Text>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Workout Duration (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                value={aiPreferences.workoutDurationPreference.toString()}
+                onChangeText={text =>
+                  updatePreference(
+                    'workoutDurationPreference',
+                    parseInt(text) || 60,
+                  )
+                }
+                keyboardType="numeric"
+                placeholder="60"
+              />
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Workout Days per Week</Text>
+              <TextInput
+                style={styles.input}
+                value={aiPreferences.workoutDaysPerWeek.toString()}
+                onChangeText={text =>
+                  updatePreference('workoutDaysPerWeek', parseInt(text) || 3)
+                }
+                keyboardType="numeric"
+                placeholder="3"
+              />
+            </View>
+          </Card>
+
+          {/* Nutrition Preferences */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Nutrition Preferences</Text>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Meal Preferences</Text>
+              <View style={styles.pickerContainer}>
+                {mealPreferenceOptions.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.tagOption,
+                      aiPreferences.mealPreferences.includes(option) &&
+                        styles.selectedTagOption,
+                    ]}
+                    onPress={() => {
+                      if (aiPreferences.mealPreferences.includes(option)) {
+                        removeItem(
+                          'mealPreference',
+                          aiPreferences.mealPreferences.indexOf(option),
+                        );
+                      } else {
+                        addItem('mealPreference', option);
+                      }
+                    }}>
+                    <Text
+                      style={[
+                        styles.tagOptionText,
+                        aiPreferences.mealPreferences.includes(option) &&
+                          styles.selectedTagOptionText,
+                      ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Allergies</Text>
+              <View style={styles.addItemRow}>
+                <TextInput
+                  style={[styles.input, styles.flexInput]}
+                  value={newItem.allergy}
+                  onChangeText={text => setNewItem({...newItem, allergy: text})}
+                  placeholder="Enter allergy"
+                  onSubmitEditing={() => addItem('allergy', newItem.allergy)}
+                />
+                <TouchableOpacity
+                  style={styles.addItemButton}
+                  onPress={() => addItem('allergy', newItem.allergy)}>
+                  <Text style={styles.addItemButtonText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.tagsContainer}>
+                {aiPreferences.allergies.map((allergy, index) => (
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>{allergy}</Text>
+                    <TouchableOpacity
+                      onPress={() => removeItem('allergy', index)}
+                      style={styles.removeTagButton}>
+                      <Text style={styles.removeTagButtonText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Supplement Preferences</Text>
+              <View style={styles.addItemRow}>
+                <TextInput
+                  style={[styles.input, styles.flexInput]}
+                  value={newItem.supplement}
+                  onChangeText={text =>
+                    setNewItem({...newItem, supplement: text})
+                  }
+                  placeholder="Enter supplement"
+                  onSubmitEditing={() =>
+                    addItem('supplement', newItem.supplement)
+                  }
+                />
+                <TouchableOpacity
+                  style={styles.addItemButton}
+                  onPress={() => addItem('supplement', newItem.supplement)}>
+                  <Text style={styles.addItemButtonText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.tagsContainer}>
+                {aiPreferences.supplementPreferences.map(
+                  (supplement, index) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>{supplement}</Text>
+                      <TouchableOpacity
+                        onPress={() => removeItem('supplement', index)}
+                        style={styles.removeTagButton}>
+                        <Text style={styles.removeTagButtonText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ),
+                )}
+              </View>
+            </View>
+          </Card>
+
+          {/* Injury History */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Injury History</Text>
+
+            <View style={styles.addItemRow}>
+              <TextInput
+                style={[styles.input, styles.flexInput]}
+                value={newItem.injury}
+                onChangeText={text => setNewItem({...newItem, injury: text})}
+                placeholder="Enter injury or limitation"
+                onSubmitEditing={() => addItem('injury', newItem.injury)}
+              />
+              <TouchableOpacity
+                style={styles.addItemButton}
+                onPress={() => addItem('injury', newItem.injury)}>
+                <Text style={styles.addItemButtonText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.tagsContainer}>
+              {aiPreferences.injuryHistory.map((injury, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{injury}</Text>
+                  <TouchableOpacity
+                    onPress={() => removeItem('injury', index)}
+                    style={styles.removeTagButton}>
+                    <Text style={styles.removeTagButtonText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </Card>
+        </>
+      )}
+    </>
   );
 }
 
@@ -1268,5 +1765,96 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  // AI Trainer specific styles
+  pickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pickerOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#ffffff',
+  },
+  selectedPickerOption: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  selectedPickerOptionText: {
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  tagOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#ffffff',
+  },
+  selectedTagOption: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  tagOptionText: {
+    fontSize: 12,
+    color: '#374151',
+  },
+  selectedTagOptionText: {
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  addItemContainer: {
+    marginTop: 8,
+  },
+  addItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  flexInput: {
+    flex: 1,
+  },
+  addItemButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  addItemButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e5e7eb',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#374151',
+  },
+  removeTagButton: {
+    marginLeft: 4,
   },
 });

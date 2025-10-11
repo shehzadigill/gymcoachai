@@ -35,6 +35,21 @@ export interface UserPreferences {
   notifications?: NotificationSettings;
   privacy?: PrivacySettings;
   dailyGoals?: DailyGoals;
+  aiTrainer?: AITrainerPreferences;
+}
+
+export interface AITrainerPreferences {
+  enabled: boolean;
+  coachingStyle: 'motivational' | 'strict' | 'balanced' | 'technical';
+  communicationFrequency: 'daily' | 'weekly' | 'on-demand';
+  focusAreas: string[];
+  injuryHistory: string[];
+  equipmentAvailable: string[];
+  workoutDurationPreference: number; // minutes
+  workoutDaysPerWeek: number;
+  mealPreferences: string[];
+  allergies: string[];
+  supplementPreferences: string[];
 }
 
 export interface NotificationSettings {
