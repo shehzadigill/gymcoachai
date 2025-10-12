@@ -38,6 +38,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -111,12 +112,18 @@ export default function DashboardLayout({
         </div>
 
         {/* Desktop sidebar */}
-        <div className="hidden lg:flex lg:flex-shrink-0 lg:w-64">
+        <div
+          className={`hidden lg:flex lg:flex-shrink-0 transition-all duration-300 ${desktopSidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
+        >
           <SidebarContent
             navigation={navigation}
             pathname={pathname}
             user={user}
             onSignOut={handleSignOut}
+            collapsed={desktopSidebarCollapsed}
+            onToggleCollapse={() =>
+              setDesktopSidebarCollapsed(!desktopSidebarCollapsed)
+            }
           />
         </div>
 
@@ -173,6 +180,8 @@ function SidebarContent({
   pathname,
   user,
   onSignOut,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   navigation: Array<{
     name: string;
@@ -183,6 +192,8 @@ function SidebarContent({
   pathname: string;
   user: any;
   onSignOut: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const [expandedItems, setExpandedItems] = useState<{
     [key: string]: boolean;
@@ -196,15 +207,30 @@ function SidebarContent({
   };
 
   return (
-    <div className="flex flex-col h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div
+      className={`flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}
+    >
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-        <div className="flex items-center flex-shrink-0 px-4">
+        <div
+          className={`flex items-center flex-shrink-0 px-4 ${collapsed ? 'justify-center' : ''}`}
+        >
           <div className="flex items-center">
             <Dumbbell className="h-8 w-8 text-blue-600" />
-            <span className="ml-2 text-xl font-semibold text-gray-900 dark:text-white">
-              GymCoach
-            </span>
+            {!collapsed && (
+              <span className="ml-2 text-xl font-semibold text-gray-900 dark:text-white">
+                GymCoach
+              </span>
+            )}
           </div>
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className={`ml-auto p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${collapsed ? 'mx-auto' : ''}`}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            </button>
+          )}
         </div>
         <nav className="mt-5 flex-1 px-2 space-y-1">
           {navigation.map((item) => {
@@ -219,30 +245,32 @@ function SidebarContent({
                 {item.children ? (
                   <>
                     <button
-                      onClick={() => toggleExpanded(item.name)}
-                      className={`w-full group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md ${
+                      onClick={() => !collapsed && toggleExpanded(item.name)}
+                      className={`w-full group flex items-center ${collapsed ? 'justify-center px-2' : 'justify-between px-2'} py-2 text-sm font-medium rounded-md ${
                         isActive || isParentActive
                           ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
                           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                       }`}
+                      title={collapsed ? item.name : undefined}
                     >
                       <div className="flex items-center">
                         <item.icon
-                          className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                          className={`${collapsed ? 'h-5 w-5' : 'mr-3 flex-shrink-0 h-5 w-5'} ${
                             isActive || isParentActive
                               ? 'text-blue-500 dark:text-blue-400'
                               : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
                           }`}
                         />
-                        {item.name}
+                        {!collapsed && item.name}
                       </div>
-                      {shouldExpand ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
+                      {!collapsed &&
+                        (shouldExpand ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        ))}
                     </button>
-                    {shouldExpand && (
+                    {!collapsed && shouldExpand && (
                       <div className="ml-6 mt-1 space-y-1">
                         {item.children.map((child) => {
                           const isChildActive = pathname === child.href;
@@ -273,20 +301,21 @@ function SidebarContent({
                 ) : (
                   <a
                     href={item.href}
-                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                    className={`group flex items-center ${collapsed ? 'justify-center px-2' : 'px-2'} py-2 text-sm font-medium rounded-md ${
                       isActive
                         ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     }`}
+                    title={collapsed ? item.name : undefined}
                   >
                     <item.icon
-                      className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                      className={`${collapsed ? 'h-5 w-5' : 'mr-3 flex-shrink-0 h-5 w-5'} ${
                         isActive
                           ? 'text-blue-500 dark:text-blue-400'
                           : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
                       }`}
                     />
-                    {item.name}
+                    {!collapsed && item.name}
                   </a>
                 )}
               </div>
@@ -296,23 +325,40 @@ function SidebarContent({
       </div>
       <div className="flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="flex-shrink-0 w-full group block">
-          <div className="flex items-center">
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {user?.name}
-              </p>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
-                {user?.email}
-              </p>
+          {!collapsed ? (
+            <>
+              <div className="flex items-center">
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {user?.name}
+                  </p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
+                    {user?.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="mt-2 w-full flex items-center px-2 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-md"
+              >
+                <LogOut className="mr-3 flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
+                Sign out
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center space-y-2">
+              <div className="h-8 w-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </div>
+              <button
+                onClick={onSignOut}
+                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-md"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
-          </div>
-          <button
-            onClick={onSignOut}
-            className="mt-2 w-full flex items-center px-2 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-md"
-          >
-            <LogOut className="mr-3 flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
-            Sign out
-          </button>
+          )}
         </div>
       </div>
     </div>

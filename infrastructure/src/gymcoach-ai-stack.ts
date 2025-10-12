@@ -670,7 +670,10 @@ export class GymCoachAIStack extends cdk.Stack {
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
           '/api/ai/*': {
-            origin: new origins.HttpOrigin(aiDomain),
+            origin: new origins.HttpOrigin(aiDomain, {
+              connectionTimeout: cdk.Duration.seconds(10),
+              connectionAttempts: 3,
+            }),
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,

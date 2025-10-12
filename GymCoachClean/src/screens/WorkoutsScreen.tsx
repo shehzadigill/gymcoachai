@@ -16,8 +16,9 @@ import {
   Image,
 } from 'react-native';
 import {Card, LoadingSpinner, Button} from '../components/common/UI';
+import {Icon} from '../components/common/Icon';
+import {TabBar} from '../components/common/TabBar';
 import apiClient from '../services/api';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 
 interface WorkoutPlan {
@@ -100,6 +101,15 @@ export default function WorkoutsScreen({navigation}: any) {
   const [analytics, setAnalytics] = useState<any>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  // Tab configuration
+  const tabs = [
+    {id: 'sessions', title: 'Sessions', icon: 'sessions'},
+    {id: 'plans', title: 'Plans', icon: 'plans'},
+    {id: 'templates', title: 'Templates', icon: 'templates'},
+    {id: 'exercises', title: 'Exercises', icon: 'exercises'},
+    {id: 'analytics', title: 'Analytics', icon: 'analytics'},
+  ];
 
   useEffect(() => {
     loadWorkouts();
@@ -464,30 +474,6 @@ export default function WorkoutsScreen({navigation}: any) {
 
     return matchesSearch && matchesDifficulty;
   });
-
-  const renderTabButton = (
-    tab: 'sessions' | 'plans' | 'exercises' | 'templates' | 'analytics',
-    title: string,
-    icon: string,
-  ) => (
-    <TouchableOpacity
-      style={[styles.tabButton, activeView === tab && styles.activeTabButton]}
-      onPress={() => setActiveView(tab)}>
-      <Icon
-        name={icon}
-        size={20}
-        color={activeView === tab ? '#3b82f6' : '#6b7280'}
-        style={styles.tabIcon}
-      />
-      <Text
-        style={[
-          styles.tabButtonText,
-          activeView === tab && styles.activeTabButtonText,
-        ]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
 
   if (loading && !workouts.length && !workoutPlans.length) {
     return (
@@ -1161,15 +1147,11 @@ export default function WorkoutsScreen({navigation}: any) {
         </View>
 
         {/* Enhanced Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.tabContainer}>
-            {renderTabButton('sessions', 'Sessions', 'fitness-center')}
-            {renderTabButton('plans', 'Plans', 'assignment')}
-            {renderTabButton('templates', 'Templates', 'content-copy')}
-            {renderTabButton('exercises', 'Exercises', 'directions-run')}
-            {renderTabButton('analytics', 'Analytics', 'trending-up')}
-          </View>
-        </ScrollView>
+        <TabBar
+          tabs={tabs}
+          activeTab={activeView}
+          onTabPress={tabId => setActiveView(tabId as any)}
+        />
 
         {/* Content based on active view */}
         {activeView === 'sessions' && renderSessionsView()}
@@ -1612,23 +1594,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   // Enhanced Tab styles
+  tabScrollView: {
+    marginBottom: 20,
+  },
+  tabScrollContainer: {
+    paddingHorizontal: 20,
+  },
   tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
     backgroundColor: '#f3f4f6',
     borderRadius: 12,
-    marginHorizontal: 20,
     padding: 4,
-    minWidth: '100%',
+    minWidth: 400, // Ensure enough width for all tabs
   },
   tabButton: {
-    flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
     borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'center',
+    minWidth: 80, // Minimum width for each tab
+    marginHorizontal: 2,
   },
   activeTabButton: {
     backgroundColor: '#ffffff',
@@ -1642,12 +1629,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   tabIcon: {
-    marginRight: 4,
+    marginRight: 6,
   },
   tabButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: '#6b7280',
+    flexShrink: 1,
   },
   activeTabButtonText: {
     color: '#3b82f6',

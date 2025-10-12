@@ -110,7 +110,8 @@ class ConversationService:
                     'tokens': item.get('tokens', 0),
                     'model': item.get('model', ''),
                     'createdAt': item.get('createdAt', ''),
-                    'timestamp': item.get('SK', '').replace('CONVERSATION#', '')
+                    'timestamp': item.get('SK', '').replace('CONVERSATION#', ''),
+                    'title': item.get('title', '')  # Include title field
                 })
             
             # Sort by timestamp (oldest first for context)
@@ -146,25 +147,46 @@ class ConversationService:
                 Limit=limit * 2  # Get more to account for multiple messages per conversation
             )
             
-            conversations = {}
+            # First pass: collect all messages by conversation
+            conversation_messages = {}
             for item in response.get('Items', []):
                 conv_id = item.get('conversationId', '')
-                if conv_id not in conversations:
-                    conversations[conv_id] = {
-                        'conversationId': conv_id,
-                        'firstMessage': item.get('content', ''),
-                        'lastMessageAt': item.get('createdAt', ''),
-                        'messageCount': 0,
-                        'totalTokens': 0
-                    }
+                if conv_id not in conversation_messages:
+                    conversation_messages[conv_id] = []
+                conversation_messages[conv_id].append(item)
+            
+            # Second pass: process each conversation
+            conversations = {}
+            for conv_id, messages in conversation_messages.items():
+                # Sort messages by timestamp (oldest first)
+                messages.sort(key=lambda x: x.get('createdAt', ''))
                 
-                conversations[conv_id]['messageCount'] += 1
-                conversations[conv_id]['totalTokens'] += item.get('tokens', 0)
+                # Find first user message for title
+                first_user_message = ''
+                conversation_title = None
+                for msg in messages:
+                    if msg.get('role') == 'user':
+                        first_user_message = msg.get('content', '')
+                        # Check if this message has a custom title
+                        if msg.get('title'):
+                            conversation_title = msg.get('title')
+                            logger.info(f"Found custom title for conversation {conv_id}: {conversation_title}")
+                        break
                 
-                # Update last message time if this is more recent
-                if item.get('createdAt', '') > conversations[conv_id]['lastMessageAt']:
-                    conversations[conv_id]['lastMessageAt'] = item.get('createdAt', '')
-                    conversations[conv_id]['firstMessage'] = item.get('content', '')
+                # Get last message time
+                last_message_time = max(msg.get('createdAt', '') for msg in messages)
+                
+                # Calculate totals
+                total_tokens = sum(msg.get('tokens', 0) for msg in messages)
+                
+                conversations[conv_id] = {
+                    'conversationId': conv_id,
+                    'firstMessage': first_user_message,
+                    'lastMessageAt': last_message_time,
+                    'messageCount': len(messages),
+                    'totalTokens': total_tokens,
+                    'title': conversation_title  # Use custom title if available
+                }
             
             # Convert to list and sort by last message time
             conversation_list = list(conversations.values())
@@ -175,6 +197,58 @@ class ConversationService:
         except ClientError as e:
             logger.error(f"Error getting conversations for user {user_id}: {e}")
             return []
+    
+    async def update_conversation_title(self, user_id: str, conversation_id: str, title: str) -> bool:
+        """
+        Update conversation title
+        
+        Args:
+            user_id: User ID
+            conversation_id: Conversation ID
+            title: New title for the conversation
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Find all messages in this conversation
+            pk = f"USER#{user_id}"
+            
+            response = self.table.query(
+                KeyConditionExpression='PK = :pk',
+                FilterExpression='conversationId = :conv_id',
+                ExpressionAttributeValues={
+                    ':pk': pk,
+                    ':conv_id': conversation_id
+                }
+            )
+            
+            if not response['Items']:
+                logger.warning(f"No conversation found with ID {conversation_id} for user {user_id}")
+                return False
+            
+            # Update the first message with the title
+            first_message = min(response['Items'], key=lambda x: x.get('createdAt', ''))
+            
+            logger.info(f"Updating title for message PK: {first_message['PK']}, SK: {first_message['SK']}")
+            
+            self.table.update_item(
+                Key={
+                    'PK': first_message['PK'],
+                    'SK': first_message['SK']
+                },
+                UpdateExpression='SET title = :title',
+                ExpressionAttributeValues={
+                    ':title': title
+                }
+            )
+            
+            logger.info(f"Updated conversation title for user {user_id}, conversation {conversation_id}")
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Error updating conversation title for user {user_id}: {e}")
+            return False
     
     async def delete_conversation(self, user_id: str, conversation_id: str) -> bool:
         """

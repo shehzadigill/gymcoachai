@@ -949,30 +949,37 @@ export const api = {
     return res.body || res;
   },
 
-  // AI Trainer endpoints
+  // AI Trainer endpoints with Lambda URL fallback
   async sendChatMessage(message: string, conversationId?: string) {
-    return apiFetch<any>('/api/ai/chat', {
+    return this.aiFetch('/api/ai/chat', {
       method: 'POST',
       body: JSON.stringify({ message, conversationId }),
     });
   },
 
   async getConversations() {
-    return apiFetch<any[]>('/api/ai/conversations');
+    return this.aiFetch<any[]>('/api/ai/conversations');
   },
 
   async getConversation(conversationId: string) {
-    return apiFetch<any>(`/api/ai/conversations/${conversationId}`);
+    return this.aiFetch<any>(`/api/ai/conversations/${conversationId}`);
   },
 
   async deleteConversation(conversationId: string) {
-    return apiFetch<any>(`/api/ai/conversations/${conversationId}`, {
+    return this.aiFetch<any>(`/api/ai/conversations/${conversationId}`, {
       method: 'DELETE',
     });
   },
 
+  async updateConversationTitle(conversationId: string, title: string) {
+    return this.aiFetch<any>(`/api/ai/conversations/${conversationId}/title`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    });
+  },
+
   async getRateLimit() {
-    return apiFetch<any>('/api/ai/rate-limit');
+    return this.aiFetch<any>('/api/ai/rate-limit');
   },
 
   async generateWorkoutPlan(data: {
@@ -981,7 +988,7 @@ export const api = {
     daysPerWeek: number;
     equipment: string[];
   }) {
-    return apiFetch<any>('/api/ai/workout-plan/generate', {
+    return this.aiFetch<any>('/api/ai/workout-plan/generate', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -991,17 +998,77 @@ export const api = {
     goals: string[];
     dietaryRestrictions: string[];
     duration: number;
+    mealsPerDay?: number;
+    calorieTarget?: number;
   }) {
-    return apiFetch<any>('/api/ai/meal-plan/generate', {
+    return this.aiFetch<any>('/api/ai/meal-plan/generate', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   async analyzeProgress() {
-    return apiFetch<any>('/api/ai/progress/analyze', {
+    return this.aiFetch<any>('/api/ai/progress/analyze', {
       method: 'POST',
       body: JSON.stringify({}),
     });
+  },
+
+  // Helper method for AI endpoints with Lambda URL fallback
+  async aiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const authHeaders = await tokenManager.getAuthHeaders();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...(init.headers || {}),
+    };
+
+    const fetchOptions: RequestInit = {
+      ...init,
+      headers,
+      cache: 'no-store',
+    };
+
+    // Try CloudFront first
+    try {
+      const cloudfrontUrl = `${baseUrl}${path}`;
+      console.log(`AI Request (CloudFront): ${cloudfrontUrl}`, fetchOptions);
+
+      const res = await fetch(cloudfrontUrl, fetchOptions);
+      if (res.ok) {
+        return (await res.json()) as T;
+      }
+
+      // If CloudFront returns timeout error, try Lambda URL
+      if (res.status === 504) {
+        console.log('CloudFront timeout, trying Lambda URL...');
+        throw new Error('CloudFront timeout');
+      }
+
+      const text = await res.text().catch(() => '');
+      throw new Error(text || `Request failed: ${res.status}`);
+    } catch (error) {
+      // Fallback to Lambda URL
+      const lambdaUrl =
+        'https://omk3alczw57uum2gv5ouwbseym0ymyut.lambda-url.eu-north-1.on.aws';
+      const lambdaFetchOptions: RequestInit = {
+        ...fetchOptions,
+        mode: 'cors',
+        credentials: 'omit',
+      };
+
+      console.log(
+        `AI Request (Lambda): ${lambdaUrl}${path}`,
+        lambdaFetchOptions
+      );
+      const res = await fetch(`${lambdaUrl}${path}`, lambdaFetchOptions);
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Request failed: ${res.status}`);
+      }
+
+      return (await res.json()) as T;
+    }
   },
 };

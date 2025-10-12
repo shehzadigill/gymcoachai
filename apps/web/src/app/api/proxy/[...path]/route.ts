@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // API route configuration for static export
 export const dynamic = 'force-static';
 export const revalidate = false;
-export const runtime = 'nodejs';
 
 // Required for static export
 export async function generateStaticParams() {

@@ -21,9 +21,12 @@ export class TokenManager {
   async getValidToken(): Promise<string | null> {
     try {
       const session = await fetchAuthSession();
+      
       // Prefer ID token so backend has profile claims like email
       const idToken = session.tokens?.idToken?.toString();
-      const tokenToUse = idToken || session.tokens?.accessToken?.toString();
+      const accessToken = session.tokens?.accessToken?.toString();
+      const tokenToUse = idToken || accessToken;
+      
 
       if (!tokenToUse) {
         return null;
@@ -36,9 +39,10 @@ export class TokenManager {
         return await this.refreshToken();
       }
 
+      console.log('TokenManager: Valid token found');
       return tokenToUse;
     } catch (error) {
-      console.error('Error getting valid token:', error);
+      console.error('TokenManager: Error getting valid token:', error);
       return null;
     }
   }
@@ -56,11 +60,14 @@ export class TokenManager {
 
   async getAuthHeaders(): Promise<Record<string, string>> {
     const token = await this.getValidToken();
+    console.log('TokenManager: getValidToken returned:', token ? 'token exists' : 'no token');
 
     if (!token) {
+      console.log('TokenManager: No valid token, returning empty headers');
       return {};
     }
 
+    console.log('TokenManager: Returning auth headers with token');
     return {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',

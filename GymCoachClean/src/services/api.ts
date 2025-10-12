@@ -820,33 +820,54 @@ class ApiClient {
     });
   }
 
-  // AI Trainer methods
+  // AI Trainer methods with Lambda URL fallback
   async sendChatMessage(
     message: string,
     conversationId?: string,
   ): Promise<any> {
-    return this.apiFetch<any>('/api/ai/chat', {
+    return this.aiFetch<any>('/api/ai/chat', {
       method: 'POST',
       body: JSON.stringify({message, conversationId}),
     });
   }
 
   async getConversations(): Promise<any[]> {
-    return this.apiFetch<any[]>('/api/ai/conversations');
+    return this.aiFetch<any[]>('/api/ai/conversations');
   }
 
   async getConversation(conversationId: string): Promise<any> {
-    return this.apiFetch<any>(`/api/ai/conversations/${conversationId}`);
+    return this.aiFetch<any>(`/api/ai/conversations/${conversationId}`);
+  }
+
+  async updateConversationTitle(
+    conversationId: string,
+    title: string,
+  ): Promise<any> {
+    console.log('API Client: updateConversationTitle called with:', {
+      conversationId,
+      title,
+    });
+
+    const result = await this.aiFetch<any>(
+      `/api/ai/conversations/${conversationId}/title`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({title}),
+      },
+    );
+
+    console.log('API Client: updateConversationTitle result:', result);
+    return result;
   }
 
   async deleteConversation(conversationId: string): Promise<any> {
-    return this.apiFetch<any>(`/api/ai/conversations/${conversationId}`, {
+    return this.aiFetch<any>(`/api/ai/conversations/${conversationId}`, {
       method: 'DELETE',
     });
   }
 
   async getRateLimit(): Promise<any> {
-    return this.apiFetch<any>('/api/ai/rate-limit');
+    return this.aiFetch<any>('/api/ai/rate-limit');
   }
 
   async generateWorkoutPlan(data: {
@@ -855,7 +876,7 @@ class ApiClient {
     daysPerWeek: number;
     equipment: string[];
   }): Promise<any> {
-    return this.apiFetch<any>('/api/ai/workout-plan/generate', {
+    return this.aiFetch<any>('/api/ai/workout-plan', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -866,17 +887,78 @@ class ApiClient {
     dietaryRestrictions: string[];
     duration: number;
   }): Promise<any> {
-    return this.apiFetch<any>('/api/ai/meal-plan/generate', {
+    return this.aiFetch<any>('/api/ai/meal-plan', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async analyzeProgress(): Promise<any> {
-    return this.apiFetch<any>('/api/ai/progress/analyze', {
+    return this.aiFetch<any>('/api/ai/progress/analyze', {
       method: 'POST',
       body: JSON.stringify({}),
     });
+  }
+
+  // AI-specific fetch method with Lambda URL fallback
+  private async aiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+    console.log('API Client: aiFetch called with path:', path, 'init:', init);
+
+    const authHeaders = await this.getAuthHeaders();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...(init.headers || {}),
+    };
+
+    console.log('API Client: aiFetch headers:', headers);
+
+    const fetchOptions: RequestInit = {
+      ...init,
+      headers,
+    };
+
+    // Try CloudFront first
+    try {
+      const cloudfrontUrl = `${baseUrl}${path}`;
+      console.log(`AI Request (CloudFront): ${cloudfrontUrl}`, fetchOptions);
+
+      const res = await fetch(cloudfrontUrl, fetchOptions);
+      if (res.ok) {
+        return (await res.json()) as T;
+      }
+
+      // If CloudFront returns timeout error, try Lambda URL
+      if (res.status === 504) {
+        console.log('CloudFront timeout, trying Lambda URL...');
+        throw new Error('CloudFront timeout');
+      }
+
+      const text = await res.text().catch(() => '');
+      throw new Error(text || `Request failed: ${res.status}`);
+    } catch (error) {
+      // Fallback to Lambda URL
+      const lambdaUrl =
+        'https://omk3alczw57uum2gv5ouwbseym0ymyut.lambda-url.eu-north-1.on.aws';
+      const lambdaFetchOptions: RequestInit = {
+        ...fetchOptions,
+        mode: 'cors',
+        credentials: 'omit',
+      };
+
+      console.log(
+        `AI Request (Lambda): ${lambdaUrl}${path}`,
+        lambdaFetchOptions,
+      );
+      const res = await fetch(`${lambdaUrl}${path}`, lambdaFetchOptions);
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Request failed: ${res.status}`);
+      }
+
+      return (await res.json()) as T;
+    }
   }
 }
 

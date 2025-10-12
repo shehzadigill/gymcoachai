@@ -213,8 +213,11 @@ class AuthLayer:
             return [group['GroupName'] for group in response.get('Groups', [])]
             
         except ClientError as e:
+            if e.response['Error']['Code'] == 'UserNotFoundException':
+                logger.warning(f"User {user_id} not found in Cognito User Pool, defaulting to 'user' group")
+                return ['user']  # Default to user group if user not found
             logger.error(f"Error getting user groups: {e}")
-            return []
+            return ['user']  # Default to user group on any error
     
     def _get_user_permissions(self, user_id: str) -> list:
         """Get user permissions based on groups"""

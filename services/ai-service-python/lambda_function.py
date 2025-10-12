@@ -165,6 +165,12 @@ def lambda_handler(event, context):
             else:
                 return create_error_response(404, 'Endpoint not found')
         
+        elif http_method == 'PUT':
+            if '/conversations' in path and '/title' in path:
+                return asyncio.run(handle_update_conversation_title(user_id, path, body))
+            else:
+                return create_error_response(404, 'Endpoint not found')
+        
         elif http_method == 'DELETE':
             if '/conversations' in path:
                 return asyncio.run(handle_delete_conversation(user_id, path))
@@ -342,12 +348,12 @@ Format the response as a structured workout plan with weekly breakdowns."""
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({
+            'body': json.dumps(convert_decimals({
                 'planId': plan_id,
                 'plan': bedrock_result['response'],
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'] - 1
-            })
+            }))
         }
         
     except Exception as e:
@@ -410,12 +416,12 @@ Format the response as a structured meal plan with daily breakdowns, recipes, an
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({
+            'body': json.dumps(convert_decimals({
                 'planId': plan_id,
                 'plan': bedrock_result['response'],
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'] - 1
-            })
+            }))
         }
         
     except Exception as e:
@@ -606,10 +612,10 @@ async def handle_get_conversations(user_id: str, path: str) -> Dict[str, Any]:
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({
+                'body': json.dumps(convert_decimals({
                     'conversationId': conversation_id,
                     'messages': messages
-                })
+                }))
             }
         else:
             # Get all conversations
@@ -629,6 +635,48 @@ async def handle_get_conversations(user_id: str, path: str) -> Dict[str, Any]:
         logger.error(f"Error in handle_get_conversations: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return create_error_response(500, 'Failed to get conversations')
+
+async def handle_update_conversation_title(user_id: str, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle updating conversation title"""
+    try:
+        logger.info(f"Updating conversation title for user: {user_id}, path: {path}, body: {body}")
+        
+        # Extract conversation ID from path
+        conversation_id = path.split('/conversations/')[-1].split('/')[0]  # Get conversation ID before /title
+        title = body.get('title', '').strip()
+        
+        logger.info(f"Extracted conversation_id: {conversation_id}, title: {title}")
+        
+        if not conversation_id:
+            return create_error_response(400, 'Conversation ID is required')
+        
+        if not title:
+            return create_error_response(400, 'Title is required')
+        
+        if len(title) > 100:
+            return create_error_response(400, 'Title too long (max 100 characters)')
+        
+        # Update conversation title in DynamoDB
+        success = await conversation_service.update_conversation_title(user_id, conversation_id, title)
+        
+        if not success:
+            return create_error_response(500, 'Failed to update conversation title')
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'success': True,
+                'message': 'Conversation title updated successfully'
+            })
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in handle_update_conversation_title: {e}")
+        return create_error_response(500, 'Failed to update conversation title')
 
 async def handle_delete_conversation(user_id: str, path: str) -> Dict[str, Any]:
     """Handle delete conversation requests"""

@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { api } from '../../..//lib/api-client';
+import { api } from '../../../lib/api-client';
+import { useCurrentUser } from '@packages/auth';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Bot,
   Send,
@@ -13,6 +16,10 @@ import {
   Dumbbell,
   Apple,
   BarChart3,
+  Edit2,
+  Check,
+  X,
+  Menu,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -24,19 +31,24 @@ interface Message {
 }
 
 interface Conversation {
-  id: string;
-  title: string;
-  createdAt: string;
+  conversationId: string;
+  firstMessage: string;
   lastMessageAt: string;
+  messageCount: number;
+  totalTokens: number;
+  title?: string; // Optional custom title
 }
 
 interface RateLimit {
-  remaining: number;
+  limit: number;
+  requestsRemaining: number;
+  requestsUsed: number;
   resetAt: string;
   tier: string;
 }
 
 export default function AITrainerPage() {
+  const user = useCurrentUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,14 +57,25 @@ export default function AITrainerPage() {
     string | null
   >(null);
   const [rateLimit, setRateLimit] = useState<RateLimit | null>(null);
-  const [showConversations, setShowConversations] = useState(false);
+  const [showConversations, setShowConversations] = useState(true);
+  const [conversationsCollapsed, setConversationsCollapsed] = useState(false);
+  const [editingConversationId, setEditingConversationId] = useState<
+    string | null
+  >(null);
+  const [editingTitle, setEditingTitle] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations and rate limit on mount
   useEffect(() => {
-    loadConversations();
-    loadRateLimit();
-  }, []);
+    console.log('AI Trainer page mounted, user:', user);
+    if (user && !user.isLoading) {
+      console.log('User is authenticated, loading data...');
+      loadConversations();
+      loadRateLimit();
+    } else {
+      console.log('User not authenticated or still loading');
+    }
+  }, [user]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -65,7 +88,9 @@ export default function AITrainerPage() {
 
   const loadConversations = async () => {
     try {
+      console.log('Loading conversations...');
       const data = await api.getConversations();
+      console.log('Conversations loaded:', data);
       setConversations(data);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -74,7 +99,9 @@ export default function AITrainerPage() {
 
   const loadRateLimit = async () => {
     try {
+      console.log('Loading rate limit...');
       const data = await api.getRateLimit();
+      console.log('Rate limit loaded:', data);
       setRateLimit(data);
     } catch (error) {
       console.error('Failed to load rate limit:', error);
@@ -83,8 +110,22 @@ export default function AITrainerPage() {
 
   const loadConversation = async (conversationId: string) => {
     try {
+      console.log('Loading conversation:', conversationId);
       const data = await api.getConversation(conversationId);
-      setMessages(data.messages || []);
+      console.log('Conversation data:', data);
+
+      // Handle different message formats from the API
+      const messages = data.messages || [];
+      const formattedMessages = messages.map((msg: any) => ({
+        id: msg.timestamp || msg.createdAt || Date.now().toString(),
+        role: msg.role || 'user',
+        content: msg.content || '',
+        timestamp: msg.timestamp
+          ? new Date(msg.timestamp)
+          : new Date(msg.createdAt || Date.now()),
+      }));
+
+      setMessages(formattedMessages);
       setCurrentConversationId(conversationId);
       setShowConversations(false);
     } catch (error) {
@@ -101,13 +142,76 @@ export default function AITrainerPage() {
   const deleteConversation = async (conversationId: string) => {
     try {
       await api.deleteConversation(conversationId);
-      setConversations(conversations.filter((c) => c.id !== conversationId));
+      setConversations(
+        conversations.filter((c) => c.conversationId !== conversationId)
+      );
       if (currentConversationId === conversationId) {
         startNewConversation();
       }
     } catch (error) {
       console.error('Failed to delete conversation:', error);
     }
+  };
+
+  const startEditingConversation = (
+    conversationId: string,
+    currentTitle: string
+  ) => {
+    setEditingConversationId(conversationId);
+    setEditingTitle(currentTitle || '');
+  };
+
+  const cancelEditingConversation = () => {
+    setEditingConversationId(null);
+    setEditingTitle('');
+  };
+
+  const saveConversationTitle = async (conversationId: string) => {
+    if (!editingTitle.trim()) return;
+
+    const trimmedTitle = editingTitle.trim();
+    if (trimmedTitle.length > 100) {
+      alert('Title too long (max 100 characters)');
+      return;
+    }
+
+    try {
+      console.log('Saving conversation title:', {
+        conversationId,
+        title: trimmedTitle,
+      });
+
+      // Update conversation title in the backend
+      console.log('Calling API to update conversation title...');
+      await api.updateConversationTitle(conversationId, trimmedTitle);
+      console.log('API call successful');
+
+      // Update local state
+      setConversations(
+        conversations.map((conv) =>
+          conv.conversationId === conversationId
+            ? { ...conv, title: trimmedTitle }
+            : conv
+        )
+      );
+
+      setEditingConversationId(null);
+      setEditingTitle('');
+      console.log('Conversation title updated successfully');
+    } catch (error) {
+      console.error('Failed to update conversation title:', error);
+      alert('Failed to update conversation title');
+    }
+  };
+
+  const getConversationTitle = (conversation: Conversation) => {
+    if (conversation.title) {
+      return conversation.title;
+    }
+    // Use first message as title, truncated to 50 characters
+    return conversation.firstMessage.length > 50
+      ? conversation.firstMessage.substring(0, 50) + '...'
+      : conversation.firstMessage;
   };
 
   const sendMessage = async () => {
@@ -125,33 +229,43 @@ export default function AITrainerPage() {
     setIsLoading(true);
 
     try {
+      console.log(
+        'Sending message:',
+        inputMessage.trim(),
+        'conversationId:',
+        currentConversationId
+      );
       const response = await api.sendChatMessage(
         inputMessage.trim(),
         currentConversationId || undefined
       );
+      console.log('Message response:', response);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.reply,
+        content:
+          (response as any).reply ||
+          (response as any).message ||
+          'No response received',
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Update conversation ID if this was a new conversation
-      if (!currentConversationId && response.conversationId) {
-        setCurrentConversationId(response.conversationId);
+      if (!currentConversationId && (response as any).conversationId) {
+        setCurrentConversationId((response as any).conversationId);
         loadConversations(); // Refresh conversations list
       }
 
       // Update rate limit
-      if (response.remainingRequests !== undefined) {
+      if ((response as any).remainingRequests !== undefined) {
         setRateLimit((prev) =>
           prev
             ? {
                 ...prev,
-                remaining: response.remainingRequests,
+                requestsRemaining: (response as any).remainingRequests,
               }
             : null
         );
@@ -183,11 +297,47 @@ export default function AITrainerPage() {
 
   const getRateLimitColor = () => {
     if (!rateLimit) return 'text-gray-500';
-    const percentage = (rateLimit.remaining / 10) * 100; // Assuming max 10 for free tier
+    const limit = rateLimit.limit || 10; // Default to 10 if limit not provided
+    const percentage = (rateLimit.requestsRemaining / limit) * 100;
     if (percentage > 50) return 'text-green-500';
     if (percentage > 25) return 'text-yellow-500';
     return 'text-red-500';
   };
+
+  // Show loading state if user is not authenticated
+  if (user?.isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-500">Loading AI Trainer...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if user is not authenticated
+  if (!user || user.error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <Bot className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Authentication Required
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            Please sign in to access the AI Trainer
+          </p>
+          <Link
+            href="/auth/signin"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Sign In
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -213,7 +363,7 @@ export default function AITrainerPage() {
             <div className="flex items-center space-x-2 text-sm">
               <Zap className="h-4 w-4 text-yellow-500" />
               <span className={getRateLimitColor()}>
-                {rateLimit.remaining} requests left
+                {rateLimit.requestsRemaining} requests left
               </span>
             </div>
           )}
@@ -239,50 +389,144 @@ export default function AITrainerPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Conversations Sidebar */}
         {showConversations && (
-          <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div
+            className={`border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-all duration-300 ${conversationsCollapsed ? 'w-16' : 'w-80'}`}
+          >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Conversations
-              </h2>
+              <div className="flex items-center justify-between">
+                {!conversationsCollapsed && (
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Conversations
+                  </h2>
+                )}
+                <button
+                  onClick={() =>
+                    setConversationsCollapsed(!conversationsCollapsed)
+                  }
+                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title={
+                    conversationsCollapsed
+                      ? 'Expand conversations'
+                      : 'Collapse conversations'
+                  }
+                >
+                  <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
             </div>
             <div className="overflow-y-auto">
               {conversations.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                  No conversations yet
-                </div>
+                !conversationsCollapsed && (
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    No conversations yet
+                  </div>
+                )
               ) : (
                 <div className="space-y-1 p-2">
                   {conversations.map((conversation) => (
                     <div
-                      key={conversation.id}
-                      className={`p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                        currentConversationId === conversation.id
+                      key={conversation.conversationId}
+                      className={`${conversationsCollapsed ? 'p-2' : 'p-3'} rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 group ${
+                        currentConversationId === conversation.conversationId
                           ? 'bg-blue-100 dark:bg-blue-900'
                           : ''
                       }`}
-                      onClick={() => loadConversation(conversation.id)}
+                      onClick={() =>
+                        loadConversation(conversation.conversationId)
+                      }
+                      title={
+                        conversationsCollapsed
+                          ? getConversationTitle(conversation)
+                          : undefined
+                      }
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {conversation.title}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(
-                              conversation.lastMessageAt
-                            ).toLocaleDateString()}
-                          </p>
+                      {conversationsCollapsed ? (
+                        <div className="flex justify-center">
+                          <MessageCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteConversation(conversation.id);
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            {editingConversationId ===
+                            conversation.conversationId ? (
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="text"
+                                  value={editingTitle}
+                                  onChange={(e) =>
+                                    setEditingTitle(e.target.value)
+                                  }
+                                  className="text-sm font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500"
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      saveConversationTitle(
+                                        conversation.conversationId
+                                      );
+                                    } else if (e.key === 'Escape') {
+                                      cancelEditingConversation();
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    saveConversationTitle(
+                                      conversation.conversationId
+                                    );
+                                  }}
+                                  className="p-1 text-green-500 hover:text-green-700"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    cancelEditingConversation();
+                                  }}
+                                  className="p-1 text-red-500 hover:text-red-700"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                  {getConversationTitle(conversation)}
+                                </p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEditingConversation(
+                                      conversation.conversationId,
+                                      conversation.title || ''
+                                    );
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {conversation.lastMessageAt
+                                ? new Date(
+                                    conversation.lastMessageAt
+                                  ).toLocaleDateString()
+                                : 'Unknown date'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteConversation(conversation.conversationId);
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -380,7 +624,56 @@ export default function AITrainerPage() {
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    {message.role === 'assistant' ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => (
+                              <p className="mb-2 last:mb-0">{children}</p>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="mb-2 last:mb-0">{children}</ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="mb-2 last:mb-0">{children}</ol>
+                            ),
+                            li: ({ children }) => (
+                              <li className="mb-1">{children}</li>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-semibold">
+                                {children}
+                              </strong>
+                            ),
+                            em: ({ children }) => (
+                              <em className="italic">{children}</em>
+                            ),
+                            code: ({ children }) => (
+                              <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-sm">
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="bg-gray-200 dark:bg-gray-600 p-2 rounded overflow-x-auto">
+                                {children}
+                              </pre>
+                            ),
+                            blockquote: ({ children }) => (
+                              <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                                {children}
+                              </blockquote>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-wrap">
+                        {message.content}
+                      </div>
+                    )}
                     <div
                       className={`text-xs mt-1 ${
                         message.role === 'user'

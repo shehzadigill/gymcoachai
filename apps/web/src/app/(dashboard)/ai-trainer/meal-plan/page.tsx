@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { api } from '../../../../lib/api-client';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Bot,
   Apple,
@@ -358,9 +360,70 @@ export default function MealPlanGenerator() {
             </h2>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
               <div className="prose dark:prose-invert max-w-none">
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => (
+                      <p className="mb-2 last:mb-0">{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="mb-2 last:mb-0">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="mb-2 last:mb-0">{children}</ol>
+                    ),
+                    li: ({ children }) => <li className="mb-1">{children}</li>,
+                    strong: ({ children }) => (
+                      <strong className="font-semibold">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic">{children}</em>
+                    ),
+                    code: ({ children }) => (
+                      <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-sm">
+                        {children}
+                      </code>
+                    ),
+                    pre: ({ children }) => (
+                      <pre className="bg-gray-200 dark:bg-gray-600 p-2 rounded overflow-x-auto">
+                        {children}
+                      </pre>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                        {children}
+                      </blockquote>
+                    ),
+                    h1: ({ children }) => (
+                      <h1 className="text-2xl font-bold mb-4">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-xl font-semibold mb-3">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-lg font-medium mb-2">{children}</h3>
+                    ),
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    th: ({ children }) => (
+                      <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-100 dark:bg-gray-700 font-semibold text-left">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                        {children}
+                      </td>
+                    ),
+                  }}
+                >
                   {generatedPlan}
-                </pre>
+                </ReactMarkdown>
               </div>
             </div>
           </div>

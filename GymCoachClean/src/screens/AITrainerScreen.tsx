@@ -10,9 +10,12 @@ import {
   ActivityIndicator,
   RefreshControl,
   FlatList,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import {Icon} from '../components/common/Icon';
+import Markdown from 'react-native-markdown-display';
 import apiClient from '../services/api';
 
 interface Message {
@@ -24,13 +27,17 @@ interface Message {
 
 interface Conversation {
   id: string;
+  conversationId?: string;
   title: string;
   createdAt: string;
   lastMessageAt: string;
+  firstMessage?: string;
 }
 
 interface RateLimit {
-  remaining: number;
+  limit?: number;
+  requestsRemaining: number;
+  requestsUsed: number;
   resetAt: string;
   tier: string;
 }
@@ -44,18 +51,33 @@ const AITrainerScreen: React.FC = () => {
     string | null
   >(null);
   const [rateLimit, setRateLimit] = useState<RateLimit | null>(null);
-  const [showConversations, setShowConversations] = useState(false);
+  const [showConversations, setShowConversations] = useState(false); // Closed by default for drawer behavior
   const [refreshing, setRefreshing] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [editingConversationId, setEditingConversationId] = useState<
+    string | null
+  >(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const scrollViewRef = useRef<FlatList<Message>>(null);
+  const drawerAnimation = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get('window').width;
 
   useEffect(() => {
     loadConversations();
     loadRateLimit();
   }, []);
 
+  useEffect(() => {
+    Animated.timing(drawerAnimation, {
+      toValue: showConversations ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [showConversations]);
+
   const loadConversations = async () => {
     try {
       const data = await apiClient.getConversations();
+      console.log('Loaded conversations:', data);
       setConversations(data);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -73,14 +95,116 @@ const AITrainerScreen: React.FC = () => {
 
   const loadConversation = async (conversationId: string) => {
     try {
-      const data = await apiClient.getConversation(conversationId);
-      setMessages(data.messages || []);
+      console.log('Loading conversation:', conversationId);
+      const conversation = await apiClient.getConversation(conversationId);
+      console.log('Conversation data:', conversation);
+
+      // Handle different response formats
+      let messages: Message[] = [];
+
+      if (conversation.messages && Array.isArray(conversation.messages)) {
+        messages = conversation.messages.map((msg: any) => ({
+          id:
+            msg.id ||
+            msg.messageId ||
+            (msg.timestamp || msg.createdAt || Date.now()).toString(),
+          role: msg.role || msg.sender || 'user',
+          content: msg.content || msg.text || msg.message || '',
+          timestamp: new Date(msg.timestamp || msg.createdAt || Date.now()),
+        }));
+      } else if (conversation.data && conversation.data.messages) {
+        messages = conversation.data.messages.map((msg: any) => ({
+          id:
+            msg.id ||
+            msg.messageId ||
+            (msg.timestamp || msg.createdAt || Date.now()).toString(),
+          role: msg.role || msg.sender || 'user',
+          content: msg.content || msg.text || msg.message || '',
+          timestamp: new Date(msg.timestamp || msg.createdAt || Date.now()),
+        }));
+      }
+
+      console.log('Processed messages:', messages);
+      setMessages(messages);
       setCurrentConversationId(conversationId);
-      setShowConversations(false);
+      setShowConversations(false); // Close drawer after selection
     } catch (error) {
       console.error('Failed to load conversation:', error);
       Alert.alert('Error', 'Failed to load conversation');
     }
+  };
+
+  const startEditingConversation = (
+    conversationId: string,
+    currentTitle: string,
+  ) => {
+    console.log('Starting to edit conversation:', {
+      conversationId,
+      currentTitle,
+    });
+    setEditingConversationId(conversationId);
+    setEditingTitle(currentTitle);
+  };
+
+  const cancelEditingConversation = () => {
+    setEditingConversationId(null);
+    setEditingTitle('');
+  };
+
+  const saveConversationTitle = async () => {
+    if (!editingConversationId || !editingTitle.trim()) return;
+
+    const trimmedTitle = editingTitle.trim();
+    if (trimmedTitle.length > 100) {
+      Alert.alert('Error', 'Title too long (max 100 characters)');
+      return;
+    }
+
+    console.log('Saving conversation title:', {
+      conversationId: editingConversationId,
+      title: trimmedTitle,
+    });
+
+    try {
+      // Update conversation title in the backend
+      console.log('Calling API to update conversation title...');
+      await apiClient.updateConversationTitle(
+        editingConversationId,
+        trimmedTitle,
+      );
+      console.log('API call successful');
+
+      // Update local state
+      setConversations(prev =>
+        prev.map(conv => {
+          const convId = conv.id || conv.conversationId || '';
+          return convId === editingConversationId
+            ? {...conv, title: trimmedTitle}
+            : conv;
+        }),
+      );
+
+      setEditingConversationId(null);
+      setEditingTitle('');
+      console.log('Conversation title updated successfully');
+    } catch (error) {
+      console.error('Failed to update conversation title:', error);
+      Alert.alert('Error', 'Failed to update conversation title');
+    }
+  };
+
+  const getConversationTitle = (conversation: Conversation) => {
+    if (conversation.title) return conversation.title;
+
+    // Try to get first user message as title
+    const firstUserMessage = conversation.firstMessage;
+    if (firstUserMessage) {
+      return firstUserMessage.length > 50
+        ? firstUserMessage.substring(0, 50) + '...'
+        : firstUserMessage;
+    }
+
+    return conversation.id;
   };
 
   const startNewConversation = () => {
@@ -140,23 +264,26 @@ const AITrainerScreen: React.FC = () => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.reply,
+        content:
+          (response as any).reply ||
+          (response as any).message ||
+          'No response received',
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      if (!currentConversationId && response.conversationId) {
-        setCurrentConversationId(response.conversationId);
+      if (!currentConversationId && (response as any).conversationId) {
+        setCurrentConversationId((response as any).conversationId);
         loadConversations();
       }
 
-      if (response.remainingRequests !== undefined) {
+      if ((response as any).remainingRequests !== undefined) {
         setRateLimit(prev =>
           prev
             ? {
                 ...prev,
-                remaining: response.remainingRequests,
+                requestsRemaining: (response as any).remainingRequests,
               }
             : null,
         );
@@ -187,10 +314,75 @@ const AITrainerScreen: React.FC = () => {
 
   const getRateLimitColor = () => {
     if (!rateLimit) return '#9ca3af';
-    const percentage = (rateLimit.remaining / 10) * 100;
+    const percentage =
+      (rateLimit.requestsRemaining / (rateLimit.limit || 10)) * 100;
     if (percentage > 50) return '#10b981';
     if (percentage > 25) return '#f59e0b';
     return '#ef4444';
+  };
+
+  const markdownStyles = {
+    body: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: '#111827',
+    },
+    paragraph: {
+      marginBottom: 8,
+    },
+    heading1: {
+      fontSize: 18,
+      fontWeight: '600' as const,
+      color: '#111827',
+      marginBottom: 8,
+    },
+    heading2: {
+      fontSize: 16,
+      fontWeight: '600' as const,
+      color: '#111827',
+      marginBottom: 6,
+    },
+    heading3: {
+      fontSize: 14,
+      fontWeight: '600' as const,
+      color: '#111827',
+      marginBottom: 4,
+    },
+    code_inline: {
+      backgroundColor: '#f3f4f6',
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      borderRadius: 4,
+      fontSize: 13,
+      fontFamily: 'monospace',
+    },
+    code_block: {
+      backgroundColor: '#f3f4f6',
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 13,
+      fontFamily: 'monospace',
+      marginVertical: 8,
+    },
+    list_item: {
+      marginBottom: 4,
+    },
+    bullet_list: {
+      marginBottom: 8,
+    },
+    ordered_list: {
+      marginBottom: 8,
+    },
+    strong: {
+      fontWeight: '600' as const,
+    },
+    em: {
+      fontStyle: 'italic' as const,
+    },
+    link: {
+      color: '#3b82f6',
+      textDecorationLine: 'underline' as const,
+    },
   };
 
   const renderMessage = ({item}: {item: Message}) => (
@@ -199,15 +391,13 @@ const AITrainerScreen: React.FC = () => {
         styles.messageContainer,
         item.role === 'user' ? styles.userMessage : styles.assistantMessage,
       ]}>
-      <Text
-        style={[
-          styles.messageText,
-          item.role === 'user'
-            ? styles.userMessageText
-            : styles.assistantMessageText,
-        ]}>
-        {item.content}
-      </Text>
+      {item.role === 'assistant' ? (
+        <Markdown style={markdownStyles}>{item.content}</Markdown>
+      ) : (
+        <Text style={[styles.messageText, styles.userMessageText]}>
+          {item.content}
+        </Text>
+      )}
       <Text
         style={[
           styles.messageTime,
@@ -220,28 +410,95 @@ const AITrainerScreen: React.FC = () => {
     </View>
   );
 
-  const renderConversation = ({item}: {item: Conversation}) => (
-    <TouchableOpacity
-      style={[
-        styles.conversationItem,
-        currentConversationId === item.id && styles.activeConversation,
-      ]}
-      onPress={() => loadConversation(item.id)}>
-      <View style={styles.conversationContent}>
-        <Text style={styles.conversationTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.conversationDate}>
-          {new Date(item.lastMessageAt).toLocaleDateString()}
-        </Text>
-      </View>
+  const renderConversation = ({item}: {item: Conversation}) => {
+    const conversationId = item.id || item.conversationId || '';
+    const isEditing = editingConversationId === conversationId;
+
+    return (
       <TouchableOpacity
-        onPress={() => deleteConversation(item.id)}
-        style={styles.deleteButton}>
-        <Icon name="delete" size={20} color="#ef4444" />
+        style={[
+          styles.conversationItem,
+          currentConversationId === conversationId && styles.activeConversation,
+        ]}
+        onPress={() =>
+          !isEditing && conversationId && loadConversation(conversationId)
+        }>
+        <View style={styles.conversationContent}>
+          {isEditing ? (
+            <View style={styles.editingContainer}>
+              <TextInput
+                style={styles.editingInput}
+                value={editingTitle}
+                onChangeText={setEditingTitle}
+                autoFocus
+                selectTextOnFocus
+                placeholder="Enter conversation title..."
+                maxLength={100}
+                returnKeyType="done"
+                onSubmitEditing={saveConversationTitle}
+              />
+              <Text style={styles.characterCount}>
+                {editingTitle.length}/100 characters
+              </Text>
+              <View style={styles.editingButtons}>
+                <TouchableOpacity
+                  onPress={() => {
+                    console.log('Save button pressed');
+                    saveConversationTitle();
+                  }}
+                  style={styles.saveButton}>
+                  <Icon name="check" size={16} color="#10b981" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={cancelEditingConversation}
+                  style={styles.cancelButton}>
+                  <Icon name="close" size={16} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.conversationTitle} numberOfLines={1}>
+                {getConversationTitle(item)}
+              </Text>
+              <Text style={styles.conversationDate}>
+                {new Date(
+                  item.lastMessageAt || item.createdAt,
+                ).toLocaleDateString()}
+              </Text>
+            </>
+          )}
+        </View>
+        {!isEditing && (
+          <View style={styles.conversationActions}>
+            <TouchableOpacity
+              onPress={() => {
+                console.log(
+                  'Edit button pressed for conversation:',
+                  conversationId,
+                );
+                if (conversationId) {
+                  startEditingConversation(
+                    conversationId,
+                    getConversationTitle(item),
+                  );
+                }
+              }}
+              style={styles.editButton}>
+              <Icon name="edit" size={16} color="#6b7280" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                conversationId && deleteConversation(conversationId)
+              }
+              style={styles.deleteButton}>
+              <Icon name="delete" size={16} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        )}
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -265,7 +522,7 @@ const AITrainerScreen: React.FC = () => {
               <Icon name="flash-on" size={16} color={getRateLimitColor()} />
               <Text
                 style={[styles.rateLimitText, {color: getRateLimitColor()}]}>
-                {rateLimit.remaining}
+                {rateLimit.requestsRemaining}
               </Text>
             </View>
           )}
@@ -285,26 +542,49 @@ const AITrainerScreen: React.FC = () => {
       </View>
 
       <View style={styles.content}>
-        {/* Conversations Sidebar */}
-        {showConversations && (
-          <View style={styles.sidebar}>
-            <View style={styles.sidebarHeader}>
-              <Text style={styles.sidebarTitle}>Conversations</Text>
-            </View>
-            <FlatList
-              data={conversations}
-              renderItem={renderConversation}
-              keyExtractor={item => item.id}
-              style={styles.conversationsList}
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No conversations yet
-                  </Text>
-                </View>
-              }
-            />
+        {/* Conversations Drawer */}
+        <Animated.View
+          style={[
+            styles.drawer,
+            {
+              transform: [
+                {
+                  translateX: drawerAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-280, 0],
+                  }),
+                },
+              ],
+            },
+          ]}>
+          <View style={styles.sidebarHeader}>
+            <Text style={styles.sidebarTitle}>Conversations</Text>
+            <TouchableOpacity
+              onPress={() => setShowConversations(false)}
+              style={styles.closeButton}>
+              <Icon name="close" size={20} color="#6b7280" />
+            </TouchableOpacity>
           </View>
+          <FlatList
+            data={conversations}
+            renderItem={renderConversation}
+            keyExtractor={item => item.id || item.conversationId || item.title}
+            style={styles.conversationsList}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No conversations yet</Text>
+              </View>
+            }
+          />
+        </Animated.View>
+
+        {/* Overlay */}
+        {showConversations && (
+          <TouchableOpacity
+            style={styles.overlay}
+            onPress={() => setShowConversations(false)}
+            activeOpacity={1}
+          />
         )}
 
         {/* Chat Area */}
@@ -428,15 +708,40 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    flexDirection: 'row',
+    position: 'relative',
   },
-  sidebar: {
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
     width: 280,
     backgroundColor: 'white',
     borderRightWidth: 1,
     borderRightColor: '#e5e7eb',
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 2,
+      height: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 999,
   },
   sidebarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -445,6 +750,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+  },
+  closeButton: {
+    padding: 4,
   },
   conversationsList: {
     flex: 1,
@@ -472,8 +780,52 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 2,
   },
+  conversationActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editButton: {
+    padding: 4,
+    marginRight: 4,
+  },
   deleteButton: {
     padding: 4,
+  },
+  editingContainer: {
+    flex: 1,
+  },
+  editingInput: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    backgroundColor: '#f8fafc',
+  },
+  editingButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  characterCount: {
+    fontSize: 11,
+    color: '#6b7280',
+    textAlign: 'right',
+    marginBottom: 8,
+  },
+  saveButton: {
+    padding: 8,
+    marginRight: 8,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 4,
+  },
+  cancelButton: {
+    padding: 8,
+    backgroundColor: '#fef2f2',
+    borderRadius: 4,
   },
   emptyState: {
     padding: 20,
@@ -485,6 +837,7 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+    width: '100%',
   },
   welcomeContainer: {
     flex: 1,
