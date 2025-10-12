@@ -58,6 +58,12 @@ pub struct NotificationSettings {
     pub push: bool,
     pub workout_reminders: bool,
     pub nutrition_reminders: bool,
+    pub water_reminders: bool,
+    pub progress_photos: bool,
+    pub achievements: bool,
+    pub ai_suggestions: bool,
+    pub workout_reminder_time: Option<String>, // HH:MM format
+    pub nutrition_reminder_times: Option<Vec<String>>, // ["08:00", "13:00", "19:00"]
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

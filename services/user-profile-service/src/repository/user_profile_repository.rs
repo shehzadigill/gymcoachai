@@ -116,6 +116,35 @@ impl UserProfileRepository {
                             .get("nutritionReminders")
                             .and_then(|v| v.as_bool().ok())
                             .unwrap_or(&true),
+                        water_reminders: *item
+                            .get("waterReminders")
+                            .and_then(|v| v.as_bool().ok())
+                            .unwrap_or(&true),
+                        progress_photos: *item
+                            .get("progressPhotos")
+                            .and_then(|v| v.as_bool().ok())
+                            .unwrap_or(&true),
+                        achievements: *item
+                            .get("achievements")
+                            .and_then(|v| v.as_bool().ok())
+                            .unwrap_or(&true),
+                        ai_suggestions: *item
+                            .get("aiSuggestions")
+                            .and_then(|v| v.as_bool().ok())
+                            .unwrap_or(&true),
+                        workout_reminder_time: item
+                            .get("workoutReminderTime")
+                            .and_then(|v| v.as_s().ok())
+                            .map(|s| s.to_string()),
+                        nutrition_reminder_times: item
+                            .get("nutritionReminderTimes")
+                            .and_then(|v| v.as_l().ok())
+                            .map(|list| {
+                                list.iter()
+                                    .filter_map(|v| v.as_s().ok())
+                                    .map(|s| s.to_string())
+                                    .collect()
+                            }),
                     },
                     privacy: PrivacySettings {
                         profile_visibility: item
@@ -372,6 +401,40 @@ impl UserProfileRepository {
             "nutritionReminders".to_string(),
             AttributeValue::Bool(profile.preferences.notifications.nutrition_reminders),
         );
+        item.insert(
+            "waterReminders".to_string(),
+            AttributeValue::Bool(profile.preferences.notifications.water_reminders),
+        );
+        item.insert(
+            "progressPhotos".to_string(),
+            AttributeValue::Bool(profile.preferences.notifications.progress_photos),
+        );
+        item.insert(
+            "achievements".to_string(),
+            AttributeValue::Bool(profile.preferences.notifications.achievements),
+        );
+        item.insert(
+            "aiSuggestions".to_string(),
+            AttributeValue::Bool(profile.preferences.notifications.ai_suggestions),
+        );
+
+        if let Some(workout_time) = &profile.preferences.notifications.workout_reminder_time {
+            item.insert(
+                "workoutReminderTime".to_string(),
+                AttributeValue::S(workout_time.clone()),
+            );
+        }
+
+        if let Some(nutrition_times) = &profile.preferences.notifications.nutrition_reminder_times {
+            let times: Vec<AttributeValue> = nutrition_times
+                .iter()
+                .map(|time| AttributeValue::S(time.clone()))
+                .collect();
+            item.insert(
+                "nutritionReminderTimes".to_string(),
+                AttributeValue::L(times),
+            );
+        }
 
         // Add privacy settings
         item.insert(
@@ -716,6 +779,35 @@ impl UserProfileRepository {
                         .get("nutritionReminders")
                         .and_then(|v| v.as_bool().ok())
                         .unwrap_or(&true),
+                    water_reminders: *item
+                        .get("waterReminders")
+                        .and_then(|v| v.as_bool().ok())
+                        .unwrap_or(&true),
+                    progress_photos: *item
+                        .get("progressPhotos")
+                        .and_then(|v| v.as_bool().ok())
+                        .unwrap_or(&true),
+                    achievements: *item
+                        .get("achievements")
+                        .and_then(|v| v.as_bool().ok())
+                        .unwrap_or(&true),
+                    ai_suggestions: *item
+                        .get("aiSuggestions")
+                        .and_then(|v| v.as_bool().ok())
+                        .unwrap_or(&true),
+                    workout_reminder_time: item
+                        .get("workoutReminderTime")
+                        .and_then(|v| v.as_s().ok())
+                        .map(|s| s.to_string()),
+                    nutrition_reminder_times: item
+                        .get("nutritionReminderTimes")
+                        .and_then(|v| v.as_l().ok())
+                        .map(|list| {
+                            list.iter()
+                                .filter_map(|v| v.as_s().ok())
+                                .map(|s| s.to_string())
+                                .collect()
+                        }),
                 },
                 privacy: PrivacySettings {
                     profile_visibility: item
@@ -776,6 +868,16 @@ impl UserProfileRepository {
                     push: true,
                     workout_reminders: true,
                     nutrition_reminders: true,
+                    water_reminders: true,
+                    progress_photos: true,
+                    achievements: true,
+                    ai_suggestions: true,
+                    workout_reminder_time: Some("08:00".to_string()),
+                    nutrition_reminder_times: Some(vec![
+                        "08:00".to_string(),
+                        "13:00".to_string(),
+                        "19:00".to_string(),
+                    ]),
                 },
                 privacy: PrivacySettings {
                     profile_visibility: "private".to_string(),
@@ -829,6 +931,40 @@ impl UserProfileRepository {
             "nutritionReminders".to_string(),
             AttributeValue::Bool(preferences.notifications.nutrition_reminders),
         );
+        item.insert(
+            "waterReminders".to_string(),
+            AttributeValue::Bool(preferences.notifications.water_reminders),
+        );
+        item.insert(
+            "progressPhotos".to_string(),
+            AttributeValue::Bool(preferences.notifications.progress_photos),
+        );
+        item.insert(
+            "achievements".to_string(),
+            AttributeValue::Bool(preferences.notifications.achievements),
+        );
+        item.insert(
+            "aiSuggestions".to_string(),
+            AttributeValue::Bool(preferences.notifications.ai_suggestions),
+        );
+
+        if let Some(workout_time) = &preferences.notifications.workout_reminder_time {
+            item.insert(
+                "workoutReminderTime".to_string(),
+                AttributeValue::S(workout_time.clone()),
+            );
+        }
+
+        if let Some(nutrition_times) = &preferences.notifications.nutrition_reminder_times {
+            let times: Vec<AttributeValue> = nutrition_times
+                .iter()
+                .map(|time| AttributeValue::S(time.clone()))
+                .collect();
+            item.insert(
+                "nutritionReminderTimes".to_string(),
+                AttributeValue::L(times),
+            );
+        }
         item.insert(
             "profileVisibility".to_string(),
             AttributeValue::S(preferences.privacy.profile_visibility.clone()),

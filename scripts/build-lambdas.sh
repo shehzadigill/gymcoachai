@@ -20,6 +20,8 @@ show_usage() {
     echo "  coaching-service"
     echo "  analytics-service"
     echo "  nutrition-service"
+    echo "  notification-service"
+    echo "  notification-scheduler"
     echo "  user-service"
     echo "  metrics-collector"
     echo "  performance-optimizer"
@@ -70,7 +72,8 @@ build_service() {
     
     echo "Building $service_name..."
     cd "$service_dir"
-    cargo lambda build --release --target x86_64-unknown-linux-musl
+    cargo lambda build --release --target x86_64-unknown-linux-musl --output-format zip --lambda-dir ./target/lambda/$service_name --flatten bootstrap
+    cd target/lambda/$service_name && unzip bootstrap.zip && rm bootstrap.zip && cd "$REPO_ROOT/$service_dir"
     cd "$REPO_ROOT"
 }
 
@@ -116,6 +119,20 @@ else
     echo "Building nutrition-service..."
     cd services/nutrition-service
     cargo lambda build --release --target x86_64-unknown-linux-musl
+    cd ../..
+    
+    # Build notification-service
+    echo "Building notification-service..."
+    cd services/notification-service
+    cargo lambda build --release --target x86_64-unknown-linux-musl --output-format zip --lambda-dir ./target/lambda/notification-service --flatten bootstrap
+    cd target/lambda/notification-service && unzip bootstrap.zip && rm bootstrap.zip && cd ../../..
+    cd ../..
+    
+    # Build notification-scheduler
+    echo "Building notification-scheduler..."
+    cd services/notification-scheduler
+    cargo lambda build --release --target x86_64-unknown-linux-musl --output-format zip --lambda-dir ./target/lambda/notification-scheduler --flatten bootstrap
+    cd target/lambda/notification-scheduler && unzip bootstrap.zip && rm bootstrap.zip && cd ../../..
     cd ../..
     
     # Build ai-service

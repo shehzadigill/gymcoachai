@@ -8,6 +8,9 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 // Removed MonitoringStack import to avoid CloudWatch costs
 
@@ -175,6 +178,73 @@ export class GymCoachAIStack extends cdk.Stack {
       groupName: 'user',
       description: 'Regular users with access to their own data',
       precedence: 3,
+    });
+
+    // Create SNS Topics for different notification types
+    const workoutRemindersTopic = new sns.Topic(this, 'WorkoutRemindersTopic', {
+      topicName: 'gymcoach-ai-workout-reminders',
+      displayName: 'Workout Reminders',
+    });
+
+    const nutritionRemindersTopic = new sns.Topic(
+      this,
+      'NutritionRemindersTopic',
+      {
+        topicName: 'gymcoach-ai-nutrition-reminders',
+        displayName: 'Nutrition Reminders',
+      }
+    );
+
+    const achievementTopic = new sns.Topic(this, 'AchievementTopic', {
+      topicName: 'gymcoach-ai-achievements',
+      displayName: 'Achievement Notifications',
+    });
+
+    const aiSuggestionsTopic = new sns.Topic(this, 'AISuggestionsTopic', {
+      topicName: 'gymcoach-ai-suggestions',
+      displayName: 'AI Suggestions',
+    });
+
+    // Create EventBridge Rules for scheduled notifications
+    const workoutReminderRule = new events.Rule(this, 'WorkoutReminderRule', {
+      ruleName: 'gymcoach-ai-workout-reminders',
+      description: 'Triggers workout reminder notifications',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '8', // 8 AM UTC - will be adjusted per user timezone
+      }),
+    });
+
+    const nutritionReminderRule = new events.Rule(
+      this,
+      'NutritionReminderRule',
+      {
+        ruleName: 'gymcoach-ai-nutrition-reminders',
+        description: 'Triggers nutrition reminder notifications',
+        schedule: events.Schedule.cron({
+          minute: '0',
+          hour: '12', // 12 PM UTC - will be adjusted per user timezone
+        }),
+      }
+    );
+
+    const waterReminderRule = new events.Rule(this, 'WaterReminderRule', {
+      ruleName: 'gymcoach-ai-water-reminders',
+      description: 'Triggers water intake reminder notifications',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '*', // Every hour
+      }),
+    });
+
+    const progressPhotoRule = new events.Rule(this, 'ProgressPhotoRule', {
+      ruleName: 'gymcoach-ai-progress-photos',
+      description: 'Triggers weekly progress photo reminders',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '18', // 6 PM UTC on Sundays
+        weekDay: 'SUN',
+      }),
     });
 
     // Create S3 Buckets (needed by Lambdas)
@@ -447,6 +517,35 @@ export class GymCoachAIStack extends cdk.Stack {
       'ai-service-python'
     );
 
+    // Create Notification Service Lambda
+    const notificationServiceLambda = this.createLambdaFunction(
+      'NotificationService',
+      'notification-service',
+      {
+        WORKOUT_REMINDERS_TOPIC_ARN: workoutRemindersTopic.topicArn,
+        NUTRITION_REMINDERS_TOPIC_ARN: nutritionRemindersTopic.topicArn,
+        ACHIEVEMENT_TOPIC_ARN: achievementTopic.topicArn,
+        AI_SUGGESTIONS_TOPIC_ARN: aiSuggestionsTopic.topicArn,
+        FIREBASE_SERVER_KEY: 'YOUR_FIREBASE_SERVER_KEY',
+        FIREBASE_PROJECT_ID: 'YOUR_FIREBASE_PROJECT_ID',
+      }
+    );
+
+    // Create Notification Scheduler Lambda
+    const notificationSchedulerLambda = this.createLambdaFunction(
+      'NotificationScheduler',
+      'notification-scheduler',
+      {
+        NOTIFICATION_SERVICE_FUNCTION_ARN: '', // Will be set after creation
+      }
+    );
+
+    // Update notification scheduler with the correct function ARN
+    notificationSchedulerLambda.addEnvironment(
+      'NOTIFICATION_SERVICE_FUNCTION_ARN',
+      notificationServiceLambda.functionArn
+    );
+
     // Enable Lambda Function URLs
     // const userServiceUrl = userServiceLambda.addFunctionUrl({
     //   authType: lambda.FunctionUrlAuthType.NONE,
@@ -518,6 +617,16 @@ export class GymCoachAIStack extends cdk.Stack {
       },
     });
 
+    const notificationServiceUrl = notificationServiceLambda.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowCredentials: false,
+        allowedHeaders: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedOrigins: ['*'],
+      },
+    });
+
     // Create CloudFront Distribution with Lambda Function URLs as origins
     const userProfileDomain = cdk.Fn.select(
       2,
@@ -540,6 +649,10 @@ export class GymCoachAIStack extends cdk.Stack {
       cdk.Fn.split('/', nutritionServiceUrl.url)
     );
     const aiDomain = cdk.Fn.select(2, cdk.Fn.split('/', aiServiceUrl.url));
+    const notificationDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', notificationServiceUrl.url)
+    );
 
     // Create CloudFront Function for URL rewriting (handles SPA routing)
     const urlRewriteFunction = new cloudfront.Function(
@@ -681,6 +794,15 @@ export class GymCoachAIStack extends cdk.Stack {
             originRequestPolicy:
               cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           },
+          '/api/notifications/*': {
+            origin: new origins.HttpOrigin(notificationDomain),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+            originRequestPolicy:
+              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          },
           '/progress-photos/*': {
             origin: origins.S3BucketOrigin.withOriginAccessIdentity(
               this.progressPhotosBucket,
@@ -775,6 +897,50 @@ export class GymCoachAIStack extends cdk.Stack {
       })
     );
 
+    // Grant notification service permissions
+    notificationServiceLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'sns:Publish',
+          'sns:CreatePlatformEndpoint',
+          'sns:DeleteEndpoint',
+          'sns:GetEndpointAttributes',
+          'sns:SetEndpointAttributes',
+        ],
+        resources: [
+          workoutRemindersTopic.topicArn,
+          nutritionRemindersTopic.topicArn,
+          achievementTopic.topicArn,
+          aiSuggestionsTopic.topicArn,
+          '*', // Allow access to all SNS platform applications
+        ],
+      })
+    );
+
+    // Grant notification scheduler permissions
+    notificationSchedulerLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['lambda:InvokeFunction'],
+        resources: [notificationServiceLambda.functionArn],
+      })
+    );
+
+    // Add EventBridge targets
+    workoutReminderRule.addTarget(
+      new targets.LambdaFunction(notificationSchedulerLambda)
+    );
+    nutritionReminderRule.addTarget(
+      new targets.LambdaFunction(notificationSchedulerLambda)
+    );
+    waterReminderRule.addTarget(
+      new targets.LambdaFunction(notificationSchedulerLambda)
+    );
+    progressPhotoRule.addTarget(
+      new targets.LambdaFunction(notificationSchedulerLambda)
+    );
+
     // Removed CloudWatch Log Groups to avoid costs
     // Lambda functions will use default log groups (free tier: 5GB/month)
 
@@ -839,6 +1005,11 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'AI Service Lambda Function URL',
     });
 
+    new cdk.CfnOutput(this, 'NotificationServiceUrl', {
+      value: notificationServiceUrl.url,
+      description: 'Notification Service Lambda Function URL',
+    });
+
     new cdk.CfnOutput(this, 'UserUploadsBucketName', {
       value: this.userUploadsBucket.bucketName,
       description: 'User Uploads S3 Bucket Name',
@@ -870,29 +1041,36 @@ export class GymCoachAIStack extends cdk.Stack {
 
   private createLambdaFunction(
     name: string,
-    serviceName: string
+    serviceName: string,
+    additionalEnvVars?: { [key: string]: string }
   ): lambda.Function {
+    const baseEnvVars = {
+      TABLE_NAME: this.mainTable.tableName,
+      DYNAMODB_TABLE: this.mainTable.tableName,
+      USER_POOL_ID: this.userPool.userPoolId,
+      USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+      USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,
+      STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
+      PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
+      PROGRESS_PHOTOS_BUCKET: this.progressPhotosBucket.bucketName,
+      JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
+      COGNITO_REGION: this.region,
+      COGNITO_USER_POOL_ID: this.userPool.userPoolId,
+      RUST_LOG: 'info',
+      RUST_BACKTRACE: '1',
+    };
+
+    const envVars = additionalEnvVars
+      ? { ...baseEnvVars, ...additionalEnvVars }
+      : baseEnvVars;
+
     return new lambda.Function(this, `${name}Lambda`, {
       runtime: lambda.Runtime.PROVIDED_AL2,
       handler: 'bootstrap',
       code: lambda.Code.fromAsset(
         `../services/${serviceName}/target/lambda/${serviceName}`
       ),
-      environment: {
-        TABLE_NAME: this.mainTable.tableName,
-        DYNAMODB_TABLE: this.mainTable.tableName,
-        USER_POOL_ID: this.userPool.userPoolId,
-        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
-        USER_UPLOADS_BUCKET: this.userUploadsBucket.bucketName,
-        STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
-        PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
-        PROGRESS_PHOTOS_BUCKET: this.progressPhotosBucket.bucketName,
-        JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
-        COGNITO_REGION: this.region,
-        COGNITO_USER_POOL_ID: this.userPool.userPoolId,
-        RUST_LOG: 'info',
-        RUST_BACKTRACE: '1',
-      },
+      environment: envVars,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256, // Optimized for cold starts
       reservedConcurrentExecutions: 10, // Prevent cold starts during high load

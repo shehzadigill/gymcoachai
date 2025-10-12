@@ -137,13 +137,26 @@ This document outlines the DynamoDB single-table design for the GymCoach AI appl
 - **Update Milestone**: PK=MILESTONES, SK=MILESTONE#{milestoneId}
 - **Delete Milestone**: PK=MILESTONES, SK=MILESTONE#{milestoneId}
 
-### 17. Performance Trends
+### 18. Device Tokens
 
-- **Create Performance Trend**: PK=PERFORMANCE_TRENDS, SK=USER#{userId}#{date}
-- **Get User Performance Trends**: PK=PERFORMANCE_TRENDS, FilterExpression=userId=:userId
-- **Get Performance Trends by Date Range**: PK=PERFORMANCE_TRENDS, SK BETWEEN :start AND :end
-- **Update Performance Trend**: PK=PERFORMANCE_TRENDS, SK=USER#{userId}#{date}
-- **Delete Performance Trend**: PK=PERFORMANCE_TRENDS, SK=USER#{userId}#{date}
+- **Create Device Token**: PK=USER#{userId}, SK=DEVICE#{deviceId}
+- **Get User Devices**: PK=USER#{userId}, FilterExpression=begins_with(SK, "DEVICE#")
+- **Update Device Token**: PK=USER#{userId}, SK=DEVICE#{deviceId}
+- **Delete Device Token**: PK=USER#{userId}, SK=DEVICE#{deviceId}
+
+### 19. Notification History
+
+- **Create Notification Record**: PK=NOTIFICATION#{notificationId}, SK=USER#{userId}
+- **Get User Notifications**: PK=NOTIFICATION#{notificationId}, FilterExpression=SK=USER#{userId}
+- **Get Notification by ID**: PK=NOTIFICATION#{notificationId}, SK=USER#{userId}
+- **Delete Notification Record**: PK=NOTIFICATION#{notificationId}, SK=USER#{userId} (TTL)
+
+### 20. Notification Preferences
+
+- **Create Notification Preferences**: PK=USER#{userId}, SK=NOTIFICATION_PREFERENCES
+- **Get Notification Preferences**: PK=USER#{userId}, SK=NOTIFICATION_PREFERENCES
+- **Update Notification Preferences**: PK=USER#{userId}, SK=NOTIFICATION_PREFERENCES
+- **Delete Notification Preferences**: PK=USER#{userId}, SK=NOTIFICATION_PREFERENCES
 
 ## Data Models
 
@@ -610,6 +623,64 @@ This document outlines the DynamoDB single-table design for the GymCoach AI appl
     "Continue current program",
     "Consider increasing frequency"
   ]
+}
+```
+
+### Device Token
+
+```json
+{
+  "PK": "USER#user123",
+  "SK": "DEVICE#device456",
+  "deviceId": "device456",
+  "userId": "user123",
+  "deviceToken": "fcm_token_or_apns_token_here",
+  "platform": "ios",
+  "deviceName": "John's iPhone",
+  "isActive": true,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "lastUsedAt": "2024-01-01T00:00:00Z"
+}
+```
+
+### Notification History
+
+```json
+{
+  "PK": "NOTIFICATION#notif789",
+  "SK": "USER#user123",
+  "notificationId": "notif789",
+  "userId": "user123",
+  "notificationType": "workout_reminder",
+  "title": "Time for your workout! 💪",
+  "body": "Your scheduled workout is ready. Let's get moving!",
+  "data": {
+    "action": "start_workout",
+    "category": "workout"
+  },
+  "sentAt": "2024-01-01T08:00:00Z",
+  "deliveryStatus": "Delivered",
+  "ttl": 1704067200
+}
+```
+
+### Notification Preferences
+
+```json
+{
+  "PK": "USER#user123",
+  "SK": "NOTIFICATION_PREFERENCES",
+  "userId": "user123",
+  "workoutReminders": true,
+  "nutritionReminders": true,
+  "waterReminders": true,
+  "progressPhotos": true,
+  "achievements": true,
+  "aiSuggestions": true,
+  "workoutReminderTime": "08:00",
+  "nutritionReminderTimes": ["08:00", "13:00", "19:00"],
+  "timezone": "America/New_York",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }
 ```
 
