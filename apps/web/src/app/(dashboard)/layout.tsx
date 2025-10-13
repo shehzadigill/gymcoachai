@@ -39,6 +39,37 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  // Persist sidebar states
+  useEffect(() => {
+    try {
+      const collapsed = localStorage.getItem('gc_desktop_sidebar_collapsed');
+      if (collapsed === 'true') setDesktopSidebarCollapsed(true);
+
+      const mobileOpen = localStorage.getItem('gc_sidebar_open');
+      if (mobileOpen === 'true') setSidebarOpen(true);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'gc_desktop_sidebar_collapsed',
+        desktopSidebarCollapsed ? 'true' : 'false'
+      );
+    } catch (e) {
+      // ignore
+    }
+  }, [desktopSidebarCollapsed]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gc_sidebar_open', sidebarOpen ? 'true' : 'false');
+    } catch (e) {
+      // ignore
+    }
+  }, [sidebarOpen]);
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },

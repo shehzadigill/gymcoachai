@@ -68,18 +68,19 @@ export default function Home() {
             <div className="flex gap-3">
               {isAuthenticated ? (
                 <>
-                  <Link href="/dashboard">
-                    <Button
-                      variant="primary"
-                      className="flex items-center gap-2"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      Dashboard
-                    </Button>
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Dashboard
                   </Link>
-                  <Button variant="outline" onClick={() => signOut()}>
+                  <button
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                    onClick={() => signOut()}
+                  >
                     Sign Out
-                  </Button>
+                  </button>
                 </>
               ) : (
                 <>
@@ -124,15 +125,12 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               {isAuthenticated ? (
-                <Link href="/dashboard">
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    className="flex items-center gap-2 text-lg px-8 py-4 text-primary-foreground"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                    Go to Dashboard
-                  </Button>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-2 text-lg px-8 py-4 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                  Go to Dashboard
                 </Link>
               ) : (
                 <>
@@ -690,14 +688,11 @@ export default function Home() {
           </p>
 
           {isAuthenticated ? (
-            <Link href="/dashboard">
-              <Button
-                variant="primary"
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4"
-              >
-                Go to Dashboard
-              </Button>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4 rounded-xl"
+            >
+              Go to Dashboard
             </Link>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

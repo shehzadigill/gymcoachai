@@ -63,6 +63,7 @@ export default function AITrainerPage() {
     string | null
   >(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [conversationSearch, setConversationSearch] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations and rate limit on mount
@@ -304,6 +305,15 @@ export default function AITrainerPage() {
     return 'text-red-500';
   };
 
+  const getRateLimitPercent = () => {
+    if (!rateLimit) return 0;
+    const limit = rateLimit.limit || 10;
+    return Math.max(
+      0,
+      Math.min(100, (rateLimit.requestsRemaining / limit) * 100)
+    );
+  };
+
   // Show loading state if user is not authenticated
   if (user?.isLoading) {
     return (
@@ -340,9 +350,9 @@ export default function AITrainerPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-900/60 sticky top-0 z-10">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
             <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -360,11 +370,19 @@ export default function AITrainerPage() {
         <div className="flex items-center space-x-4">
           {/* Rate Limit Indicator */}
           {rateLimit && (
-            <div className="flex items-center space-x-2 text-sm">
+            <div className="hidden sm:flex items-center gap-3">
               <Zap className="h-4 w-4 text-yellow-500" />
-              <span className={getRateLimitColor()}>
-                {rateLimit.requestsRemaining} requests left
-              </span>
+              <div className="w-40">
+                <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-2 bg-blue-600 dark:bg-blue-400 transition-all"
+                    style={{ width: `${getRateLimitPercent()}%` }}
+                  />
+                </div>
+                <div className={`text-xs mt-1 ${getRateLimitColor()}`}>
+                  {rateLimit.requestsRemaining} requests left
+                </div>
+              </div>
             </div>
           )}
 
@@ -413,6 +431,17 @@ export default function AITrainerPage() {
                   <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
+              {!conversationsCollapsed && (
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    value={conversationSearch}
+                    onChange={(e) => setConversationSearch(e.target.value)}
+                    placeholder="Search conversations..."
+                    className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
             </div>
             <div className="overflow-y-auto">
               {conversations.length === 0 ? (
@@ -423,112 +452,120 @@ export default function AITrainerPage() {
                 )
               ) : (
                 <div className="space-y-1 p-2">
-                  {conversations.map((conversation) => (
-                    <div
-                      key={conversation.conversationId}
-                      className={`${conversationsCollapsed ? 'p-2' : 'p-3'} rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 group ${
-                        currentConversationId === conversation.conversationId
-                          ? 'bg-blue-100 dark:bg-blue-900'
-                          : ''
-                      }`}
-                      onClick={() =>
-                        loadConversation(conversation.conversationId)
-                      }
-                      title={
-                        conversationsCollapsed
-                          ? getConversationTitle(conversation)
-                          : undefined
-                      }
-                    >
-                      {conversationsCollapsed ? (
-                        <div className="flex justify-center">
-                          <MessageCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            {editingConversationId ===
-                            conversation.conversationId ? (
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="text"
-                                  value={editingTitle}
-                                  onChange={(e) =>
-                                    setEditingTitle(e.target.value)
-                                  }
-                                  className="text-sm font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500"
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
+                  {conversations
+                    .filter((c) =>
+                      conversationSearch
+                        ? (c.title || c.firstMessage)
+                            .toLowerCase()
+                            .includes(conversationSearch.toLowerCase())
+                        : true
+                    )
+                    .map((conversation) => (
+                      <div
+                        key={conversation.conversationId}
+                        className={`${conversationsCollapsed ? 'p-2' : 'p-3'} rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 group ${
+                          currentConversationId === conversation.conversationId
+                            ? 'bg-blue-100 dark:bg-blue-900'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          loadConversation(conversation.conversationId)
+                        }
+                        title={
+                          conversationsCollapsed
+                            ? getConversationTitle(conversation)
+                            : undefined
+                        }
+                      >
+                        {conversationsCollapsed ? (
+                          <div className="flex justify-center">
+                            <MessageCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              {editingConversationId ===
+                              conversation.conversationId ? (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="text"
+                                    value={editingTitle}
+                                    onChange={(e) =>
+                                      setEditingTitle(e.target.value)
+                                    }
+                                    className="text-sm font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500"
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                        saveConversationTitle(
+                                          conversation.conversationId
+                                        );
+                                      } else if (e.key === 'Escape') {
+                                        cancelEditingConversation();
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       saveConversationTitle(
                                         conversation.conversationId
                                       );
-                                    } else if (e.key === 'Escape') {
+                                    }}
+                                    className="p-1 text-green-500 hover:text-green-700"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       cancelEditingConversation();
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    saveConversationTitle(
-                                      conversation.conversationId
-                                    );
-                                  }}
-                                  className="p-1 text-green-500 hover:text-green-700"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    cancelEditingConversation();
-                                  }}
-                                  className="p-1 text-red-500 hover:text-red-700"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center space-x-2">
-                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                  {getConversationTitle(conversation)}
-                                </p>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    startEditingConversation(
-                                      conversation.conversationId,
-                                      conversation.title || ''
-                                    );
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </button>
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {conversation.lastMessageAt
-                                ? new Date(
-                                    conversation.lastMessageAt
-                                  ).toLocaleDateString()
-                                : 'Unknown date'}
-                            </p>
+                                    }}
+                                    className="p-1 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    {getConversationTitle(conversation)}
+                                  </p>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startEditingConversation(
+                                        conversation.conversationId,
+                                        conversation.title || ''
+                                      );
+                                    }}
+                                    className="p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {conversation.lastMessageAt
+                                  ? new Date(
+                                      conversation.lastMessageAt
+                                    ).toLocaleDateString()
+                                  : 'Unknown date'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteConversation(conversation.conversationId);
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteConversation(conversation.conversationId);
-                            }}
-                            className="p-1 text-gray-400 hover:text-red-500"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -612,80 +649,92 @@ export default function AITrainerPage() {
                 </div>
               </div>
             ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
+              <div className="mx-auto w-full max-w-3xl space-y-4">
+                {messages.map((message) => (
                   <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                    }`}
+                    key={message.id}
+                    className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    {message.role === 'assistant' ? (
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({ children }) => (
-                              <p className="mb-2 last:mb-0">{children}</p>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="mb-2 last:mb-0">{children}</ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="mb-2 last:mb-0">{children}</ol>
-                            ),
-                            li: ({ children }) => (
-                              <li className="mb-1">{children}</li>
-                            ),
-                            strong: ({ children }) => (
-                              <strong className="font-semibold">
-                                {children}
-                              </strong>
-                            ),
-                            em: ({ children }) => (
-                              <em className="italic">{children}</em>
-                            ),
-                            code: ({ children }) => (
-                              <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-sm">
-                                {children}
-                              </code>
-                            ),
-                            pre: ({ children }) => (
-                              <pre className="bg-gray-200 dark:bg-gray-600 p-2 rounded overflow-x-auto">
-                                {children}
-                              </pre>
-                            ),
-                            blockquote: ({ children }) => (
-                              <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
-                                {children}
-                              </blockquote>
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                    ) : (
-                      <div className="whitespace-pre-wrap">
-                        {message.content}
+                    {message.role === 'assistant' && (
+                      <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                        <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                     )}
                     <div
-                      className={`text-xs mt-1 ${
+                      className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
                         message.role === 'user'
-                          ? 'text-blue-100'
-                          : 'text-gray-500 dark:text-gray-400'
+                          ? 'bg-blue-600 text-white rounded-br-sm'
+                          : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-bl-sm'
                       }`}
                     >
-                      {formatTime(message.timestamp)}
+                      {message.role === 'assistant' ? (
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => (
+                                <p className="mb-2 last:mb-0">{children}</p>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="mb-2 last:mb-0">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="mb-2 last:mb-0">{children}</ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="mb-1">{children}</li>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-semibold">
+                                  {children}
+                                </strong>
+                              ),
+                              em: ({ children }) => (
+                                <em className="italic">{children}</em>
+                              ),
+                              code: ({ children }) => (
+                                <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-sm">
+                                  {children}
+                                </code>
+                              ),
+                              pre: ({ children }) => (
+                                <pre className="bg-gray-200 dark:bg-gray-600 p-2 rounded overflow-x-auto">
+                                  {children}
+                                </pre>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                                  {children}
+                                </blockquote>
+                              ),
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">
+                          {message.content}
+                        </div>
+                      )}
+                      <div
+                        className={`text-xs mt-1 ${
+                          message.role === 'user'
+                            ? 'text-blue-100'
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {formatTime(message.timestamp)}
+                      </div>
                     </div>
+                    {message.role === 'user' && (
+                      <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200">
+                        {user?.name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
             {isLoading && (
               <div className="flex justify-start">
@@ -702,23 +751,39 @@ export default function AITrainerPage() {
 
           {/* Input Area */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex space-x-2">
+            <div className="mx-auto w-full max-w-3xl flex space-x-2">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask your AI trainer anything..."
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 disabled={isLoading}
               />
               <button
                 onClick={sendMessage}
                 disabled={!inputMessage.trim() || isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
               >
                 <Send className="h-4 w-4" />
               </button>
+            </div>
+            <div className="mx-auto mt-3 w-full max-w-3xl flex flex-wrap gap-2 text-xs">
+              {[
+                'Create a 4-day workout split',
+                'Weekly meal plan at 2200 kcal',
+                'Suggest mobility routine',
+                'Evaluate my squat form',
+              ].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setInputMessage(s)}
+                  className="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                >
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
         </div>
