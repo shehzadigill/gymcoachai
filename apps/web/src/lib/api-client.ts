@@ -211,10 +211,56 @@ export const api = {
   },
 
   async updateUserProfile(data: any, userId?: string) {
+    // Transform the data to match backend expectations
+    const transformedData = { ...data };
+
+    // Transform camelCase field names to snake_case
+    if (data.firstName) {
+      transformedData.first_name = data.firstName;
+      delete transformedData.firstName;
+    }
+    if (data.lastName) {
+      transformedData.last_name = data.lastName;
+      delete transformedData.lastName;
+    }
+    if (data.profileImageUrl) {
+      transformedData.profile_image_url = data.profileImageUrl;
+      delete transformedData.profileImageUrl;
+    }
+    if (data.dateOfBirth) {
+      transformedData.date_of_birth = data.dateOfBirth;
+      delete transformedData.dateOfBirth;
+    }
+    if (data.fitnessGoals) {
+      transformedData.fitness_goals = data.fitnessGoals;
+      delete transformedData.fitnessGoals;
+    }
+    if (data.experienceLevel) {
+      transformedData.experience_level = data.experienceLevel;
+      delete transformedData.experienceLevel;
+    }
+    if (data.fitnessLevel) {
+      transformedData.fitness_level = data.fitnessLevel;
+      delete transformedData.fitnessLevel;
+    }
+    if (data.createdAt) {
+      transformedData.created_at = data.createdAt;
+      delete transformedData.createdAt;
+    }
+    if (data.updatedAt) {
+      transformedData.updated_at = data.updatedAt;
+      delete transformedData.updatedAt;
+    }
+
+    // Keep preferences as-is since the backend models match the frontend structure
+    if (data.preferences) {
+      transformedData.preferences = data.preferences;
+    }
+
     // Don't include user ID in path - let backend authenticate from JWT token
     return apiFetch<any>('/api/user-profiles/profile', {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(transformedData),
     });
   },
 
@@ -239,9 +285,12 @@ export const api = {
     });
   },
 
-  async updateUserPreferences(preferences: any) {
-    return this.updateUserProfile({
-      preferences: preferences,
+  async updateUserPreferences(preferences: any, userId?: string) {
+    // Send directly to preferences endpoint, not wrapped in a preferences object
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/user-profiles/profile/preferences/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
     });
   },
 

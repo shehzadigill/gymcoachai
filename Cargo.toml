@@ -13,6 +13,7 @@ members = [
     "services/user-profile-service",
     "services/user-service",
     "services/workout-service",
+    "packages/lambda-router",
     "tests/rust-tests",
 ]
 

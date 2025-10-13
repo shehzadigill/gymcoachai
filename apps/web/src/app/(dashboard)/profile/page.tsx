@@ -267,11 +267,16 @@ export default function ProfilePage() {
       setProfile(updatedProfile);
 
       try {
+        console.log(
+          'Sending preferences update:',
+          JSON.stringify(updates, null, 2)
+        );
         await api.updateUserPreferences(updates);
         console.log('Preferences saved successfully:', updates);
+        setSuccess('Preferences updated successfully');
       } catch (error) {
         console.error('Error saving preferences:', error);
-        alert('Failed to save preferences. Please try again.');
+        setError('Failed to save preferences. Please try again.');
       }
     }
   };

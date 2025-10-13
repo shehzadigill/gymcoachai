@@ -124,8 +124,7 @@ else
     # Build notification-service
     echo "Building notification-service..."
     cd services/notification-service
-    cargo lambda build --release --target x86_64-unknown-linux-musl --output-format zip --lambda-dir ./target/lambda/notification-service --flatten bootstrap
-    cd target/lambda/notification-service && unzip bootstrap.zip && rm bootstrap.zip && cd ../../..
+    cargo lambda build --release --target x86_64-unknown-linux-musl
     cd ../..
     
     # Build notification-scheduler

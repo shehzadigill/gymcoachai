@@ -40,8 +40,7 @@ def emit_metric(metric_name: str, value: float, unit: str = 'Count', dimensions:
         metric_data = {
             'MetricName': metric_name,
             'Value': value,
-            'Unit': unit,
-            'Namespace': 'GymCoachAI/AI'
+            'Unit': unit
         }
         
         if dimensions:
@@ -219,12 +218,12 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({
+                'body': json.dumps(convert_decimals({
                     'error': 'Rate limit exceeded',
                     'message': f'You have reached your daily limit of {rate_limit_result["limit"]} AI requests',
                     'resetAt': rate_limit_result['reset_at'],
                     'remaining': rate_limit_result['remaining']
-                })
+                }))
             }
         
         # Get user context and conversation history
@@ -257,8 +256,8 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         # Increment usage
         await rate_limiter.increment_usage(user_id, user_tier)
         
-        # Update rate limit result
-        rate_limit_result['remaining'] -= 1
+        # Update rate limit result (convert to int to avoid Decimal issues)
+        rate_limit_result['remaining'] = int(rate_limit_result['remaining']) - 1
         
         # Emit metrics
         emit_metric('ChatRequests', 1)
@@ -275,14 +274,14 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({
+            'body': json.dumps(convert_decimals({
                 'reply': bedrock_result['response'],
                 'conversationId': conversation_id,
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'],
                 'resetAt': rate_limit_result['reset_at'],
                 'tier': user_tier
-            })
+            }))
         }
         
     except Exception as e:
@@ -471,11 +470,11 @@ Provide actionable insights and celebrate achievements."""
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({
+            'body': json.dumps(convert_decimals({
                 'analysis': bedrock_result['response'],
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'] - 1
-            })
+            }))
         }
         
     except Exception as e:
@@ -528,11 +527,11 @@ Provide:
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({
+            'body': json.dumps(convert_decimals({
                 'formTips': bedrock_result['response'],
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'] - 1
-            })
+            }))
         }
         
     except Exception as e:
@@ -581,11 +580,11 @@ Provide:
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({
+            'body': json.dumps(convert_decimals({
                 'motivation': bedrock_result['response'],
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'] - 1
-            })
+            }))
         }
         
     except Exception as e:
