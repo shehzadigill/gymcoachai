@@ -165,8 +165,8 @@ async fn main() -> Result<(), LambdaError> {
 
     // Food routes
     router.post("/api/nutrition/foods", handler!(create_food));
-    router.get("/api/nutrition/foods/:foodId", handler!(get_food));
     router.get("/api/nutrition/foods/search", handler!(search_foods));
+    // router.get("/api/nutrition/foods/:foodId", handler!(get_food));
 
     // Favorite food routes
     router.post(

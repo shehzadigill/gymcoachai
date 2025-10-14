@@ -25,5 +25,5 @@ base64 = "0.21"
 jsonwebtoken = "8.3"
 
 [[bin]]
-name = "bootstrap"
+name = "notification-service"
 path = "src/main.rs"

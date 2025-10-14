@@ -1067,9 +1067,7 @@ export class GymCoachAIStack extends cdk.Stack {
     return new lambda.Function(this, `${name}Lambda`, {
       runtime: lambda.Runtime.PROVIDED_AL2,
       handler: 'bootstrap',
-      code: lambda.Code.fromAsset(
-        `../services/${serviceName}/target/lambda/${serviceName}`
-      ),
+      code: lambda.Code.fromAsset(`../target/lambda/${serviceName}`),
       environment: envVars,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256, // Optimized for cold starts
