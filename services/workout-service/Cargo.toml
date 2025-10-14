@@ -6,7 +6,9 @@ edition = "2021"
 # Note: TypeScript configuration for this service is located at ../../packages/tsconfig/lambda.json
 
 [dependencies]
-lambda_runtime = "0.14"
+lambda_runtime = "0.8"
+lambda-router = { path = "../../packages/lambda-router" }
+async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_dynamo = "4.0"

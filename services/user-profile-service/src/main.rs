@@ -1,211 +1,243 @@
-use lambda_runtime::{service_fn, Error, LambdaEvent};
-use serde_json::Value;
+use async_trait::async_trait;
+use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use aws_sdk_s3::Client as S3Client;
-use aws_config::meta::region::RegionProviderChain;
-use tracing::error;
+use lambda_router::{handler, Context, Middleware, Next, Request, Response, Router};
+use lambda_runtime::service_fn;
+use lambda_runtime::Error as LambdaError;
+use once_cell::sync::{Lazy, OnceCell};
 use std::sync::Arc;
-use once_cell::sync::{OnceCell, Lazy};
+use tracing::{error, info};
 
+mod controller;
+mod handlers;
 mod models;
 mod repository;
 mod service;
-mod controller;
 mod utils;
 
-use repository::{UserProfileRepository, SleepRepository};
-use service::{UserProfileService, SleepService, UploadService};
-use controller::{UserProfileController, SleepController, UploadController};
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
-use utils::{ResponseBuilder, is_cors_preflight_request, RouteMatcher, Route};
+use controller::{SleepController, UploadController, UserProfileController};
+use repository::{SleepRepository, UserProfileRepository};
+use service::{SleepService, UploadService, UserProfileService};
+
+// Import all handler functions
+use handlers::{
+    delete_user_profile, generate_upload_url, get_sleep_data, get_sleep_history, get_sleep_stats,
+    get_user_preferences, get_user_profile, get_user_profile_me, get_user_stats, save_sleep_data,
+    update_sleep_data, update_user_preferences, update_user_profile, update_user_profile_me,
+};
 
 // Global clients for cold start optimization
 static DYNAMODB_CLIENT: OnceCell<Arc<DynamoDbClient>> = OnceCell::new();
 static S3_CLIENT: OnceCell<Arc<S3Client>> = OnceCell::new();
 
+// Ensure tracing is initialized only once across Lambda invocations
+static TRACING_INIT: OnceCell<()> = OnceCell::new();
 static AUTH_LAYER: Lazy<AuthLayer> = Lazy::new(|| AuthLayer::new());
 
+// Global controllers (initialized once)
+static USER_PROFILE_CONTROLLER: OnceCell<UserProfileController> = OnceCell::new();
+static SLEEP_CONTROLLER: OnceCell<SleepController> = OnceCell::new();
+static UPLOAD_CONTROLLER: OnceCell<UploadController> = OnceCell::new();
+
 #[tokio::main]
-async fn main() -> Result<(), Error> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_target(false)
-        .without_time()
-        .init();
+async fn main() -> Result<(), LambdaError> {
+    // Initialize tracing only once (critical for Lambda runtime reuse)
+    TRACING_INIT.get_or_init(|| {
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::INFO)
+            .with_target(false)
+            .without_time()
+            .init();
+    });
+
+    info!("Starting User Profile Service initialization...");
 
     // Initialize global clients
+    info!("Initializing AWS clients...");
     if DYNAMODB_CLIENT.get().is_none() || S3_CLIENT.get().is_none() {
         let region_provider = RegionProviderChain::default_provider();
-        let config = aws_config::from_env().region(region_provider).load().await;
+        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+            .region(region_provider)
+            .load()
+            .await;
         let _ = DYNAMODB_CLIENT.set(Arc::new(DynamoDbClient::new(&config)));
         let _ = S3_CLIENT.set(Arc::new(S3Client::new(&config)));
+        info!("AWS clients initialized successfully");
     }
-    let _ = &*AUTH_LAYER;
 
-    let func = service_fn(handler);
-    lambda_runtime::run(func).await?;
-    Ok(())
+    info!("Initializing auth layer...");
+    let _ = &*AUTH_LAYER;
+    info!("Auth layer initialized");
+
+    // Initialize controllers once
+    info!("Initializing controllers...");
+    init_controllers();
+    info!("Controllers initialized successfully");
+
+    // Create router
+    info!("Creating router...");
+    let mut router = Router::new();
+
+    // Add authentication middleware
+    router.use_middleware(AuthMiddleware);
+
+    // User Profile routes
+    router.get(
+        "/api/user-profiles/profile/:userId",
+        handler!(get_user_profile),
+    );
+    router.get("/api/user-profiles/profile", handler!(get_user_profile_me));
+    router.put(
+        "/api/user-profiles/profile/:userId",
+        handler!(update_user_profile),
+    );
+    router.put(
+        "/api/user-profiles/profile",
+        handler!(update_user_profile_me),
+    );
+    router.delete(
+        "/api/user-profiles/profile/:userId",
+        handler!(delete_user_profile),
+    );
+
+    // User Stats and Preferences
+    router.get("/api/user-profiles/profile/stats", handler!(get_user_stats));
+    router.get(
+        "/api/user-profiles/profile/preferences/:userId",
+        handler!(get_user_preferences),
+    );
+    router.get(
+        "/api/user-profiles/profile/preferences",
+        handler!(get_user_preferences),
+    );
+    router.put(
+        "/api/user-profiles/profile/preferences/:userId",
+        handler!(update_user_preferences),
+    );
+    router.put(
+        "/api/user-profiles/profile/preferences",
+        handler!(update_user_preferences),
+    );
+
+    // Upload route
+    router.post(
+        "/api/user-profiles/profile/upload",
+        handler!(generate_upload_url),
+    );
+
+    // Sleep routes
+    router.get("/api/user-profiles/sleep", handler!(get_sleep_data));
+    router.post("/api/user-profiles/sleep", handler!(save_sleep_data));
+    router.put("/api/user-profiles/sleep", handler!(update_sleep_data));
+    router.get(
+        "/api/user-profiles/sleep/history",
+        handler!(get_sleep_history),
+    );
+    router.get("/api/user-profiles/sleep/stats", handler!(get_sleep_stats));
+
+    info!("User Profile Service initialized successfully");
+    info!("Starting Lambda runtime...");
+
+    // Run Lambda service
+    let result = lambda_runtime::run(service_fn(router.into_service())).await;
+
+    if let Err(e) = &result {
+        error!("Lambda runtime error: {}", e);
+    }
+
+    result
 }
 
-async fn handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
-    let (event, _context) = event.into_parts();
-
-    // Read method and path early so they are available for auth
-    let http_method = event["requestContext"]["http"]["method"]
-        .as_str()
-        .unwrap_or("GET");
-    let path = event["rawPath"].as_str().unwrap_or("/");
-    
-    // Convert to auth event format
-    let auth_event = AuthLambdaEvent {
-        headers: event.get("headers")
-            .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                    .collect()
-            }),
-        request_context: event.get("requestContext")
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        path_parameters: event.get("pathParameters")
-            .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                    .collect()
-            }),
-        query_string_parameters: event.get("queryStringParameters")
-            .and_then(|v| v.as_object())
-            .map(|obj| {
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                    .collect()
-            }),
-        body: event.get("body")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()),
-    };
-
-    // Handle CORS preflight early
-    if is_cors_preflight_request(http_method) {
-        return Ok(ResponseBuilder::cors_preflight());
-    }
-    
-    // Authenticate request
-    let auth_context = match AUTH_LAYER.authenticate(&auth_event).await {
-        Ok(auth_result) => {
-            if !auth_result.is_authorized {
-                return Ok(ResponseBuilder::forbidden(
-                    &auth_result.error.unwrap_or("Access denied".to_string())
-                ));
-            }
-            let ctx = auth_result.context.unwrap();
-            ctx
-        }
-        Err(e) => {
-            error!("Authentication error: {}", e);
-            return Ok(ResponseBuilder::unauthorized(None));
-        }
-    };
-    
-    let body = event["body"]
-        .as_str()
-        .unwrap_or("{}");
-
-    // Initialize services
-    let dynamodb_client = DYNAMODB_CLIENT.get().expect("DynamoDB not initialized").as_ref();
+fn init_controllers() {
+    let dynamodb_client = DYNAMODB_CLIENT
+        .get()
+        .expect("DynamoDB not initialized")
+        .as_ref();
     let s3_client = S3_CLIENT.get().expect("S3 not initialized").as_ref();
 
     // Create repositories
-    let user_profile_repository = UserProfileRepository::new(dynamodb_client.clone(), s3_client.clone());
+    let user_profile_repository =
+        UserProfileRepository::new(dynamodb_client.clone(), s3_client.clone());
     let sleep_repository = SleepRepository::new(dynamodb_client.clone());
 
     // Create services
-    let user_profile_service = UserProfileService::new(user_profile_repository, sleep_repository.clone());
+    let user_profile_service =
+        UserProfileService::new(user_profile_repository, sleep_repository.clone());
     let sleep_service = SleepService::new(sleep_repository);
     let upload_service = UploadService::new(s3_client.clone());
 
-    // Create controllers
-    let user_profile_controller = UserProfileController::new(user_profile_service);
-    let sleep_controller = SleepController::new(sleep_service);
-    let upload_controller = UploadController::new(upload_service);
+    // Initialize controllers
+    let _ = USER_PROFILE_CONTROLLER.set(UserProfileController::new(user_profile_service));
+    let _ = SLEEP_CONTROLLER.set(SleepController::new(sleep_service));
+    let _ = UPLOAD_CONTROLLER.set(UploadController::new(upload_service));
+}
 
-    // Ensure pathParameters.userId is available for handlers. If the path ends with
-    // '/me', substitute the authenticated user's id. Otherwise, try to parse from path.
-    let mut payload = event.clone();
-    {
-        use serde_json::{Map, Value as JsonValue};
-        let auth_user_id = auth_context.user_id.clone();
-        let mut path_params: Map<String, JsonValue> = payload
-            .get("pathParameters")
-            .and_then(|v| v.as_object().cloned())
-            .unwrap_or_default();
+// Authentication middleware
+struct AuthMiddleware;
 
-        // Derive userId:
-        // - If exact path is /api/user-profiles/profile or it ends with /me, use auth user id
-        // - If path is /api/user-profiles/profile/{userId}, extract last segment
-        let candidate = if path == "/api/user-profiles/profile" || path == "/api/user-profiles/profile/" {
-            auth_user_id
-        } else if path.ends_with("/me") {
-            auth_user_id
-        } else {
-            let last_segment = path.rsplit('/').next().unwrap_or("");
-            if !last_segment.is_empty() && last_segment != "profile" && last_segment != "userId" {
-                last_segment.to_string()
-            } else {
-                auth_user_id
-            }
+#[async_trait]
+impl Middleware for AuthMiddleware {
+    async fn handle(&self, mut req: Request, next: Next) -> Result<Response, LambdaError> {
+        info!(
+            "Auth middleware: Processing request {} {}",
+            req.method, req.path
+        );
+
+        // Convert to auth event format
+        let auth_event = AuthLambdaEvent {
+            headers: Some(req.headers.clone()),
+            request_context: req
+                .raw_event()
+                .get("requestContext")
+                .and_then(|v| serde_json::from_value(v.clone()).ok()),
+            path_parameters: Some(req.path_params.clone()),
+            query_string_parameters: Some(req.query_params.clone()),
+            body: req.body.clone(),
         };
 
-        path_params.insert("userId".to_string(), JsonValue::String(candidate.clone()));
-        payload["pathParameters"] = JsonValue::Object(path_params);
+        // Authenticate request
+        info!("Auth middleware: Calling auth layer...");
+        let auth_result = AUTH_LAYER.authenticate(&auth_event).await.map_err(|e| {
+            error!("Auth middleware: Authentication failed: {}", e);
+            format!("Auth error: {}", e)
+        })?;
 
-    }    
-    
-    let response = match RouteMatcher::match_route(http_method, path) {
-        Some(Route::GetUserProfile) => {
-            user_profile_controller.get_user_profile(path, &auth_context).await
+        info!(
+            "Auth middleware: Auth result - is_authorized: {}",
+            auth_result.is_authorized
+        );
+
+        if !auth_result.is_authorized {
+            info!("Auth middleware: Request not authorized");
+            return Ok(Response::forbidden(
+                &auth_result.error.unwrap_or("Access denied".to_string()),
+            ));
         }
-        Some(Route::UpdateUserProfile) => {
-            user_profile_controller.partial_update_user_profile(path, body, &auth_context).await
+
+        // Add user context
+        if let Some(auth_ctx) = auth_result.context {
+            info!(
+                "Auth middleware: Adding user context for user: {}",
+                auth_ctx.user_id
+            );
+            match serde_json::to_value(&auth_ctx) {
+                Ok(auth_ctx_value) => {
+                    req.set_context(
+                        Context::new(req.context.request_id.clone())
+                            .with_user(auth_ctx.user_id.clone(), Some(auth_ctx.email.clone()))
+                            .with_custom("auth_context".to_string(), auth_ctx_value),
+                    );
+                }
+                Err(e) => {
+                    error!("Failed to serialize auth context: {}", e);
+                    // Continue without auth context
+                }
+            }
         }
-        Some(Route::DeleteUserProfile) => {
-            user_profile_controller.delete_user_profile(path, &auth_context).await
-        }
-        Some(Route::UploadProfile) => {
-            upload_controller.generate_upload_url(body).await
-        }
-        Some(Route::GetUserStats) => {
-            user_profile_controller.get_user_stats(path, &auth_context).await
-        }
-        Some(Route::GetUserPreferences) => {
-            user_profile_controller.get_user_preferences(path, &auth_context).await
-        }
-        Some(Route::UpdateUserPreferences) => {
-            user_profile_controller.update_user_preferences(path, body, &auth_context).await
-        }
-        Some(Route::GetSleepData) => {
-            let query_params = RouteMatcher::extract_sleep_query_params(&event);
-            sleep_controller.get_sleep_data(&query_params, &auth_context).await
-        }
-        Some(Route::SaveSleepData) => {
-            sleep_controller.save_sleep_data(body, &auth_context).await
-        }
-        Some(Route::UpdateSleepData) => {
-            sleep_controller.update_sleep_data(body, &auth_context).await
-        }
-        Some(Route::GetSleepHistory) => {
-            let query_params = RouteMatcher::extract_sleep_query_params(&event);
-            sleep_controller.get_sleep_history(&query_params, &auth_context).await
-        }
-        Some(Route::GetSleepStats) => {
-            let query_params = RouteMatcher::extract_sleep_query_params(&event);
-            sleep_controller.get_sleep_stats(&query_params, &auth_context).await
-        }
-        None => {
-            Ok(ResponseBuilder::not_found("Endpoint not found"))
-        }
-    };
-    
-    response
+
+        info!("Auth middleware: Calling next handler...");
+        next(req).await
+    }
 }
