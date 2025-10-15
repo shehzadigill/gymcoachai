@@ -57,7 +57,10 @@ async fn main() -> Result<(), LambdaError> {
 
     // Preferences routes
     router.get("/api/notifications/preferences", handler!(get_preferences));
-    router.put("/api/notifications/preferences", handler!(update_preferences));
+    router.put(
+        "/api/notifications/preferences",
+        handler!(update_preferences),
+    );
 
     // Scheduled notifications (for EventBridge triggers)
     router.post(

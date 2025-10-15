@@ -3,12 +3,15 @@
 ## Notification Routes
 
 ### Send Notification
+
 ```
 POST /api/notifications/send
 ```
+
 Send a push notification to a user.
 
 **Request Body:**
+
 ```json
 {
   "user_id": "string",
@@ -21,6 +24,7 @@ Send a push notification to a user.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -30,15 +34,19 @@ Send a push notification to a user.
 ```
 
 ### Get Notifications
+
 ```
 GET /api/notifications?limit=20
 ```
+
 Get notification history for the authenticated user.
 
 **Query Parameters:**
+
 - `limit` (optional): Number of notifications to return (default: 20)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -48,12 +56,15 @@ Get notification history for the authenticated user.
 ```
 
 ### Mark Notification as Read
+
 ```
 PUT /api/notifications/:notificationId/read
 ```
+
 Mark a specific notification as read.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -64,12 +75,15 @@ Mark a specific notification as read.
 ## Device Management Routes
 
 ### Register Device
+
 ```
 POST /api/notifications/devices
 ```
+
 Register a device for push notifications.
 
 **Request Body:**
+
 ```json
 {
   "user_id": "string",
@@ -80,10 +94,12 @@ Register a device for push notifications.
 ```
 
 **Supported Platforms:**
+
 - `ios`
 - `android`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -93,12 +109,15 @@ Register a device for push notifications.
 ```
 
 ### Deactivate Device
+
 ```
 DELETE /api/notifications/devices/:deviceId
 ```
+
 Deactivate a registered device.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -107,12 +126,15 @@ Deactivate a registered device.
 ```
 
 ### Get User Devices
+
 ```
 GET /api/notifications/devices
 ```
+
 Get all registered devices for the authenticated user.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -124,12 +146,15 @@ Get all registered devices for the authenticated user.
 ## Preferences Routes
 
 ### Get Preferences
+
 ```
 GET /api/notifications/preferences
 ```
+
 Get notification preferences for the authenticated user.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -148,12 +173,15 @@ Get notification preferences for the authenticated user.
 ```
 
 ### Update Preferences
+
 ```
 PUT /api/notifications/preferences
 ```
+
 Update notification preferences for the authenticated user.
 
 **Request Body:**
+
 ```json
 {
   "workout_reminders": true,
@@ -169,6 +197,7 @@ Update notification preferences for the authenticated user.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -179,14 +208,17 @@ Update notification preferences for the authenticated user.
 ## Scheduled Notifications (Internal/EventBridge)
 
 ### Process Scheduled Notifications
+
 ```
 POST /api/notifications/scheduled/process
 ```
+
 Process scheduled notifications (triggered by EventBridge).
 
 **Note:** This endpoint bypasses authentication and is intended to be called by AWS EventBridge only.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -198,6 +230,7 @@ Process scheduled notifications (triggered by EventBridge).
 ## Authentication
 
 All routes (except OPTIONS and `/api/notifications/scheduled/process`) require a valid JWT token in the Authorization header:
+
 ```
 Authorization: Bearer <token>
 ```
@@ -207,6 +240,7 @@ The scheduled notifications endpoint bypasses authentication as it's triggered b
 ## CORS Support
 
 All endpoints support CORS with the following headers:
+
 - `Access-Control-Allow-Origin: *`
 - `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
 - `Access-Control-Allow-Headers: Content-Type, Authorization`
@@ -215,6 +249,7 @@ All endpoints support CORS with the following headers:
 ## Notification Types
 
 Supported notification types:
+
 - `workout_reminder`: Reminder to complete a workout
 - `nutrition_reminder`: Reminder to log meals
 - `water_reminder`: Reminder to drink water
@@ -225,6 +260,7 @@ Supported notification types:
 ## Error Responses
 
 All error responses follow this format:
+
 ```json
 {
   "statusCode": 4xx/5xx,
