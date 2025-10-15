@@ -20,6 +20,8 @@ import {Icon} from '../components/common/Icon';
 import {TabBar} from '../components/common/TabBar';
 import apiClient from '../services/api';
 import LinearGradient from 'react-native-linear-gradient';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 
 interface WorkoutPlan {
   id: string;
@@ -64,6 +66,7 @@ interface Exercise {
 const {width, height} = Dimensions.get('window');
 
 export default function WorkoutsScreen({navigation}: any) {
+  const {t} = useTranslation();
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -104,11 +107,27 @@ export default function WorkoutsScreen({navigation}: any) {
 
   // Tab configuration
   const tabs = [
-    {id: 'sessions', title: 'Sessions', icon: 'sessions'},
-    {id: 'plans', title: 'Plans', icon: 'plans'},
-    {id: 'templates', title: 'Templates', icon: 'templates'},
-    {id: 'exercises', title: 'Exercises', icon: 'exercises'},
-    {id: 'analytics', title: 'Analytics', icon: 'analytics'},
+    {
+      id: 'sessions',
+      title: t('workouts_screen.tabs.sessions'),
+      icon: 'sessions',
+    },
+    {id: 'plans', title: t('workouts_screen.tabs.plans'), icon: 'plans'},
+    {
+      id: 'templates',
+      title: t('workouts_screen.tabs.templates'),
+      icon: 'templates',
+    },
+    {
+      id: 'exercises',
+      title: t('workouts_screen.tabs.exercises'),
+      icon: 'exercises',
+    },
+    {
+      id: 'analytics',
+      title: t('workouts_screen.tabs.analytics'),
+      icon: 'analytics',
+    },
   ];
 
   useEffect(() => {
@@ -492,19 +511,23 @@ export default function WorkoutsScreen({navigation}: any) {
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}>
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Ready to Train?</Text>
+          <Text style={styles.heroTitle}>
+            {t('workouts_screen.hero.title')}
+          </Text>
           <Text style={styles.heroSubtitle}>
             {sessions.length > 0
-              ? `You've completed ${
-                  sessions.filter(s => s.status === 'completed').length
-                } workouts!`
-              : "Let's start your fitness journey"}
+              ? t('workouts_screen.hero.completed', {
+                  count: sessions.filter(s => s.status === 'completed').length,
+                })
+              : t('workouts_screen.hero.subtitle')}
           </Text>
           <TouchableOpacity
             style={styles.heroButton}
             onPress={startQuickWorkout}>
             <Icon name="play-arrow" size={24} color="#fff" />
-            <Text style={styles.heroButtonText}>Start Quick Workout</Text>
+            <Text style={styles.heroButtonText}>
+              {t('workouts_screen.actions.start_quick')}
+            </Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -513,26 +536,36 @@ export default function WorkoutsScreen({navigation}: any) {
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{sessions.length}</Text>
-          <Text style={styles.statLabel}>Total Sessions</Text>
+          <Text style={styles.statLabel}>
+            {t('workouts_screen.stats.total_sessions')}
+          </Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>
             {sessions.filter(s => s.status === 'completed').length}
           </Text>
-          <Text style={styles.statLabel}>Completed</Text>
+          <Text style={styles.statLabel}>
+            {t('workouts_screen.stats.completed')}
+          </Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{workoutPlans.length}</Text>
-          <Text style={styles.statLabel}>Plans</Text>
+          <Text style={styles.statLabel}>
+            {t('workouts_screen.stats.plans')}
+          </Text>
         </View>
       </View>
 
       {/* Recent Sessions */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Sessions</Text>
+          <Text style={styles.sectionTitle}>
+            {t('workouts_screen.sections.recent_sessions')}
+          </Text>
           <TouchableOpacity onPress={() => setActiveView('plans')}>
-            <Text style={styles.sectionAction}>View All</Text>
+            <Text style={styles.sectionAction}>
+              {t('common.view_all', 'View All')}
+            </Text>
           </TouchableOpacity>
         </View>
         {sessions && sessions.length > 0 ? (
@@ -557,7 +590,7 @@ export default function WorkoutsScreen({navigation}: any) {
                       <Text style={styles.sessionName}>
                         {session.workout?.name ||
                           session.name ||
-                          'Quick Workout'}
+                          t('workouts_screen.labels.quick_workout')}
                       </Text>
                     </View>
                     <View
@@ -579,7 +612,9 @@ export default function WorkoutsScreen({navigation}: any) {
                       <View style={styles.sessionDetailRow}>
                         <Icon name="list" size={16} color="#6b7280" />
                         <Text style={styles.sessionDetail}>
-                          {session.exercises.length} exercises
+                          {t('workouts_screen.labels.exercises_count', {
+                            count: session.exercises.length,
+                          })}
                         </Text>
                       </View>
                     )}
@@ -603,9 +638,11 @@ export default function WorkoutsScreen({navigation}: any) {
         ) : (
           <Card style={styles.emptyCard}>
             <Icon name="fitness-center" size={48} color="#d1d5db" />
-            <Text style={styles.emptyText}>No workout sessions yet</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.empty.no_sessions')}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Start your first workout above!
+              {t('workouts_screen.empty.start_first')}
             </Text>
           </Card>
         )}
@@ -622,9 +659,11 @@ export default function WorkoutsScreen({navigation}: any) {
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}>
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Your Progress</Text>
+          <Text style={styles.heroTitle}>
+            {t('workouts_screen.analytics.title')}
+          </Text>
           <Text style={styles.heroSubtitle}>
-            Track your fitness journey and achievements
+            {t('workouts_screen.analytics.subtitle')}
           </Text>
         </View>
       </LinearGradient>
@@ -636,68 +675,89 @@ export default function WorkoutsScreen({navigation}: any) {
         ) : analyticsError ? (
           <Card style={styles.emptyCard}>
             <Icon name="error" size={48} color="#ef4444" />
-            <Text style={styles.emptyText}>Error loading analytics</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.errors.analytics')}
+            </Text>
             <Text style={styles.emptySubtext}>{analyticsError}</Text>
           </Card>
         ) : analytics ? (
           <>
             {/* Strength Progress */}
             <View style={styles.analyticsSection}>
-              <Text style={styles.analyticsTitle}>Strength Progress</Text>
+              <Text style={styles.analyticsTitle}>
+                {t('workouts_screen.analytics.strength')}
+              </Text>
               <Card style={styles.analyticsCard}>
                 <Text style={styles.analyticsValue}>
-                  {analytics.strengthProgress?.length || 0} exercises tracked
+                  {t('workouts_screen.analytics.exercises_tracked', {
+                    count: analytics.strengthProgress?.length || 0,
+                  })}
                 </Text>
                 <Text style={styles.analyticsSubtext}>
-                  Keep pushing your limits!
+                  {t('workouts_screen.analytics.keep_pushing')}
                 </Text>
               </Card>
             </View>
 
             {/* Body Measurements */}
             <View style={styles.analyticsSection}>
-              <Text style={styles.analyticsTitle}>Body Measurements</Text>
+              <Text style={styles.analyticsTitle}>
+                {t('workouts_screen.analytics.body')}
+              </Text>
               <Card style={styles.analyticsCard}>
                 <Text style={styles.analyticsValue}>
-                  {analytics.bodyMeasurements?.length || 0} measurements
-                  recorded
+                  {t('workouts_screen.analytics.measurements_recorded', {
+                    count: analytics.bodyMeasurements?.length || 0,
+                  })}
                 </Text>
                 <Text style={styles.analyticsSubtext}>
-                  Track your physical progress
+                  {t('workouts_screen.analytics.track_progress')}
                 </Text>
               </Card>
             </View>
 
             {/* Milestones */}
             <View style={styles.analyticsSection}>
-              <Text style={styles.analyticsTitle}>Milestones</Text>
+              <Text style={styles.analyticsTitle}>
+                {t('workouts_screen.analytics.milestones')}
+              </Text>
               <Card style={styles.analyticsCard}>
                 <Text style={styles.analyticsValue}>
-                  {analytics.milestones?.length || 0} milestones achieved
+                  {t('workouts_screen.analytics.milestones_achieved', {
+                    count: analytics.milestones?.length || 0,
+                  })}
                 </Text>
                 <Text style={styles.analyticsSubtext}>
-                  Celebrate your achievements!
+                  {t('workouts_screen.analytics.celebrate')}
                 </Text>
               </Card>
             </View>
 
             {/* Achievements */}
             <View style={styles.analyticsSection}>
-              <Text style={styles.analyticsTitle}>Achievements</Text>
+              <Text style={styles.analyticsTitle}>
+                {t('workouts_screen.analytics.achievements')}
+              </Text>
               <Card style={styles.analyticsCard}>
                 <Text style={styles.analyticsValue}>
-                  {analytics.achievements?.length || 0} achievements unlocked
+                  {t('workouts_screen.analytics.achievements_unlocked', {
+                    count: analytics.achievements?.length || 0,
+                  })}
                 </Text>
-                <Text style={styles.analyticsSubtext}>You're doing great!</Text>
+                <Text style={styles.analyticsSubtext}>
+                  {t('workouts_screen.analytics.great_job')}
+                </Text>
               </Card>
             </View>
           </>
         ) : (
           <Card style={styles.emptyCard}>
             <Icon name="analytics" size={48} color="#d1d5db" />
-            <Text style={styles.emptyText}>No analytics data yet</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.analytics.empty')}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Complete some workouts to see your progress!
+              {t('workouts_screen.analytics.empty_hint')}
             </Text>
           </Card>
         )}
@@ -711,7 +771,9 @@ export default function WorkoutsScreen({navigation}: any) {
       <View style={styles.quickActions}>
         <TouchableOpacity style={styles.createButton} onPress={createNewPlan}>
           <Icon name="add" size={20} color="#fff" />
-          <Text style={styles.createButtonText}>Create New Plan</Text>
+          <Text style={styles.createButtonText}>
+            {t('workouts_screen.actions.create_plan')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -719,7 +781,7 @@ export default function WorkoutsScreen({navigation}: any) {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search workout plans..."
+          placeholder={t('workouts_screen.search.plans_placeholder')}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -727,12 +789,16 @@ export default function WorkoutsScreen({navigation}: any) {
 
       {/* Workout Plans */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>My Workout Plans</Text>
+        <Text style={styles.sectionTitle}>
+          {t('workouts_screen.sections.my_plans')}
+        </Text>
         {plansLoading ? (
           <LoadingSpinner />
         ) : plansError ? (
           <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Error loading workout plans</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.errors.plans')}
+            </Text>
             <Text style={styles.emptySubtext}>{plansError}</Text>
           </Card>
         ) : filteredPlans && filteredPlans.length > 0 ? (
@@ -746,7 +812,9 @@ export default function WorkoutsScreen({navigation}: any) {
                       styles.difficultyBadge,
                       getDifficultyStyle(plan.difficulty),
                     ]}>
-                    <Text style={styles.difficultyText}>{plan.difficulty}</Text>
+                    <Text style={styles.difficultyText}>
+                      {t('profile.' + plan.difficulty, plan.difficulty)}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.menuButton}
@@ -762,25 +830,31 @@ export default function WorkoutsScreen({navigation}: any) {
               )}
               <View style={styles.workoutInfo}>
                 <Text style={styles.workoutDetail}>
-                  {plan.exercises.length} exercises
+                  {t('workouts_screen.labels.exercises_count', {
+                    count: plan.exercises.length,
+                  })}
                 </Text>
                 <Text style={styles.workoutDetail}>
-                  {plan.durationWeeks} weeks
+                  {t('workouts_screen.labels.weeks', {
+                    count: plan.durationWeeks,
+                  })}
                 </Text>
                 <Text style={styles.workoutDetail}>
-                  {plan.frequencyPerWeek}x per week
+                  {t('workouts_screen.labels.per_week', {
+                    count: plan.frequencyPerWeek,
+                  })}
                 </Text>
               </View>
               <View style={styles.workoutActions}>
                 <Button
-                  title="View Details"
+                  title={t('common.view_details', 'View Details')}
                   variant="outline"
                   size="small"
                   onPress={() => viewPlanDetail(plan)}
                   style={styles.actionButton}
                 />
                 <Button
-                  title="Start Workout"
+                  title={t('workouts_screen.actions.start_workout')}
                   size="small"
                   onPress={() =>
                     navigation.navigate('Session', {workoutId: plan.id})
@@ -790,14 +864,14 @@ export default function WorkoutsScreen({navigation}: any) {
               </View>
               <View style={styles.secondaryActions}>
                 <Button
-                  title="📅 Schedule"
+                  title={`📅 ${t('workouts_screen.actions.schedule')}`}
                   variant="outline"
                   size="small"
                   onPress={() => scheduleWorkout(plan)}
                   style={styles.secondaryActionButton}
                 />
                 <Button
-                  title="✏️ Edit"
+                  title={`✏️ ${t('common.edit')}`}
                   variant="outline"
                   size="small"
                   onPress={() =>
@@ -810,9 +884,11 @@ export default function WorkoutsScreen({navigation}: any) {
           ))
         ) : (
           <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No workout plans yet</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.empty.no_plans')}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Create your first workout plan!
+              {t('workouts_screen.empty.create_first_plan')}
             </Text>
           </Card>
         )}
@@ -828,7 +904,9 @@ export default function WorkoutsScreen({navigation}: any) {
           style={styles.createButton}
           onPress={createNewExercise}>
           <Icon name="add" size={20} color="#fff" />
-          <Text style={styles.createButtonText}>Create New Exercise</Text>
+          <Text style={styles.createButtonText}>
+            {t('workouts_screen.actions.create_exercise')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -843,7 +921,7 @@ export default function WorkoutsScreen({navigation}: any) {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search exercises..."
+            placeholder={t('workouts_screen.search.exercises_placeholder')}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#9ca3af"
@@ -867,7 +945,7 @@ export default function WorkoutsScreen({navigation}: any) {
               styles.filterText,
               selectedCategory === 'all' && styles.activeFilterText,
             ]}>
-            All Categories
+            {t('workouts_screen.filters.all_categories')}
           </Text>
         </TouchableOpacity>
         {['strength', 'cardio', 'flexibility', 'sports', 'yoga', 'pilates'].map(
@@ -884,7 +962,10 @@ export default function WorkoutsScreen({navigation}: any) {
                   styles.filterText,
                   selectedCategory === category && styles.activeFilterText,
                 ]}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                {t(
+                  'workouts_screen.filters.category.' + category,
+                  category.charAt(0).toUpperCase() + category.slice(1),
+                )}
               </Text>
             </TouchableOpacity>
           ),
@@ -907,7 +988,7 @@ export default function WorkoutsScreen({navigation}: any) {
               styles.filterText,
               selectedMuscleGroup === 'all' && styles.activeFilterText,
             ]}>
-            All Muscles
+            {t('workouts_screen.filters.all_muscles')}
           </Text>
         </TouchableOpacity>
         {['chest', 'back', 'shoulders', 'arms', 'legs', 'core', 'glutes'].map(
@@ -924,7 +1005,10 @@ export default function WorkoutsScreen({navigation}: any) {
                   styles.filterText,
                   selectedMuscleGroup === muscle && styles.activeFilterText,
                 ]}>
-                {muscle.charAt(0).toUpperCase() + muscle.slice(1)}
+                {t(
+                  'workouts_screen.filters.muscle.' + muscle,
+                  muscle.charAt(0).toUpperCase() + muscle.slice(1),
+                )}
               </Text>
             </TouchableOpacity>
           ),
@@ -947,7 +1031,7 @@ export default function WorkoutsScreen({navigation}: any) {
               styles.filterText,
               selectedDifficulty === 'all' && styles.activeFilterText,
             ]}>
-            All Levels
+            {t('workouts_screen.filters.all_levels')}
           </Text>
         </TouchableOpacity>
         {['beginner', 'intermediate', 'advanced'].map(difficulty => (
@@ -963,7 +1047,10 @@ export default function WorkoutsScreen({navigation}: any) {
                 styles.filterText,
                 selectedDifficulty === difficulty && styles.activeFilterText,
               ]}>
-              {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+              {t(
+                'profile.' + difficulty,
+                difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
+              )}
             </Text>
           </TouchableOpacity>
         ))}
@@ -972,13 +1059,17 @@ export default function WorkoutsScreen({navigation}: any) {
       {/* Exercise Library */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          Exercise Library ({filteredExercises.length})
+          {t('workouts_screen.sections.exercise_library', {
+            count: filteredExercises.length,
+          })}
         </Text>
         {exercisesLoading ? (
           <LoadingSpinner />
         ) : exercisesError ? (
           <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Error loading exercises</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.errors.exercises')}
+            </Text>
             <Text style={styles.emptySubtext}>{exercisesError}</Text>
           </Card>
         ) : filteredExercises && filteredExercises.length > 0 ? (
@@ -992,7 +1083,7 @@ export default function WorkoutsScreen({navigation}: any) {
                     getDifficultyStyle(exercise.difficulty),
                   ]}>
                   <Text style={styles.difficultyText}>
-                    {exercise.difficulty}
+                    {t('profile.' + exercise.difficulty, exercise.difficulty)}
                   </Text>
                 </View>
               </View>
@@ -1003,16 +1094,22 @@ export default function WorkoutsScreen({navigation}: any) {
               )}
               <View style={styles.exerciseInfo}>
                 <Text style={styles.exerciseDetail}>
-                  Category: {exercise.category}
+                  {t('workouts_screen.labels.category')}:{' '}
+                  {t(
+                    'workouts_screen.filters.category.' + exercise.category,
+                    exercise.category,
+                  )}
                 </Text>
                 {exercise.muscleGroups.length > 0 && (
                   <Text style={styles.exerciseDetail}>
-                    Muscles: {exercise.muscleGroups.join(', ')}
+                    {t('workouts_screen.labels.muscles')}:{' '}
+                    {exercise.muscleGroups.join(', ')}
                   </Text>
                 )}
                 {exercise.equipment.length > 0 && (
                   <Text style={styles.exerciseDetail}>
-                    Equipment: {exercise.equipment.join(', ')}
+                    {t('workouts_screen.labels.equipment')}:{' '}
+                    {exercise.equipment.join(', ')}
                   </Text>
                 )}
               </View>
@@ -1021,12 +1118,14 @@ export default function WorkoutsScreen({navigation}: any) {
         ) : (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyText}>
-              {searchQuery ? 'No matching exercises' : 'No exercises found'}
+              {searchQuery
+                ? t('workouts_screen.empty.no_matching_exercises')
+                : t('workouts_screen.empty.no_exercises')}
             </Text>
             <Text style={styles.emptySubtext}>
               {searchQuery
-                ? 'Try adjusting your search'
-                : 'Create your first exercise!'}
+                ? t('workouts_screen.empty.adjust_search')
+                : t('workouts_screen.empty.create_first_exercise')}
             </Text>
           </Card>
         )}
@@ -1057,12 +1156,16 @@ export default function WorkoutsScreen({navigation}: any) {
 
       {/* Workout Templates */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Workout Templates</Text>
+        <Text style={styles.sectionTitle}>
+          {t('workouts_screen.sections.templates')}
+        </Text>
         {templatesLoading ? (
           <LoadingSpinner />
         ) : templatesError ? (
           <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Error loading templates</Text>
+            <Text style={styles.emptyText}>
+              {t('workouts_screen.errors.templates')}
+            </Text>
             <Text style={styles.emptySubtext}>{templatesError}</Text>
           </Card>
         ) : filteredTemplates && filteredTemplates.length > 0 ? (
@@ -1076,7 +1179,7 @@ export default function WorkoutsScreen({navigation}: any) {
                     getDifficultyStyle(template.difficulty),
                   ]}>
                   <Text style={styles.difficultyText}>
-                    {template.difficulty}
+                    {t('profile.' + template.difficulty, template.difficulty)}
                   </Text>
                 </View>
               </View>
@@ -1087,25 +1190,31 @@ export default function WorkoutsScreen({navigation}: any) {
               )}
               <View style={styles.workoutInfo}>
                 <Text style={styles.workoutDetail}>
-                  {template.exercises.length} exercises
+                  {t('workouts_screen.labels.exercises_count', {
+                    count: template.exercises.length,
+                  })}
                 </Text>
                 <Text style={styles.workoutDetail}>
-                  {template.durationWeeks} weeks
+                  {t('workouts_screen.labels.weeks', {
+                    count: template.durationWeeks,
+                  })}
                 </Text>
                 <Text style={styles.workoutDetail}>
-                  {template.frequencyPerWeek}x per week
+                  {t('workouts_screen.labels.per_week', {
+                    count: template.frequencyPerWeek,
+                  })}
                 </Text>
               </View>
               <View style={styles.workoutActions}>
                 <Button
-                  title="View Template"
+                  title={t('workouts_screen.actions.view_template')}
                   variant="outline"
                   size="small"
                   onPress={() => viewPlanDetail(template)}
                   style={styles.actionButton}
                 />
                 <Button
-                  title="Use Template"
+                  title={t('workouts_screen.actions.use_template')}
                   size="small"
                   onPress={() => useTemplate(template)}
                   style={styles.actionButton}
@@ -1117,13 +1226,13 @@ export default function WorkoutsScreen({navigation}: any) {
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyText}>
               {searchQuery
-                ? 'No matching templates'
-                : 'No workout templates found'}
+                ? t('workouts_screen.empty.no_matching_templates')
+                : t('workouts_screen.empty.no_templates')}
             </Text>
             <Text style={styles.emptySubtext}>
               {searchQuery
-                ? 'Try adjusting your search'
-                : 'Create your first workout template that others can use!'}
+                ? t('workouts_screen.empty.adjust_search')
+                : t('workouts_screen.empty.create_first_template')}
             </Text>
           </Card>
         )}
@@ -1133,6 +1242,7 @@ export default function WorkoutsScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
         refreshControl={

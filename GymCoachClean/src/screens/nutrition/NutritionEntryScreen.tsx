@@ -14,6 +14,8 @@ import {
 import {Card, Button} from '../../components/common/UI';
 import apiClient from '../../services/api';
 import {Food} from '../../types';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../../components/common/FloatingSettingsButton';
 
 interface ServingOption {
   name: string;
@@ -44,6 +46,7 @@ interface ExtendedFood extends Food {
 }
 
 export default function NutritionEntryScreen({route, navigation}: any) {
+  const {t} = useTranslation();
   const {date, mealType, mealId, editMode, mealData} = route.params || {};
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,7 +233,10 @@ export default function NutritionEntryScreen({route, navigation}: any) {
 
   const addMeal = async () => {
     if (!selectedFood || !customName.trim()) {
-      Alert.alert('Error', 'Please select a food and enter a meal name.');
+      Alert.alert(
+        t('nutrition.errors.error'),
+        t('nutrition.errors.select_food_and_name'),
+      );
       return;
     }
 
@@ -239,7 +245,10 @@ export default function NutritionEntryScreen({route, navigation}: any) {
 
       const nutrition = calculateNutrition();
       if (!nutrition) {
-        Alert.alert('Error', 'Could not calculate nutrition information.');
+        Alert.alert(
+          t('nutrition.errors.error'),
+          t('nutrition.errors.calculate_nutrition'),
+        );
         return;
       }
 
@@ -285,18 +294,21 @@ export default function NutritionEntryScreen({route, navigation}: any) {
       }
 
       Alert.alert(
-        'Success',
-        editMode ? 'Meal updated successfully!' : 'Meal added successfully!',
+        t('nutrition.success'),
+        editMode ? t('nutrition.meal_updated') : t('nutrition.meal_added'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => navigation.goBack(),
           },
         ],
       );
     } catch (error) {
       console.error('Error adding meal:', error);
-      Alert.alert('Error', 'Failed to add meal. Please try again.');
+      Alert.alert(
+        t('nutrition.errors.error'),
+        t('nutrition.errors.failed_to_add'),
+      );
     } finally {
       setLoading(false);
     }
@@ -306,26 +318,31 @@ export default function NutritionEntryScreen({route, navigation}: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <ScrollView style={styles.content}>
-        <Text style={styles.title}>{editMode ? 'Edit Meal' : 'Log Meal'}</Text>
+        <Text style={styles.title}>
+          {editMode ? t('nutrition.edit_meal') : t('nutrition.log_meal')}
+        </Text>
         <Text style={styles.subtitle}>
-          {mealType} • {date}
+          {t(`nutrition.meal_types.${mealType.toLowerCase()}`)} • {date}
         </Text>
 
         {!selectedFood && !editMode ? (
           <>
             <Card style={styles.searchCard}>
-              <Text style={styles.sectionTitle}>Search Food</Text>
+              <Text style={styles.sectionTitle}>
+                {t('nutrition.search_food')}
+              </Text>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search for food..."
+                placeholder={t('nutrition.search_placeholder')}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={() => searchFoods(searchQuery)}
                 returnKeyType="search"
               />
               <Button
-                title="Search"
+                title={t('nutrition.search')}
                 onPress={() => searchFoods(searchQuery)}
                 loading={searching}
                 disabled={!searchQuery.trim()}
@@ -335,13 +352,17 @@ export default function NutritionEntryScreen({route, navigation}: any) {
             {searching && (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={styles.loadingText}>Searching foods...</Text>
+                <Text style={styles.loadingText}>
+                  {t('nutrition.searching_foods')}
+                </Text>
               </View>
             )}
 
             {searchResults.length > 0 && (
               <Card style={styles.resultsCard}>
-                <Text style={styles.sectionTitle}>Search Results</Text>
+                <Text style={styles.sectionTitle}>
+                  {t('nutrition.search_results')}
+                </Text>
                 <FlatList
                   data={searchResults}
                   keyExtractor={item => item.id}
@@ -367,7 +388,9 @@ export default function NutritionEntryScreen({route, navigation}: any) {
         ) : selectedFood ? (
           <>
             <Card style={styles.selectedFoodCard}>
-              <Text style={styles.sectionTitle}>Selected Food</Text>
+              <Text style={styles.sectionTitle}>
+                {t('nutrition.selected_food')}
+              </Text>
               <Text style={styles.selectedFoodName}>{selectedFood.name}</Text>
               {selectedFood.brand && (
                 <Text style={styles.selectedFoodBrand}>
@@ -382,13 +405,17 @@ export default function NutritionEntryScreen({route, navigation}: any) {
                     setSelectedFood(null);
                     setCustomName('');
                   }}>
-                  <Text style={styles.changeButtonText}>Change Food</Text>
+                  <Text style={styles.changeButtonText}>
+                    {t('nutrition.change_food')}
+                  </Text>
                 </TouchableOpacity>
               )}
             </Card>
 
             <Card style={styles.servingCard}>
-              <Text style={styles.sectionTitle}>Serving Size</Text>
+              <Text style={styles.sectionTitle}>
+                {t('nutrition.serving_size')}
+              </Text>
 
               {selectedFood.commonServings &&
               selectedFood.commonServings.length > 0 ? (
@@ -420,7 +447,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
 
               <View style={styles.customServing}>
                 <Text style={styles.customServingLabel}>
-                  Custom Weight (g):
+                  {t('nutrition.custom_weight')}:
                 </Text>
                 <TextInput
                   style={styles.customServingInput}
@@ -436,47 +463,61 @@ export default function NutritionEntryScreen({route, navigation}: any) {
             </Card>
 
             <Card style={styles.mealNameCard}>
-              <Text style={styles.sectionTitle}>Meal Name</Text>
+              <Text style={styles.sectionTitle}>
+                {t('nutrition.meal_name')}
+              </Text>
               <TextInput
                 style={styles.mealNameInput}
                 value={customName}
                 onChangeText={setCustomName}
-                placeholder="Enter meal name..."
+                placeholder={t('nutrition.enter_meal_name')}
               />
             </Card>
 
             {nutrition && (
               <Card style={styles.nutritionCard}>
-                <Text style={styles.sectionTitle}>Nutrition Information</Text>
+                <Text style={styles.sectionTitle}>
+                  {t('nutrition.nutrition_information')}
+                </Text>
                 <View style={styles.nutritionGrid}>
                   <View style={styles.nutritionItem}>
                     <Text style={styles.nutritionValue}>
                       {nutrition.calories}
                     </Text>
-                    <Text style={styles.nutritionLabel}>Calories</Text>
+                    <Text style={styles.nutritionLabel}>
+                      {t('nutrition.calories')}
+                    </Text>
                   </View>
                   <View style={styles.nutritionItem}>
                     <Text style={styles.nutritionValue}>
                       {nutrition.protein}g
                     </Text>
-                    <Text style={styles.nutritionLabel}>Protein</Text>
+                    <Text style={styles.nutritionLabel}>
+                      {t('nutrition.protein')}
+                    </Text>
                   </View>
                   <View style={styles.nutritionItem}>
                     <Text style={styles.nutritionValue}>
                       {nutrition.carbs}g
                     </Text>
-                    <Text style={styles.nutritionLabel}>Carbs</Text>
+                    <Text style={styles.nutritionLabel}>
+                      {t('nutrition.carbs')}
+                    </Text>
                   </View>
                   <View style={styles.nutritionItem}>
                     <Text style={styles.nutritionValue}>{nutrition.fat}g</Text>
-                    <Text style={styles.nutritionLabel}>Fat</Text>
+                    <Text style={styles.nutritionLabel}>
+                      {t('nutrition.fat')}
+                    </Text>
                   </View>
                   {nutrition.fiber > 0 && (
                     <View style={styles.nutritionItem}>
                       <Text style={styles.nutritionValue}>
                         {nutrition.fiber}g
                       </Text>
-                      <Text style={styles.nutritionLabel}>Fiber</Text>
+                      <Text style={styles.nutritionLabel}>
+                        {t('nutrition.fiber')}
+                      </Text>
                     </View>
                   )}
                   {nutrition.sugar > 0 && (
@@ -484,7 +525,9 @@ export default function NutritionEntryScreen({route, navigation}: any) {
                       <Text style={styles.nutritionValue}>
                         {nutrition.sugar}g
                       </Text>
-                      <Text style={styles.nutritionLabel}>Sugar</Text>
+                      <Text style={styles.nutritionLabel}>
+                        {t('nutrition.sugar')}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -493,7 +536,11 @@ export default function NutritionEntryScreen({route, navigation}: any) {
 
             <View style={styles.actionButtons}>
               <Button
-                title={editMode ? 'Update Meal' : 'Add Meal'}
+                title={
+                  editMode
+                    ? t('nutrition.update_meal')
+                    : t('nutrition.add_meal')
+                }
                 onPress={addMeal}
                 loading={loading}
                 disabled={!customName.trim()}

@@ -47,7 +47,27 @@ export function AuthProvider({children}: AuthProviderProps) {
 
   // Initial auth check - runs only once on mount
   useEffect(() => {
-    checkAuthState();
+    console.log('[AuthProvider] Starting initial auth check');
+    let cancelled = false;
+    // Fail-safe: if auth hangs for any reason, stop showing splash
+    const failSafe = setTimeout(() => {
+      if (!cancelled && isLoading) {
+        console.log(
+          '[AuthProvider] Auth check timeout, disabling loading spinner',
+        );
+        setIsLoading(false);
+      }
+    }, 8000);
+
+    checkAuthState().finally(() => {
+      clearTimeout(failSafe);
+      console.log('[AuthProvider] Initial auth check finished');
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(failSafe);
+    };
   }, []);
 
   // Set up token refresh interval - runs when user changes
@@ -80,6 +100,7 @@ export function AuthProvider({children}: AuthProviderProps) {
 
   const checkAuthState = async () => {
     try {
+      console.log('[AuthProvider] checkAuthState start');
       setIsLoading(true);
       let currentUser = await CognitoAuthService.getCurrentUser();
 
@@ -115,6 +136,7 @@ export function AuthProvider({children}: AuthProviderProps) {
       setUser(null);
       setUserProfile(null);
     } finally {
+      console.log('[AuthProvider] checkAuthState end -> setIsLoading(false)');
       setIsLoading(false);
     }
   };

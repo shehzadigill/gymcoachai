@@ -18,6 +18,8 @@ import {
   Milestone,
   Achievement,
 } from '../types';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 
 interface WorkoutAnalytics {
   total_workouts: number;
@@ -48,6 +50,7 @@ type ViewMode = 'overview' | 'detailed' | 'trends';
 const {width} = Dimensions.get('window');
 
 export default function AnalyticsScreen() {
+  const {t} = useTranslation();
   const [analytics, setAnalytics] = useState<WorkoutAnalytics | null>(null);
   const [strengthProgress, setStrengthProgress] = useState<any[]>([]);
   const [bodyMeasurements, setBodyMeasurements] = useState<any[]>([]);
@@ -261,6 +264,7 @@ export default function AnalyticsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -299,19 +303,23 @@ export default function AnalyticsScreen() {
             <Text style={styles.statNumber}>
               {analytics?.total_workouts || 0}
             </Text>
-            <Text style={styles.statLabel}>Total Workouts</Text>
+            <Text style={styles.statLabel}>
+              {t('analytics.total_workouts')}
+            </Text>
           </Card>
           <Card style={styles.statCard}>
             <Text style={styles.statNumber}>
               {analytics?.current_streak || 0}
             </Text>
-            <Text style={styles.statLabel}>Current Streak</Text>
+            <Text style={styles.statLabel}>
+              {t('analytics.current_streak')}
+            </Text>
           </Card>
           <Card style={styles.statCard}>
             <Text style={styles.statNumber}>
               {analytics?.workouts_this_week || 0}
             </Text>
-            <Text style={styles.statLabel}>This Week</Text>
+            <Text style={styles.statLabel}>{t('analytics.this_week')}</Text>
           </Card>
         </View>
 
@@ -321,25 +329,29 @@ export default function AnalyticsScreen() {
             <Text style={styles.statNumber}>
               {Math.round((analytics?.total_duration_minutes || 0) / 60)}
             </Text>
-            <Text style={styles.statLabel}>Hours Trained</Text>
+            <Text style={styles.statLabel}>{t('analytics.hours_trained')}</Text>
           </Card>
           <Card style={styles.statCard}>
             <Text style={styles.statNumber}>
               {analytics?.average_workout_duration || 0}
             </Text>
-            <Text style={styles.statLabel}>Avg Duration (min)</Text>
+            <Text style={styles.statLabel}>{t('analytics.avg_duration')}</Text>
           </Card>
           <Card style={styles.statCard}>
             <Text style={styles.statNumber}>
               {analytics?.personal_records_count || 0}
             </Text>
-            <Text style={styles.statLabel}>Personal Records</Text>
+            <Text style={styles.statLabel}>
+              {t('analytics.personal_records')}
+            </Text>
           </Card>
         </View>
 
         {/* Recent Strength Progress */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Strength Progress</Text>
+          <Text style={styles.sectionTitle}>
+            {t('analytics.recent_strength_progress')}
+          </Text>
           {strengthProgress && strengthProgress.length > 0 ? (
             strengthProgress.slice(0, 5).map((record, index) => (
               <Card key={record.id || index} style={styles.progressCard}>
@@ -416,7 +428,9 @@ export default function AnalyticsScreen() {
                         {measurement.weight || measurement.value}
                         {measurement.unit || 'kg'}
                       </Text>
-                      <Text style={styles.measurementLabel}>Weight</Text>
+                      <Text style={styles.measurementLabel}>
+                        {t('analytics.weight')}
+                      </Text>
                     </View>
                   )}
                   {(measurement.bodyFat ||
@@ -426,7 +440,9 @@ export default function AnalyticsScreen() {
                       <Text style={styles.measurementValue}>
                         {measurement.bodyFat || measurement.value}%
                       </Text>
-                      <Text style={styles.measurementLabel}>Body Fat</Text>
+                      <Text style={styles.measurementLabel}>
+                        {t('analytics.body_fat')}
+                      </Text>
                     </View>
                   )}
                   {(measurement.muscleMass ||
@@ -437,7 +453,9 @@ export default function AnalyticsScreen() {
                         {measurement.muscleMass || measurement.value}
                         {measurement.unit || 'kg'}
                       </Text>
-                      <Text style={styles.measurementLabel}>Muscle Mass</Text>
+                      <Text style={styles.measurementLabel}>
+                        {t('analytics.muscle_mass')}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -446,10 +464,10 @@ export default function AnalyticsScreen() {
           ) : (
             <Card style={styles.emptyCard}>
               <Text style={styles.emptyText}>
-                No body measurements recorded
+                {t('analytics.no_body_measurements')}
               </Text>
               <Text style={styles.emptySubtext}>
-                Track your body composition changes!
+                {t('analytics.track_body_composition')}
               </Text>
             </Card>
           )}
@@ -457,7 +475,9 @@ export default function AnalyticsScreen() {
 
         {/* Active Milestones */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Milestones</Text>
+          <Text style={styles.sectionTitle}>
+            {t('analytics.active_milestones')}
+          </Text>
           {milestones && milestones.length > 0 ? (
             milestones
               .filter(m => !m.achieved)
@@ -493,9 +513,11 @@ export default function AnalyticsScreen() {
               ))
           ) : (
             <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No active milestones</Text>
+              <Text style={styles.emptyText}>
+                {t('analytics.no_active_milestones')}
+              </Text>
               <Text style={styles.emptySubtext}>
-                Set your first fitness goal!
+                {t('analytics.set_first_goal')}
               </Text>
             </Card>
           )}
@@ -504,7 +526,9 @@ export default function AnalyticsScreen() {
         {/* Recent Achievements */}
         {achievements && achievements.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            <Text style={styles.sectionTitle}>
+              {t('analytics.recent_achievements')}
+            </Text>
             {achievements.slice(0, 3).map(achievement => (
               <Card key={achievement.id} style={styles.achievementCard}>
                 <View style={styles.achievementContent}>
@@ -515,7 +539,7 @@ export default function AnalyticsScreen() {
                     {achievement.description}
                   </Text>
                   <Text style={styles.achievementDate}>
-                    Unlocked{' '}
+                    {t('analytics.unlocked')}{' '}
                     {new Date(achievement.unlockedAt).toLocaleDateString()}
                   </Text>
                 </View>

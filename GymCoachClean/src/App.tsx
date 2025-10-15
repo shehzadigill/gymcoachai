@@ -1,10 +1,14 @@
 import React, {useEffect} from 'react';
-import {StatusBar, Platform} from 'react-native';
+import {StatusBar, Platform, I18nManager} from 'react-native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AuthProvider, useAuth} from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import SplashScreen from './screens/auth/SplashScreen';
 import notificationService from './services/notifications';
+import {ThemeProvider} from './theme';
+import {LocaleProvider} from './contexts/LocaleContext';
+import {SettingsProvider} from './contexts/SettingsContext';
+import './i18n';
 
 // Create a query client for React Query
 const queryClient = new QueryClient({
@@ -40,11 +44,13 @@ function AppContent() {
   }, []);
 
   if (isLoading) {
+    console.log('[AppContent] Loading auth state -> showing SplashScreen');
     return <SplashScreen />;
   }
 
   return (
     <>
+      {console.log('[AppContent] Render with state:', {isAuthenticated})}
       <StatusBar
         barStyle={Platform.OS === 'ios' ? 'dark-content' : 'light-content'}
         backgroundColor={Platform.OS === 'android' ? '#000' : undefined}
@@ -55,11 +61,18 @@ function AppContent() {
 }
 
 export default function App() {
+  console.log('[App] Mounting providers');
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <LocaleProvider>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </LocaleProvider>
+        </SettingsProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

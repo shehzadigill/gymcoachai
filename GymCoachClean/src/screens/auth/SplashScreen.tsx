@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
+import {useTranslation} from 'react-i18next';
 
 export default function SplashScreen() {
+  const {t} = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -59,16 +61,15 @@ export default function SplashScreen() {
             styles.logoContainer,
             {
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }, { scale: pulseAnim }],
+              transform: [{scale: scaleAnim}, {scale: pulseAnim}],
             },
-          ]}
-        >
+          ]}>
           <Text style={styles.logoEmoji}>💪</Text>
-          <Text style={styles.appName}>GymCoach AI</Text>
-          <Text style={styles.tagline}>Loading your fitness journey...</Text>
+          <Text style={styles.appName}>{t('auth.app_name')}</Text>
+          <Text style={styles.tagline}>{t('auth.loading_journey')}</Text>
         </Animated.View>
 
-        <Animated.View style={[styles.loadingContainer, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.loadingContainer, {opacity: fadeAnim}]}>
           <View style={styles.loadingBar}>
             <Animated.View
               style={[

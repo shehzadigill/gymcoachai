@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,14 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
-import { Button, LoadingSpinner } from '../../components/common/UI';
+import {useAuth} from '../../contexts/AuthContext';
+import {Button, LoadingSpinner} from '../../components/common/UI';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../../components/common/FloatingSettingsButton';
 
-export default function SignInScreen({ navigation }: any) {
-  const { signIn, isLoading } = useAuth();
+export default function SignInScreen({navigation}: any) {
+  const {signIn, isLoading} = useAuth();
+  const {t} = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -54,7 +57,10 @@ export default function SignInScreen({ navigation }: any) {
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
+      Alert.alert(
+        t('auth.errors.error'),
+        t('auth.errors.enter_email_password'),
+      );
       return;
     }
 
@@ -63,7 +69,10 @@ export default function SignInScreen({ navigation }: any) {
       await signIn(email.trim().toLowerCase(), password);
       // Navigation is handled by the auth context
     } catch (error: any) {
-      Alert.alert('Sign In Failed', error.message || 'Please try again');
+      Alert.alert(
+        t('auth.errors.signin_failed'),
+        error.message || t('auth.errors.try_again'),
+      );
     } finally {
       setLocalLoading(false);
     }
@@ -83,16 +92,15 @@ export default function SignInScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <View style={styles.gradient}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidingView}
-        >
+          style={styles.keyboardAvoidingView}>
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+            showsVerticalScrollIndicator={false}>
             {/* Logo Section */}
             <Animated.View
               style={[
@@ -108,10 +116,9 @@ export default function SignInScreen({ navigation }: any) {
                     },
                   ],
                 },
-              ]}
-            >
+              ]}>
               <Text style={styles.logoEmoji}>💪</Text>
-              <Text style={styles.appName}>GymCoach AI</Text>
+              <Text style={styles.appName}>{t('auth.app_name')}</Text>
             </Animated.View>
 
             {/* Welcome Section */}
@@ -120,14 +127,11 @@ export default function SignInScreen({ navigation }: any) {
                 styles.welcomeSection,
                 {
                   opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
+                  transform: [{translateY: slideAnim}],
                 },
-              ]}
-            >
-              <Text style={styles.title}>Welcome Back!</Text>
-              <Text style={styles.subtitle}>
-                Sign in to continue your fitness journey
-              </Text>
+              ]}>
+              <Text style={styles.title}>{t('auth.welcome_back')}</Text>
+              <Text style={styles.subtitle}>{t('auth.signin_subtitle')}</Text>
             </Animated.View>
 
             {/* Form Section */}
@@ -136,16 +140,15 @@ export default function SignInScreen({ navigation }: any) {
                 styles.formCard,
                 {
                   opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
+                  transform: [{translateY: slideAnim}],
                 },
-              ]}
-            >
+              ]}>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
+                <Text style={styles.label}>{t('auth.email')}</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your email"
+                    placeholder={t('auth.enter_email')}
                     placeholderTextColor="#9ca3af"
                     value={email}
                     onChangeText={setEmail}
@@ -157,11 +160,11 @@ export default function SignInScreen({ navigation }: any) {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
+                <Text style={styles.label}>{t('auth.password')}</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your password"
+                    placeholder={t('auth.enter_password')}
                     placeholderTextColor="#9ca3af"
                     value={password}
                     onChangeText={setPassword}
@@ -175,10 +178,14 @@ export default function SignInScreen({ navigation }: any) {
               <TouchableOpacity
                 style={styles.forgotPassword}
                 onPress={() => {
-                  Alert.alert('Forgot Password', 'Feature coming soon!');
-                }}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                  Alert.alert(
+                    t('auth.forgot_password'),
+                    t('auth.feature_coming_soon'),
+                  );
+                }}>
+                <Text style={styles.forgotPasswordText}>
+                  {t('auth.forgot_password')}
+                </Text>
               </TouchableOpacity>
 
               {/* Sign In Button */}
@@ -189,15 +196,18 @@ export default function SignInScreen({ navigation }: any) {
                 ]}
                 onPress={handleSignIn}
                 disabled={localLoading || isLoading}
-                activeOpacity={0.8}
-              >
+                activeOpacity={0.8}>
                 {localLoading || isLoading ? (
                   <View style={styles.loadingContainer}>
                     <LoadingSpinner size="small" color="#667eea" />
-                    <Text style={styles.signInButtonText}>Signing In...</Text>
+                    <Text style={styles.signInButtonText}>
+                      {t('auth.signing_in')}
+                    </Text>
                   </View>
                 ) : (
-                  <Text style={styles.signInButtonText}>Sign In</Text>
+                  <Text style={styles.signInButtonText}>
+                    {t('auth.sign_in')}
+                  </Text>
                 )}
               </TouchableOpacity>
             </Animated.View>
@@ -208,13 +218,14 @@ export default function SignInScreen({ navigation }: any) {
                 styles.footer,
                 {
                   opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
+                  transform: [{translateY: slideAnim}],
                 },
-              ]}
-            >
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              ]}>
+              <Text style={styles.footerText}>
+                {t('auth.dont_have_account')}{' '}
+              </Text>
               <TouchableOpacity onPress={handleSignUp} activeOpacity={0.7}>
-                <Text style={styles.signUpText}>Sign Up</Text>
+                <Text style={styles.signUpText}>{t('auth.sign_up')}</Text>
               </TouchableOpacity>
             </Animated.View>
           </ScrollView>
@@ -224,9 +235,8 @@ export default function SignInScreen({ navigation }: any) {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
+          activeOpacity={0.7}>
+          <Text style={styles.backButtonText}>← {t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

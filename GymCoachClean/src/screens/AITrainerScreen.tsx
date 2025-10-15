@@ -17,6 +17,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {Icon} from '../components/common/Icon';
 import Markdown from 'react-native-markdown-display';
 import apiClient from '../services/api';
+import {useTranslation} from 'react-i18next';
 
 interface Message {
   id: string;
@@ -43,6 +44,7 @@ interface RateLimit {
 }
 
 const AITrainerScreen: React.FC = () => {
+  const {t} = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -432,7 +434,7 @@ const AITrainerScreen: React.FC = () => {
                 onChangeText={setEditingTitle}
                 autoFocus
                 selectTextOnFocus
-                placeholder="Enter conversation title..."
+                placeholder={t('ai_trainer.enter_conversation_title')}
                 maxLength={100}
                 returnKeyType="done"
                 onSubmitEditing={saveConversationTitle}
@@ -509,9 +511,9 @@ const AITrainerScreen: React.FC = () => {
             <Icon name="smart-toy" size={24} color="#3b82f6" />
           </View>
           <View>
-            <Text style={styles.headerTitle}>AI Trainer</Text>
+            <Text style={styles.headerTitle}>{t('ai_trainer.title')}</Text>
             <Text style={styles.headerSubtitle}>
-              Your personal fitness coach
+              {t('ai_trainer.subtitle')}
             </Text>
           </View>
         </View>
@@ -558,7 +560,9 @@ const AITrainerScreen: React.FC = () => {
             },
           ]}>
           <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>Conversations</Text>
+            <Text style={styles.sidebarTitle}>
+              {t('ai_trainer.conversations')}
+            </Text>
             <TouchableOpacity
               onPress={() => setShowConversations(false)}
               style={styles.closeButton}>
@@ -572,7 +576,9 @@ const AITrainerScreen: React.FC = () => {
             style={styles.conversationsList}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No conversations yet</Text>
+                <Text style={styles.emptyStateText}>
+                  {t('ai_trainer.no_conversations')}
+                </Text>
               </View>
             }
           />
@@ -593,14 +599,13 @@ const AITrainerScreen: React.FC = () => {
             <View style={styles.welcomeContainer}>
               <Icon name="smart-toy" size={64} color="#d1d5db" />
               <Text style={styles.welcomeTitle}>
-                Welcome to your AI Trainer!
+                {t('ai_trainer.welcome_title')}
               </Text>
               <Text style={styles.welcomeSubtitle}>
-                I'm here to help you with workout plans, nutrition advice, form
-                checks, and motivation.
+                {t('ai_trainer.welcome_subtitle')}
               </Text>
               <Text style={styles.welcomeQuestion}>
-                What would you like to know?
+                {t('ai_trainer.welcome_question')}
               </Text>
             </View>
           ) : (
@@ -619,7 +624,7 @@ const AITrainerScreen: React.FC = () => {
           {isLoading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#3b82f6" />
-              <Text style={styles.loadingText}>AI Trainer is thinking...</Text>
+              <Text style={styles.loadingText}>{t('ai_trainer.thinking')}</Text>
             </View>
           )}
         </View>
@@ -631,7 +636,7 @@ const AITrainerScreen: React.FC = () => {
           style={styles.textInput}
           value={inputMessage}
           onChangeText={setInputMessage}
-          placeholder="Ask your AI trainer anything..."
+          placeholder={t('ai_trainer.ask_anything')}
           multiline
           maxLength={500}
           editable={!isLoading}

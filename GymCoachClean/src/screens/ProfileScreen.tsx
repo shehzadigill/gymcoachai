@@ -15,8 +15,15 @@ import {useAuth} from '../contexts/AuthContext';
 import {Card, Button, LoadingSpinner} from '../components/common/UI';
 import notificationService from '../services/notifications';
 import apiClient from '../services/api';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import {useLocale} from '../contexts/LocaleContext';
+import {useTheme} from '../theme';
 
 export default function ProfileScreen() {
+  const {t} = useTranslation();
+  const {language, setLanguage, isRTL} = useLocale();
+  const {colors, mode, setMode, isDark} = useTheme();
   const {user, userProfile, signOut, updateProfile, isLoading, refreshUser} =
     useAuth();
   const [activeTab, setActiveTab] = useState<
@@ -297,9 +304,12 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
+        <Text style={[styles.title, {color: colors.text}]}>
+          {t('profile.title')}
+        </Text>
         <View style={styles.headerButtons}>
           {!userProfile && (
             <TouchableOpacity
@@ -325,7 +335,7 @@ export default function ProfileScreen() {
               style={[styles.editButton, styles.refreshButton]}
               disabled={saving}>
               <Text style={styles.editButtonText}>
-                {saving ? 'Loading...' : 'Refresh'}
+                {saving ? t('common.loading') : t('profile.refresh')}
               </Text>
             </TouchableOpacity>
           )}
@@ -334,7 +344,7 @@ export default function ProfileScreen() {
               onPress={() => setEditing(!editing)}
               style={styles.editButton}>
               <Text style={styles.editButtonText}>
-                {editing ? 'Cancel' : 'Edit'}
+                {editing ? t('profile.cancel') : t('profile.edit')}
               </Text>
             </TouchableOpacity>
           )}
@@ -353,12 +363,12 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <View style={styles.userBasicInfo}>
-            <Text style={styles.userName}>
+            <Text style={[styles.userName, {color: colors.text}]}>
               {profileData.firstName && profileData.lastName
                 ? `${profileData.firstName} ${profileData.lastName}`
                 : userProfile?.firstName && userProfile?.lastName
                 ? `${userProfile.firstName} ${userProfile.lastName}`
-                : 'User'}
+                : t('profile.user')}
             </Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
           </View>
@@ -375,7 +385,7 @@ export default function ProfileScreen() {
               styles.tabText,
               activeTab === 'profile' && styles.activeTabText,
             ]}>
-            Profile
+            {t('profile.title')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -386,7 +396,7 @@ export default function ProfileScreen() {
               styles.tabText,
               activeTab === 'goals' && styles.activeTabText,
             ]}>
-            Goals
+            {t('profile.fitness_goals')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -397,7 +407,7 @@ export default function ProfileScreen() {
               styles.tabText,
               activeTab === 'ai-trainer' && styles.activeTabText,
             ]}>
-            AI Trainer
+            {t('tabs.ai_trainer')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -408,7 +418,7 @@ export default function ProfileScreen() {
               styles.tabText,
               activeTab === 'settings' && styles.activeTabText,
             ]}>
-            Settings
+            {t('settings.language')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -419,60 +429,62 @@ export default function ProfileScreen() {
           <>
             {editing ? (
               <Card style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Personal Information</Text>
+                <Text style={styles.sectionTitle}>
+                  {t('profile.personal_information')}
+                </Text>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>First Name</Text>
+                  <Text style={styles.label}>{t('profile.first_name')}</Text>
                   <TextInput
                     style={styles.input}
                     value={profileData.firstName}
                     onChangeText={text =>
                       setProfileData(prev => ({...prev, firstName: text}))
                     }
-                    placeholder="Enter first name"
+                    placeholder={t('profile.first_name')}
                   />
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Last Name</Text>
+                  <Text style={styles.label}>{t('profile.last_name')}</Text>
                   <TextInput
                     style={styles.input}
                     value={profileData.lastName}
                     onChangeText={text =>
                       setProfileData(prev => ({...prev, lastName: text}))
                     }
-                    placeholder="Enter last name"
+                    placeholder={t('profile.last_name')}
                   />
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Bio</Text>
+                  <Text style={styles.label}>{t('profile.bio')}</Text>
                   <TextInput
                     style={[styles.input, styles.textArea]}
                     value={profileData.bio || ''}
                     onChangeText={text =>
                       setProfileData(prev => ({...prev, bio: text}))
                     }
-                    placeholder="Tell us about yourself..."
+                    placeholder={t('profile.bio')}
                     multiline
                     numberOfLines={3}
                   />
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Date of Birth</Text>
+                  <Text style={styles.label}>{t('profile.dob')}</Text>
                   <TextInput
                     style={styles.input}
                     value={profileData.birthDate}
                     onChangeText={text =>
                       setProfileData(prev => ({...prev, birthDate: text}))
                     }
-                    placeholder="YYYY-MM-DD"
+                    placeholder={t('profile.dob')}
                   />
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Gender</Text>
+                  <Text style={styles.label}>{t('profile.gender')}</Text>
                   <View style={styles.genderContainer}>
                     {['male', 'female', 'other'].map(gender => (
                       <TouchableOpacity
@@ -494,48 +506,50 @@ export default function ProfileScreen() {
                             profileData.gender === gender &&
                               styles.selectedGenderText,
                           ]}>
-                          {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                          {t(`profile.${gender}` as any)}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
 
-                <Text style={styles.sectionSubtitle}>Physical Information</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {t('profile.physical_information')}
+                </Text>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Height (cm)</Text>
+                  <Text style={styles.label}>{t('profile.height_cm')}</Text>
                   <TextInput
                     style={styles.input}
                     value={profileData.height}
                     onChangeText={text =>
                       setProfileData(prev => ({...prev, height: text}))
                     }
-                    placeholder="Enter height in cm"
+                    placeholder={t('profile.height_cm')}
                     keyboardType="numeric"
                   />
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Weight (kg)</Text>
+                  <Text style={styles.label}>{t('profile.weight_kg')}</Text>
                   <TextInput
                     style={styles.input}
                     value={profileData.weight}
                     onChangeText={text =>
                       setProfileData(prev => ({...prev, weight: text}))
                     }
-                    placeholder="Enter weight in kg"
+                    placeholder={t('profile.weight_kg')}
                     keyboardType="numeric"
                   />
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>Fitness Level</Text>
+                  <Text style={styles.label}>{t('profile.fitness_level')}</Text>
                   <View style={styles.fitnessLevelContainer}>
                     {[
-                      {key: 'beginner', label: 'Beginner'},
-                      {key: 'intermediate', label: 'Intermediate'},
-                      {key: 'advanced', label: 'Advanced'},
+                      {key: 'beginner', label: t('profile.beginner')},
+                      {key: 'intermediate', label: t('profile.intermediate')},
+                      {key: 'advanced', label: t('profile.advanced')},
                     ].map(level => (
                       <TouchableOpacity
                         key={level.key}
@@ -571,94 +585,108 @@ export default function ProfileScreen() {
                   onPress={handleSaveProfile}
                   disabled={saving}>
                   <Text style={styles.saveButtonText}>
-                    {saving ? 'Saving...' : 'Save Profile'}
+                    {saving ? t('common.loading') : t('profile.save_profile')}
                   </Text>
                 </TouchableOpacity>
               </Card>
             ) : (
               <>
                 <Card style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Personal Information</Text>
+                  <Text style={styles.sectionTitle}>
+                    {t('profile.personal_information')}
+                  </Text>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Name:</Text>
+                    <Text style={styles.infoLabel}>
+                      {t('profile.first_name')}:
+                    </Text>
                     <Text style={styles.infoValue}>
                       {profileData.firstName && profileData.lastName
                         ? `${profileData.firstName} ${profileData.lastName}`
-                        : 'Not set'}
+                        : t('profile.not_set')}
                     </Text>
                   </View>
 
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Email:</Text>
                     <Text style={styles.infoValue}>
-                      {profileData.email || 'Not set'}
+                      {profileData.email || t('profile.not_set')}
                     </Text>
                   </View>
 
                   {profileData.bio && (
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Bio:</Text>
+                      <Text style={styles.infoLabel}>{t('profile.bio')}:</Text>
                       <Text style={styles.infoValue}>{profileData.bio}</Text>
                     </View>
                   )}
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Date of Birth:</Text>
+                    <Text style={styles.infoLabel}>{t('profile.dob')}:</Text>
                     <Text style={styles.infoValue}>
-                      {profileData.birthDate || 'Not set'}
+                      {profileData.birthDate || t('profile.not_set')}
                     </Text>
                   </View>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Gender:</Text>
+                    <Text style={styles.infoLabel}>{t('profile.gender')}:</Text>
                     <Text style={styles.infoValue}>
                       {profileData.gender
-                        ? profileData.gender.charAt(0).toUpperCase() +
-                          profileData.gender.slice(1)
-                        : 'Not set'}
+                        ? t(`profile.${profileData.gender}` as any)
+                        : t('profile.not_set')}
                     </Text>
                   </View>
                 </Card>
 
                 <Card style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Physical Information</Text>
+                  <Text style={styles.sectionTitle}>
+                    {t('profile.physical_information')}
+                  </Text>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Height:</Text>
+                    <Text style={styles.infoLabel}>
+                      {t('profile.height_cm')}:
+                    </Text>
                     <Text style={styles.infoValue}>
                       {profileData.height
                         ? `${profileData.height} cm`
-                        : 'Not set'}
+                        : t('profile.not_set')}
                     </Text>
                   </View>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Weight:</Text>
+                    <Text style={styles.infoLabel}>
+                      {t('profile.weight_kg')}:
+                    </Text>
                     <Text style={styles.infoValue}>
                       {profileData.weight
                         ? `${profileData.weight} kg`
-                        : 'Not set'}
+                        : t('profile.not_set')}
                     </Text>
                   </View>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Fitness Level:</Text>
+                    <Text style={styles.infoLabel}>
+                      {t('profile.fitness_level')}:
+                    </Text>
                     <Text style={styles.infoValue}>
                       {profileData.fitnessLevel
-                        ? profileData.fitnessLevel.charAt(0).toUpperCase() +
-                          profileData.fitnessLevel.slice(1)
-                        : 'Not set'}
+                        ? t(`profile.${profileData.fitnessLevel}` as any)
+                        : t('profile.not_set')}
                     </Text>
                   </View>
                 </Card>
 
                 <Card style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Account</Text>
+                  <Text style={styles.sectionTitle}>
+                    {t('profile.account')}
+                  </Text>
                   <TouchableOpacity
                     style={styles.actionItem}
                     onPress={handleSignOut}>
-                    <Text style={styles.signOutText}>Sign Out</Text>
+                    <Text style={styles.signOutText}>
+                      {t('profile.sign_out')}
+                    </Text>
                   </TouchableOpacity>
                 </Card>
               </>
@@ -670,10 +698,14 @@ export default function ProfileScreen() {
         {activeTab === 'goals' && (
           <>
             <Card style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Daily Goals</Text>
+              <Text style={styles.sectionTitle}>
+                {t('profile.daily_goals')}
+              </Text>
 
               <View style={styles.goalItem}>
-                <Text style={styles.goalLabel}>Daily Calories</Text>
+                <Text style={styles.goalLabel}>
+                  {t('profile.daily_calories')}
+                </Text>
                 <TextInput
                   style={styles.goalInput}
                   value={dailyGoals.calories.toString()}
@@ -683,11 +715,13 @@ export default function ProfileScreen() {
                   keyboardType="numeric"
                   placeholder="2000"
                 />
-                <Text style={styles.goalUnit}>kcal</Text>
+                <Text style={styles.goalUnit}>{t('profile.kcal')}</Text>
               </View>
 
               <View style={styles.goalItem}>
-                <Text style={styles.goalLabel}>Water Intake</Text>
+                <Text style={styles.goalLabel}>
+                  {t('profile.water_intake')}
+                </Text>
                 <TextInput
                   style={styles.goalInput}
                   value={dailyGoals.water.toString()}
@@ -697,11 +731,11 @@ export default function ProfileScreen() {
                   keyboardType="numeric"
                   placeholder="8"
                 />
-                <Text style={styles.goalUnit}>glasses</Text>
+                <Text style={styles.goalUnit}>{t('profile.glasses')}</Text>
               </View>
 
               <View style={styles.goalItem}>
-                <Text style={styles.goalLabel}>Protein</Text>
+                <Text style={styles.goalLabel}>{t('profile.protein')}</Text>
                 <TextInput
                   style={styles.goalInput}
                   value={dailyGoals.protein.toString()}
@@ -711,11 +745,11 @@ export default function ProfileScreen() {
                   keyboardType="numeric"
                   placeholder="150"
                 />
-                <Text style={styles.goalUnit}>g</Text>
+                <Text style={styles.goalUnit}>{t('profile.g')}</Text>
               </View>
 
               <View style={styles.goalItem}>
-                <Text style={styles.goalLabel}>Carbohydrates</Text>
+                <Text style={styles.goalLabel}>{t('profile.carbs')}</Text>
                 <TextInput
                   style={styles.goalInput}
                   value={dailyGoals.carbs.toString()}
@@ -725,11 +759,11 @@ export default function ProfileScreen() {
                   keyboardType="numeric"
                   placeholder="200"
                 />
-                <Text style={styles.goalUnit}>g</Text>
+                <Text style={styles.goalUnit}>{t('profile.g')}</Text>
               </View>
 
               <View style={styles.goalItem}>
-                <Text style={styles.goalLabel}>Fat</Text>
+                <Text style={styles.goalLabel}>{t('profile.fat')}</Text>
                 <TextInput
                   style={styles.goalInput}
                   value={dailyGoals.fat.toString()}
@@ -739,7 +773,7 @@ export default function ProfileScreen() {
                   keyboardType="numeric"
                   placeholder="65"
                 />
-                <Text style={styles.goalUnit}>g</Text>
+                <Text style={styles.goalUnit}>{t('profile.g')}</Text>
               </View>
 
               <TouchableOpacity
@@ -747,13 +781,15 @@ export default function ProfileScreen() {
                 onPress={saveDailyGoals}
                 disabled={saving}>
                 <Text style={styles.saveButtonText}>
-                  {saving ? 'Saving...' : 'Save Daily Goals'}
+                  {saving ? t('common.loading') : t('profile.save_daily_goals')}
                 </Text>
               </TouchableOpacity>
             </Card>
 
             <Card style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Fitness Goals</Text>
+              <Text style={styles.sectionTitle}>
+                {t('profile.fitness_goals')}
+              </Text>
 
               {loadingGoals && (
                 <Text style={styles.loadingText}>Saving...</Text>
@@ -775,7 +811,9 @@ export default function ProfileScreen() {
                 style={styles.addGoalButton}
                 onPress={() => setShowGoalModal(true)}
                 disabled={loadingGoals}>
-                <Text style={styles.addGoalButtonText}>+ Add Goal</Text>
+                <Text style={styles.addGoalButtonText}>
+                  {t('profile.add_goal')}
+                </Text>
               </TouchableOpacity>
             </Card>
           </>
@@ -787,13 +825,17 @@ export default function ProfileScreen() {
         {/* Settings Tab Content */}
         {activeTab === 'settings' && (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Notification Settings</Text>
+            <Text style={styles.sectionTitle}>
+              {t('profile.notification_settings')}
+            </Text>
 
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>Workout Reminders</Text>
+                <Text style={styles.settingName}>
+                  {t('profile.workout_reminders')}
+                </Text>
                 <Text style={styles.settingDescription}>
-                  Get notified about scheduled workouts
+                  {t('profile.get_notified_workouts')}
                 </Text>
               </View>
               <Switch
@@ -806,9 +848,11 @@ export default function ProfileScreen() {
 
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>Nutrition Reminders</Text>
+                <Text style={styles.settingName}>
+                  {t('profile.nutrition_reminders')}
+                </Text>
                 <Text style={styles.settingDescription}>
-                  Get reminded to log your meals
+                  {t('profile.remind_log_meals')}
                 </Text>
               </View>
               <Switch
@@ -821,9 +865,11 @@ export default function ProfileScreen() {
 
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>Progress Updates</Text>
+                <Text style={styles.settingName}>
+                  {t('profile.progress_updates')}
+                </Text>
                 <Text style={styles.settingDescription}>
-                  Get notified about your achievements
+                  {t('profile.get_notified_achievements')}
                 </Text>
               </View>
               <Switch
@@ -832,6 +878,69 @@ export default function ProfileScreen() {
                   handleNotificationToggle('progressUpdates', value)
                 }
               />
+            </View>
+
+            {/* Language & Theme */}
+            <View style={styles.settingItem}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingName}>{t('settings.language')}</Text>
+                <View style={{flexDirection: 'row', gap: 8}}>
+                  <TouchableOpacity
+                    style={[
+                      styles.editButton,
+                      language === 'en' && {backgroundColor: colors.success},
+                    ]}
+                    onPress={() => setLanguage('en')}>
+                    <Text style={styles.editButtonText}>English</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.editButton,
+                      language === 'ar' && {backgroundColor: colors.success},
+                    ]}
+                    onPress={() => setLanguage('ar')}>
+                    <Text style={styles.editButtonText}>العربية</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.settingItem}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingName}>{t('settings.theme')}</Text>
+                <View style={{flexDirection: 'row', gap: 8}}>
+                  <TouchableOpacity
+                    style={[
+                      styles.editButton,
+                      mode === 'light' && {backgroundColor: colors.success},
+                    ]}
+                    onPress={() => setMode('light')}>
+                    <Text style={styles.editButtonText}>
+                      {t('settings.light')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.editButton,
+                      mode === 'dark' && {backgroundColor: colors.success},
+                    ]}
+                    onPress={() => setMode('dark')}>
+                    <Text style={styles.editButtonText}>
+                      {t('settings.dark')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.editButton,
+                      mode === 'system' && {backgroundColor: colors.success},
+                    ]}
+                    onPress={() => setMode('system')}>
+                    <Text style={styles.editButtonText}>
+                      {t('settings.system')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           </Card>
         )}
@@ -845,11 +954,13 @@ export default function ProfileScreen() {
         onRequestClose={() => setShowGoalModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Fitness Goal</Text>
+            <Text style={styles.modalTitle}>
+              {t('profile.add_fitness_goal')}
+            </Text>
 
             <TextInput
               style={styles.modalInput}
-              placeholder="Enter your fitness goal..."
+              placeholder={t('profile.enter_fitness_goal')}
               value={newGoal}
               onChangeText={setNewGoal}
               multiline={true}
@@ -863,13 +974,15 @@ export default function ProfileScreen() {
                   setShowGoalModal(false);
                   setNewGoal('');
                 }}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>
+                  {t('common.cancel')}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.addButton]}
                 onPress={() => addFitnessGoal()}>
-                <Text style={styles.addButtonText}>Add Goal</Text>
+                <Text style={styles.addButtonText}>{t('profile.add')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -881,6 +994,7 @@ export default function ProfileScreen() {
 
 // AI Trainer Tab Content Component
 function AITrainerTabContent() {
+  const {t} = useTranslation();
   const [aiPreferences, setAiPreferences] = useState({
     enabled: false,
     coachingStyle: 'balanced' as
@@ -909,38 +1023,74 @@ function AITrainerTabContent() {
   });
 
   const focusAreaOptions = [
-    'Strength Training',
-    'Cardio',
-    'Flexibility',
-    'Nutrition',
-    'Weight Loss',
-    'Muscle Gain',
-    'Endurance',
-    'Rehabilitation',
+    {key: 'strength', label: t('profile.ai_trainer.focus_areas.strength')},
+    {key: 'cardio', label: t('profile.ai_trainer.focus_areas.cardio')},
+    {
+      key: 'flexibility',
+      label: t('profile.ai_trainer.focus_areas.flexibility'),
+    },
+    {key: 'nutrition', label: t('profile.ai_trainer.focus_areas.nutrition')},
+    {
+      key: 'weight_loss',
+      label: t('profile.ai_trainer.focus_areas.weight_loss'),
+    },
+    {
+      key: 'muscle_gain',
+      label: t('profile.ai_trainer.focus_areas.muscle_gain'),
+    },
+    {key: 'endurance', label: t('profile.ai_trainer.focus_areas.endurance')},
+    {
+      key: 'rehabilitation',
+      label: t('profile.ai_trainer.focus_areas.rehabilitation'),
+    },
   ];
 
   const equipmentOptions = [
-    'Dumbbells',
-    'Barbell',
-    'Resistance Bands',
-    'Kettlebells',
-    'Pull-up Bar',
-    'Gym Machines',
-    'Bodyweight',
-    'Cardio Equipment',
-    'Yoga Mat',
-    'Medicine Ball',
+    {key: 'dumbbells', label: t('profile.ai_trainer.equipment.dumbbells')},
+    {key: 'barbell', label: t('profile.ai_trainer.equipment.barbell')},
+    {
+      key: 'resistance_bands',
+      label: t('profile.ai_trainer.equipment.resistance_bands'),
+    },
+    {key: 'kettlebells', label: t('profile.ai_trainer.equipment.kettlebells')},
+    {key: 'pull_up_bar', label: t('profile.ai_trainer.equipment.pull_up_bar')},
+    {
+      key: 'gym_machines',
+      label: t('profile.ai_trainer.equipment.gym_machines'),
+    },
+    {key: 'bodyweight', label: t('profile.ai_trainer.equipment.bodyweight')},
+    {
+      key: 'cardio_equipment',
+      label: t('profile.ai_trainer.equipment.cardio_equipment'),
+    },
+    {key: 'yoga_mat', label: t('profile.ai_trainer.equipment.yoga_mat')},
+    {
+      key: 'medicine_ball',
+      label: t('profile.ai_trainer.equipment.medicine_ball'),
+    },
   ];
 
   const mealPreferenceOptions = [
-    'Vegetarian',
-    'Vegan',
-    'Keto',
-    'Paleo',
-    'Mediterranean',
-    'Low-Carb',
-    'High-Protein',
-    'No Restrictions',
+    {
+      key: 'vegetarian',
+      label: t('profile.ai_trainer.meal_preferences.vegetarian'),
+    },
+    {key: 'vegan', label: t('profile.ai_trainer.meal_preferences.vegan')},
+    {key: 'keto', label: t('profile.ai_trainer.meal_preferences.keto')},
+    {key: 'paleo', label: t('profile.ai_trainer.meal_preferences.paleo')},
+    {
+      key: 'mediterranean',
+      label: t('profile.ai_trainer.meal_preferences.mediterranean'),
+    },
+    {key: 'low_carb', label: t('profile.ai_trainer.meal_preferences.low_carb')},
+    {
+      key: 'high_protein',
+      label: t('profile.ai_trainer.meal_preferences.high_protein'),
+    },
+    {
+      key: 'no_restrictions',
+      label: t('profile.ai_trainer.meal_preferences.no_restrictions'),
+    },
   ];
 
   const addItem = (type: keyof typeof newItem, value: string) => {
@@ -1033,13 +1183,17 @@ function AITrainerTabContent() {
     <>
       {/* Enable/Disable AI Trainer */}
       <Card style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>AI Trainer Settings</Text>
+        <Text style={styles.sectionTitle}>
+          {t('profile.ai_trainer_settings')}
+        </Text>
 
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
-            <Text style={styles.settingName}>Enable AI Trainer</Text>
+            <Text style={styles.settingName}>
+              {t('profile.enable_ai_trainer')}
+            </Text>
             <Text style={styles.settingDescription}>
-              Get personalized workout and nutrition advice from our AI trainer
+              {t('profile.ai_trainer.description')}
             </Text>
           </View>
           <Switch
@@ -1053,10 +1207,12 @@ function AITrainerTabContent() {
         <>
           {/* Coaching Preferences */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Coaching Preferences</Text>
+            <Text style={styles.sectionTitle}>
+              {t('profile.coaching_preferences')}
+            </Text>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Coaching Style</Text>
+              <Text style={styles.label}>{t('profile.coaching_style')}</Text>
               <View style={styles.pickerContainer}>
                 {['motivational', 'strict', 'balanced', 'technical'].map(
                   style => (
@@ -1074,7 +1230,7 @@ function AITrainerTabContent() {
                           aiPreferences.coachingStyle === style &&
                             styles.selectedPickerOptionText,
                         ]}>
-                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                        {t(`profile.ai_trainer.coaching_styles.${style}`)}
                       </Text>
                     </TouchableOpacity>
                   ),
@@ -1083,7 +1239,9 @@ function AITrainerTabContent() {
             </View>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Communication Frequency</Text>
+              <Text style={styles.label}>
+                {t('profile.communication_frequency')}
+              </Text>
               <View style={styles.pickerContainer}>
                 {['daily', 'weekly', 'on-demand'].map(frequency => (
                   <TouchableOpacity
@@ -1102,7 +1260,7 @@ function AITrainerTabContent() {
                         aiPreferences.communicationFrequency === frequency &&
                           styles.selectedPickerOptionText,
                       ]}>
-                      {frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                      {t(`profile.${frequency}`)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1112,35 +1270,35 @@ function AITrainerTabContent() {
 
           {/* Focus Areas */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Focus Areas</Text>
+            <Text style={styles.sectionTitle}>{t('profile.focus_areas')}</Text>
 
             <View style={styles.addItemContainer}>
               <View style={styles.pickerContainer}>
                 {focusAreaOptions.map(option => (
                   <TouchableOpacity
-                    key={option}
+                    key={option.key}
                     style={[
                       styles.tagOption,
-                      aiPreferences.focusAreas.includes(option) &&
+                      aiPreferences.focusAreas.includes(option.key) &&
                         styles.selectedTagOption,
                     ]}
                     onPress={() => {
-                      if (aiPreferences.focusAreas.includes(option)) {
+                      if (aiPreferences.focusAreas.includes(option.key)) {
                         removeItem(
                           'focusArea',
-                          aiPreferences.focusAreas.indexOf(option),
+                          aiPreferences.focusAreas.indexOf(option.key),
                         );
                       } else {
-                        addItem('focusArea', option);
+                        addItem('focusArea', option.key);
                       }
                     }}>
                     <Text
                       style={[
                         styles.tagOptionText,
-                        aiPreferences.focusAreas.includes(option) &&
+                        aiPreferences.focusAreas.includes(option.key) &&
                           styles.selectedTagOptionText,
                       ]}>
-                      {option}
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1150,35 +1308,39 @@ function AITrainerTabContent() {
 
           {/* Equipment Available */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Available Equipment</Text>
+            <Text style={styles.sectionTitle}>
+              {t('profile.available_equipment')}
+            </Text>
 
             <View style={styles.addItemContainer}>
               <View style={styles.pickerContainer}>
                 {equipmentOptions.map(option => (
                   <TouchableOpacity
-                    key={option}
+                    key={option.key}
                     style={[
                       styles.tagOption,
-                      aiPreferences.equipmentAvailable.includes(option) &&
+                      aiPreferences.equipmentAvailable.includes(option.key) &&
                         styles.selectedTagOption,
                     ]}
                     onPress={() => {
-                      if (aiPreferences.equipmentAvailable.includes(option)) {
+                      if (
+                        aiPreferences.equipmentAvailable.includes(option.key)
+                      ) {
                         removeItem(
                           'equipment',
-                          aiPreferences.equipmentAvailable.indexOf(option),
+                          aiPreferences.equipmentAvailable.indexOf(option.key),
                         );
                       } else {
-                        addItem('equipment', option);
+                        addItem('equipment', option.key);
                       }
                     }}>
                     <Text
                       style={[
                         styles.tagOptionText,
-                        aiPreferences.equipmentAvailable.includes(option) &&
+                        aiPreferences.equipmentAvailable.includes(option.key) &&
                           styles.selectedTagOptionText,
                       ]}>
-                      {option}
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1188,10 +1350,14 @@ function AITrainerTabContent() {
 
           {/* Workout Preferences */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Workout Preferences</Text>
+            <Text style={styles.sectionTitle}>
+              {t('profile.workout_preferences')}
+            </Text>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Workout Duration (minutes)</Text>
+              <Text style={styles.label}>
+                {t('profile.workout_duration_minutes')}
+              </Text>
               <TextInput
                 style={styles.input}
                 value={aiPreferences.workoutDurationPreference.toString()}
@@ -1207,7 +1373,9 @@ function AITrainerTabContent() {
             </View>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Workout Days per Week</Text>
+              <Text style={styles.label}>
+                {t('profile.workout_days_per_week')}
+              </Text>
               <TextInput
                 style={styles.input}
                 value={aiPreferences.workoutDaysPerWeek.toString()}
@@ -1222,36 +1390,38 @@ function AITrainerTabContent() {
 
           {/* Nutrition Preferences */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Nutrition Preferences</Text>
+            <Text style={styles.sectionTitle}>
+              {t('profile.nutrition_preferences')}
+            </Text>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Meal Preferences</Text>
+              <Text style={styles.label}>{t('profile.meal_preferences')}</Text>
               <View style={styles.pickerContainer}>
                 {mealPreferenceOptions.map(option => (
                   <TouchableOpacity
-                    key={option}
+                    key={option.key}
                     style={[
                       styles.tagOption,
-                      aiPreferences.mealPreferences.includes(option) &&
+                      aiPreferences.mealPreferences.includes(option.key) &&
                         styles.selectedTagOption,
                     ]}
                     onPress={() => {
-                      if (aiPreferences.mealPreferences.includes(option)) {
+                      if (aiPreferences.mealPreferences.includes(option.key)) {
                         removeItem(
                           'mealPreference',
-                          aiPreferences.mealPreferences.indexOf(option),
+                          aiPreferences.mealPreferences.indexOf(option.key),
                         );
                       } else {
-                        addItem('mealPreference', option);
+                        addItem('mealPreference', option.key);
                       }
                     }}>
                     <Text
                       style={[
                         styles.tagOptionText,
-                        aiPreferences.mealPreferences.includes(option) &&
+                        aiPreferences.mealPreferences.includes(option.key) &&
                           styles.selectedTagOptionText,
                       ]}>
-                      {option}
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1259,19 +1429,21 @@ function AITrainerTabContent() {
             </View>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Allergies</Text>
+              <Text style={styles.label}>{t('profile.allergies')}</Text>
               <View style={styles.addItemRow}>
                 <TextInput
                   style={[styles.input, styles.flexInput]}
                   value={newItem.allergy}
                   onChangeText={text => setNewItem({...newItem, allergy: text})}
-                  placeholder="Enter allergy"
+                  placeholder={t('profile.enter_allergy')}
                   onSubmitEditing={() => addItem('allergy', newItem.allergy)}
                 />
                 <TouchableOpacity
                   style={styles.addItemButton}
                   onPress={() => addItem('allergy', newItem.allergy)}>
-                  <Text style={styles.addItemButtonText}>Add</Text>
+                  <Text style={styles.addItemButtonText}>
+                    {t('profile.add')}
+                  </Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.tagsContainer}>
@@ -1289,7 +1461,9 @@ function AITrainerTabContent() {
             </View>
 
             <View style={styles.formField}>
-              <Text style={styles.label}>Supplement Preferences</Text>
+              <Text style={styles.label}>
+                {t('profile.supplement_preferences')}
+              </Text>
               <View style={styles.addItemRow}>
                 <TextInput
                   style={[styles.input, styles.flexInput]}
@@ -1297,7 +1471,7 @@ function AITrainerTabContent() {
                   onChangeText={text =>
                     setNewItem({...newItem, supplement: text})
                   }
-                  placeholder="Enter supplement"
+                  placeholder={t('profile.enter_supplement')}
                   onSubmitEditing={() =>
                     addItem('supplement', newItem.supplement)
                   }
@@ -1305,7 +1479,9 @@ function AITrainerTabContent() {
                 <TouchableOpacity
                   style={styles.addItemButton}
                   onPress={() => addItem('supplement', newItem.supplement)}>
-                  <Text style={styles.addItemButtonText}>Add</Text>
+                  <Text style={styles.addItemButtonText}>
+                    {t('profile.add')}
+                  </Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.tagsContainer}>
@@ -1327,20 +1503,22 @@ function AITrainerTabContent() {
 
           {/* Injury History */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Injury History</Text>
+            <Text style={styles.sectionTitle}>
+              {t('profile.ai_trainer.injury_history')}
+            </Text>
 
             <View style={styles.addItemRow}>
               <TextInput
                 style={[styles.input, styles.flexInput]}
                 value={newItem.injury}
                 onChangeText={text => setNewItem({...newItem, injury: text})}
-                placeholder="Enter injury or limitation"
+                placeholder={t('profile.ai_trainer.enter_injury')}
                 onSubmitEditing={() => addItem('injury', newItem.injury)}
               />
               <TouchableOpacity
                 style={styles.addItemButton}
                 onPress={() => addItem('injury', newItem.injury)}>
-                <Text style={styles.addItemButtonText}>Add</Text>
+                <Text style={styles.addItemButtonText}>{t('profile.add')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.tagsContainer}>
@@ -1856,5 +2034,10 @@ const styles = StyleSheet.create({
   },
   removeTagButton: {
     marginLeft: 4,
+  },
+  removeTagButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

@@ -1,8 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {PermissionsAndroid, Platform, Alert} from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import {v4 as uuidv4} from 'uuid';
-import {api} from './api';
+// Simple UUID v4 generator for React Native
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+import api from './api';
 
 interface NotificationSettings {
   enabled: boolean;
@@ -129,7 +136,8 @@ class NotificationService {
   }
 
   private async getDeviceInfo(token: string): Promise<DeviceInfo> {
-    const deviceId = (await AsyncStorage.getItem('device_id')) || uuidv4();
+    const deviceId =
+      (await AsyncStorage.getItem('device_id')) || generateUUID();
     await AsyncStorage.setItem('device_id', deviceId);
 
     return {
@@ -143,10 +151,13 @@ class NotificationService {
 
   private async registerDevice(deviceInfo: DeviceInfo): Promise<void> {
     try {
-      await api.post('/notifications/devices/register', {
-        device_token: deviceInfo.deviceToken,
-        platform: deviceInfo.platform,
-        device_name: deviceInfo.deviceName,
+      await api.apiFetch('/notifications/devices/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          device_token: deviceInfo.deviceToken,
+          platform: deviceInfo.platform,
+          device_name: deviceInfo.deviceName,
+        }),
       });
       console.log('Device registered successfully');
     } catch (error) {
@@ -218,8 +229,11 @@ class NotificationService {
     if (!this.deviceInfo) return;
 
     try {
-      await api.put(`/notifications/devices/${this.deviceInfo.deviceId}`, {
-        device_token: newToken,
+      await api.apiFetch(`/notifications/devices/${this.deviceInfo.deviceId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          device_token: newToken,
+        }),
       });
       console.log('Device token updated successfully');
     } catch (error) {
@@ -324,8 +338,11 @@ class NotificationService {
 
   private async updateBackendPreferences(): Promise<void> {
     try {
-      await api.put('/notifications/preferences', {
-        preferences: this.settings,
+      await api.apiFetch('/notifications/preferences', {
+        method: 'PUT',
+        body: JSON.stringify({
+          preferences: this.settings,
+        }),
       });
       console.log('Backend preferences updated');
     } catch (error) {

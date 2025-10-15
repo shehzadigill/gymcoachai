@@ -1,14 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import {View, Text, StyleSheet, SafeAreaView} from 'react-native';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../../components/common/FloatingSettingsButton';
 
-export default function FoodSearchScreen({ route }: any) {
-  const { onSelectFood } = route.params || {};
+export default function FoodSearchScreen({route}: any) {
+  const {t} = useTranslation();
+  const {onSelectFood} = route.params || {};
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <View style={styles.content}>
-        <Text style={styles.title}>Search Foods</Text>
-        <Text style={styles.placeholder}>Coming soon...</Text>
+        <Text style={styles.title}>{t('nutrition.search_food')}</Text>
+        <Text style={styles.placeholder}>{t('nutrition.coming_soon')}</Text>
       </View>
     </SafeAreaView>
   );

@@ -9,10 +9,13 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../../components/common/FloatingSettingsButton';
 
 const {width, height} = Dimensions.get('window');
 
 export default function WelcomeScreen({navigation}: any) {
+  const {t} = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -52,6 +55,7 @@ export default function WelcomeScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <View style={styles.gradient}>
         {/* Logo Section */}
         <Animated.View
@@ -71,8 +75,8 @@ export default function WelcomeScreen({navigation}: any) {
           ]}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoEmoji}>💪</Text>
-            <Text style={styles.appName}>GymCoach AI</Text>
-            <Text style={styles.tagline}>Your Personal Fitness Journey</Text>
+            <Text style={styles.appName}>{t('auth.app_name')}</Text>
+            <Text style={styles.tagline}>{t('auth.tagline')}</Text>
           </View>
         </Animated.View>
 
@@ -86,20 +90,26 @@ export default function WelcomeScreen({navigation}: any) {
             },
           ]}>
           <View style={styles.welcomeCard}>
-            <Text style={styles.welcomeTitle}>
-              Welcome to Your Transformation
-            </Text>
+            <Text style={styles.welcomeTitle}>{t('auth.welcome_title')}</Text>
             <Text style={styles.welcomeSubtitle}>
-              Personalized workouts, nutrition tracking, and AI-powered coaching
-              to help you achieve your fitness goals.
+              {t('auth.welcome_subtitle')}
             </Text>
 
             {/* Features List */}
             <View style={styles.featuresList}>
-              <FeatureItem icon="🏋️" text="Smart Workout Plans" />
-              <FeatureItem icon="🥗" text="Nutrition Tracking" />
-              <FeatureItem icon="📊" text="Progress Analytics" />
-              <FeatureItem icon="🔔" text="Smart Reminders" />
+              <FeatureItem icon="🏋️" text={t('auth.features.workout_plans')} />
+              <FeatureItem
+                icon="🥗"
+                text={t('auth.features.nutrition_tracking')}
+              />
+              <FeatureItem
+                icon="📊"
+                text={t('auth.features.progress_analytics')}
+              />
+              <FeatureItem
+                icon="🔔"
+                text={t('auth.features.smart_reminders')}
+              />
             </View>
           </View>
         </Animated.View>
@@ -117,7 +127,9 @@ export default function WelcomeScreen({navigation}: any) {
             style={styles.primaryButton}
             onPress={() => navigation.navigate('SignUp')}
             activeOpacity={0.8}>
-            <Text style={styles.primaryButtonText}>Start Your Journey</Text>
+            <Text style={styles.primaryButtonText}>
+              {t('auth.start_journey')}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -125,7 +137,7 @@ export default function WelcomeScreen({navigation}: any) {
             onPress={() => navigation.navigate('SignIn')}
             activeOpacity={0.8}>
             <Text style={styles.secondaryButtonText}>
-              Already have an account? Sign In
+              {t('auth.already_have_account')}
             </Text>
           </TouchableOpacity>
         </Animated.View>

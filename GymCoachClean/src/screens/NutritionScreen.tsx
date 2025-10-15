@@ -16,8 +16,11 @@ import {Card, LoadingSpinner, Button} from '../components/common/UI';
 import {useAuth} from '../contexts/AuthContext';
 import apiClient from '../services/api';
 import notificationService from '../services/notifications';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 
 export default function NutritionScreen({navigation}: any) {
+  const {t} = useTranslation();
   const {user} = useAuth();
   const [todaysMeals, setTodaysMeals] = useState<any>(null);
   const [nutritionStats, setNutritionStats] = useState<any>(null);
@@ -376,6 +379,7 @@ export default function NutritionScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -408,7 +412,9 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>Calories</Text>
+              <Text style={styles.nutritionLabel}>
+                {t('nutrition.calories')}
+              </Text>
               <Text style={styles.nutritionValue}>
                 {Math.round(
                   nutritionStats?.today_calories ||
@@ -452,7 +458,9 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>Protein</Text>
+              <Text style={styles.nutritionLabel}>
+                {t('nutrition.protein')}
+              </Text>
               <Text style={styles.nutritionValue}>
                 {Math.round(
                   nutritionStats?.today_protein ||
@@ -496,7 +504,7 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>Carbs</Text>
+              <Text style={styles.nutritionLabel}>{t('nutrition.carbs')}</Text>
               <Text style={styles.nutritionValue}>
                 {Math.round(
                   nutritionStats?.today_carbs ||
@@ -540,7 +548,7 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>Fat</Text>
+              <Text style={styles.nutritionLabel}>{t('nutrition.fat')}</Text>
               <Text style={styles.nutritionValue}>
                 {Math.round(
                   nutritionStats?.today_fat ||
@@ -602,7 +610,7 @@ export default function NutritionScreen({navigation}: any) {
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <Button
-            title="🔔 Setup Meal Reminders"
+            title={t('nutrition.setup_meal_reminders')}
             onPress={configureNotifications}
             variant="outline"
             style={styles.reminderButton}
@@ -611,7 +619,7 @@ export default function NutritionScreen({navigation}: any) {
 
         {/* Meals */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Meals</Text>
+          <Text style={styles.sectionTitle}>{t('nutrition.todays_meals')}</Text>
 
           {['breakfast', 'lunch', 'dinner', 'snack'].map(mealType => {
             const mealsForType =
@@ -628,7 +636,7 @@ export default function NutritionScreen({navigation}: any) {
                       {getMealTypeEmoji(mealType)}
                     </Text>
                     <Text style={styles.mealTitle}>
-                      {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+                      {t(`nutrition.meal_types.${mealType}`)}
                     </Text>
                     {mealsForType.length > 0 && (
                       <Text style={styles.mealCount}>
@@ -640,12 +648,16 @@ export default function NutritionScreen({navigation}: any) {
                     <TouchableOpacity
                       onPress={() => openCustomMealModal(mealType)}
                       style={styles.addCustomMealButton}>
-                      <Text style={styles.addCustomMealText}>Custom</Text>
+                      <Text style={styles.addCustomMealText}>
+                        {t('nutrition.custom')}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => addMeal(mealType)}
                       style={styles.addMealButton}>
-                      <Text style={styles.addMealText}>Add</Text>
+                      <Text style={styles.addMealText}>
+                        {t('nutrition.add')}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -697,7 +709,11 @@ export default function NutritionScreen({navigation}: any) {
                     ))}
                   </View>
                 ) : (
-                  <Text style={styles.emptyMeal}>No {mealType} logged yet</Text>
+                  <Text style={styles.emptyMeal}>
+                    {t('nutrition.no_meal_logged', {
+                      mealType: t(`nutrition.meal_types.${mealType}`),
+                    })}
+                  </Text>
                 )}
               </Card>
             );
@@ -714,7 +730,9 @@ export default function NutritionScreen({navigation}: any) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Custom Meal</Text>
+              <Text style={styles.modalTitle}>
+                {t('nutrition.add_custom_meal')}
+              </Text>
               <TouchableOpacity
                 onPress={() => setShowCustomMealModal(false)}
                 style={styles.closeButton}>
@@ -724,18 +742,18 @@ export default function NutritionScreen({navigation}: any) {
 
             <ScrollView style={styles.modalContent}>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Meal Name *</Text>
+                <Text style={styles.label}>{t('nutrition.meal_name')} *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={customMealName}
                   onChangeText={setCustomMealName}
-                  placeholder="Enter meal name"
+                  placeholder={t('nutrition.enter_meal_name')}
                   placeholderTextColor="#9ca3af"
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Meal Type</Text>
+                <Text style={styles.label}>{t('nutrition.meal_type')}</Text>
                 <View style={styles.mealTypeContainer}>
                   {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
                     <TouchableOpacity
@@ -752,7 +770,7 @@ export default function NutritionScreen({navigation}: any) {
                             styles.selectedMealTypeText,
                         ]}>
                         {getMealTypeEmoji(type)}{' '}
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                        {t(`nutrition.meal_types.${type}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -762,7 +780,9 @@ export default function NutritionScreen({navigation}: any) {
               <View style={styles.nutritionInputs}>
                 <View style={styles.nutritionInputRow}>
                   <View style={styles.nutritionInput}>
-                    <Text style={styles.label}>Calories *</Text>
+                    <Text style={styles.label}>
+                      {t('nutrition.calories')} *
+                    </Text>
                     <TextInput
                       style={styles.textInput}
                       value={customMealCalories}
@@ -773,7 +793,9 @@ export default function NutritionScreen({navigation}: any) {
                     />
                   </View>
                   <View style={styles.nutritionInput}>
-                    <Text style={styles.label}>Protein (g)</Text>
+                    <Text style={styles.label}>
+                      {t('nutrition.protein')} (g)
+                    </Text>
                     <TextInput
                       style={styles.textInput}
                       value={customMealProtein}
@@ -787,7 +809,7 @@ export default function NutritionScreen({navigation}: any) {
 
                 <View style={styles.nutritionInputRow}>
                   <View style={styles.nutritionInput}>
-                    <Text style={styles.label}>Carbs (g)</Text>
+                    <Text style={styles.label}>{t('nutrition.carbs')} (g)</Text>
                     <TextInput
                       style={styles.textInput}
                       value={customMealCarbs}
@@ -798,7 +820,7 @@ export default function NutritionScreen({navigation}: any) {
                     />
                   </View>
                   <View style={styles.nutritionInput}>
-                    <Text style={styles.label}>Fat (g)</Text>
+                    <Text style={styles.label}>{t('nutrition.fat')} (g)</Text>
                     <TextInput
                       style={styles.textInput}
                       value={customMealFat}
@@ -814,13 +836,17 @@ export default function NutritionScreen({navigation}: any) {
 
             <View style={styles.modalActions}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={() => setShowCustomMealModal(false)}
                 style={styles.cancelButton}
               />
               <Button
-                title={savingCustomMeal ? 'Saving...' : 'Add Meal'}
+                title={
+                  savingCustomMeal
+                    ? t('common.saving')
+                    : t('nutrition.add_meal')
+                }
                 onPress={saveCustomMeal}
                 disabled={savingCustomMeal}
                 style={styles.saveButton}

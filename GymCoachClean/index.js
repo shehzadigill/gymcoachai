@@ -2,6 +2,9 @@
  * @format
  */
 
+// MUST be first for react-navigation gesture handling
+import 'react-native-gesture-handler';
+
 // Import polyfills for AWS SDK
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
@@ -27,4 +30,5 @@ import {AppRegistry} from 'react-native';
 import App from './src/App';
 import {name as appName} from './app.json';
 
+console.log('[index] Registering app component:', appName);
 AppRegistry.registerComponent(appName, () => App);

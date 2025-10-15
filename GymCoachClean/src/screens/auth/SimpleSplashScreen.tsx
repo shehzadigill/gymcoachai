@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import {View, Text, StyleSheet, SafeAreaView} from 'react-native';
+import {useTranslation} from 'react-i18next';
 
 export default function SimpleSplashScreen() {
+  const {t} = useTranslation();
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>GymCoach AI</Text>
-        <Text style={styles.subtitle}>Loading...</Text>
+        <Text style={styles.title}>{t('auth.app_name')}</Text>
+        <Text style={styles.subtitle}>{t('common.loading')}</Text>
       </View>
     </SafeAreaView>
   );

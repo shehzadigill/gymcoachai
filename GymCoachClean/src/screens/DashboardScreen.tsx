@@ -11,6 +11,8 @@ import {
 import {useAuth} from '../contexts/AuthContext';
 import {Card, LoadingSpinner} from '../components/common/UI';
 import apiClient from '../services/api';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 
 const {width} = Dimensions.get('window');
 
@@ -150,6 +152,7 @@ interface DashboardData {
 }
 
 export default function DashboardScreen() {
+  const {t} = useTranslation();
   const {user, userProfile} = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -457,11 +460,13 @@ export default function DashboardScreen() {
   const getGreeting = () => {
     const hour = new Date().getHours();
     const name =
-      userProfile?.firstName || user?.email?.split('@')[0] || 'there';
+      userProfile?.firstName ||
+      user?.email?.split('@')[0] ||
+      t('dashboard.there');
 
-    if (hour < 12) return `Good morning, ${name}!`;
-    if (hour < 17) return `Good afternoon, ${name}!`;
-    return `Good evening, ${name}!`;
+    if (hour < 12) return t('dashboard.good_morning', {name});
+    if (hour < 17) return t('dashboard.good_afternoon', {name});
+    return t('dashboard.good_evening', {name});
   };
 
   const calculateWorkoutStreak = (sessions: any[]) => {
@@ -702,6 +707,7 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -710,9 +716,7 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.subtitle}>
-            Let's crush your fitness goals today!
-          </Text>
+          <Text style={styles.subtitle}>{t('dashboard.subtitle')}</Text>
         </View>
 
         {/* Quick Stats */}
@@ -721,22 +725,30 @@ export default function DashboardScreen() {
             <Text style={styles.statNumber}>
               {data?.workoutsCompleted || 0}
             </Text>
-            <Text style={styles.statLabel}>Workouts Done</Text>
+            <Text style={styles.statLabel}>
+              {t('dashboard.stats.workouts_done')}
+            </Text>
           </Card>
           <Card style={styles.statCard}>
             <Text style={styles.statNumber}>{data?.caloriesToday || 0}</Text>
-            <Text style={styles.statLabel}>Calories Today</Text>
+            <Text style={styles.statLabel}>
+              {t('dashboard.stats.calories_today')}
+            </Text>
           </Card>
           <Card style={styles.statCard}>
             <Text style={styles.statNumber}>{data?.currentStreak || 0}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
+            <Text style={styles.statLabel}>
+              {t('dashboard.stats.day_streak')}
+            </Text>
           </Card>
         </View>
 
         {/* Daily Goals */}
         {data?.dailyGoals && data.dailyGoals.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Today's Goals</Text>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.todays_goals')}
+            </Text>
             {data.dailyGoals.map((goal: any, index: number) => (
               <Card key={index} style={styles.goalCard}>
                 <View style={styles.goalHeader}>
@@ -759,7 +771,8 @@ export default function DashboardScreen() {
                   />
                 </View>
                 <Text style={styles.goalPercentage}>
-                  {Math.round((goal.current / goal.target) * 100)}% Complete
+                  {Math.round((goal.current / goal.target) * 100)}%{' '}
+                  {t('dashboard.complete')}
                 </Text>
               </Card>
             ))}
@@ -769,7 +782,9 @@ export default function DashboardScreen() {
         {/* Weekly Goals */}
         {data?.weeklyGoals && data.weeklyGoals.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Weekly Goals</Text>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.weekly_goals')}
+            </Text>
             {data.weeklyGoals.map((goal: any, index: number) => (
               <Card key={index} style={styles.goalCard}>
                 <View style={styles.goalHeader}>
@@ -792,7 +807,8 @@ export default function DashboardScreen() {
                   />
                 </View>
                 <Text style={styles.goalPercentage}>
-                  {Math.round((goal.current / goal.target) * 100)}% Complete
+                  {Math.round((goal.current / goal.target) * 100)}%{' '}
+                  {t('dashboard.complete')}
                 </Text>
               </Card>
             ))}
@@ -801,7 +817,9 @@ export default function DashboardScreen() {
 
         {/* Recent Activities */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <Text style={styles.sectionTitle}>
+            {t('dashboard.recent_activity')}
+          </Text>
           {data?.recentActivities && data.recentActivities.length > 0 ? (
             data.recentActivities.map((activity, index) => (
               <Card key={index} style={styles.activityCard}>
@@ -821,9 +839,11 @@ export default function DashboardScreen() {
             ))
           ) : (
             <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No recent activity</Text>
+              <Text style={styles.emptyText}>
+                {t('dashboard.no_recent_activity')}
+              </Text>
               <Text style={styles.emptySubtext}>
-                Start working out or logging meals to see activity here!
+                {t('dashboard.start_tracking')}
               </Text>
             </Card>
           )}
@@ -831,32 +851,42 @@ export default function DashboardScreen() {
 
         {/* Performance Overview */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Performance Overview</Text>
+          <Text style={styles.sectionTitle}>
+            {t('dashboard.performance_overview')}
+          </Text>
           <Card style={styles.performanceCard}>
             <View style={styles.performanceGrid}>
               <View style={styles.performanceItem}>
                 <Text style={styles.performanceValue}>
                   {data?.avgWorkoutDuration || 0}m
                 </Text>
-                <Text style={styles.performanceLabel}>Avg Duration</Text>
+                <Text style={styles.performanceLabel}>
+                  {t('dashboard.avg_duration')}
+                </Text>
               </View>
               <View style={styles.performanceItem}>
                 <Text style={styles.performanceValue}>
                   {data?.totalCaloriesBurned || 0}
                 </Text>
-                <Text style={styles.performanceLabel}>Calories Burned</Text>
+                <Text style={styles.performanceLabel}>
+                  {t('dashboard.calories_burned')}
+                </Text>
               </View>
               <View style={styles.performanceItem}>
                 <Text style={styles.performanceValue}>
                   {data?.nutritionScore || 0}
                 </Text>
-                <Text style={styles.performanceLabel}>Nutrition Score</Text>
+                <Text style={styles.performanceLabel}>
+                  {t('dashboard.nutrition_score')}
+                </Text>
               </View>
               <View style={styles.performanceItem}>
                 <Text style={styles.performanceValue}>
                   {data?.mealsToday || 0}
                 </Text>
-                <Text style={styles.performanceLabel}>Meals Today</Text>
+                <Text style={styles.performanceLabel}>
+                  {t('dashboard.meals_today')}
+                </Text>
               </View>
             </View>
           </Card>
@@ -865,7 +895,9 @@ export default function DashboardScreen() {
         {/* Upcoming Workouts */}
         {data?.upcomingWorkouts && data.upcomingWorkouts.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Upcoming Workouts</Text>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.upcoming_workouts')}
+            </Text>
             {data.upcomingWorkouts.map((workout, index) => (
               <Card key={workout.id || index} style={styles.upcomingCard}>
                 <Text style={styles.upcomingName}>{workout.name}</Text>
@@ -886,7 +918,9 @@ export default function DashboardScreen() {
         {/* Recent Achievements */}
         {data?.achievements && data.achievements.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.recent_achievements')}
+            </Text>
             {data.achievements.map(achievement => (
               <Card key={achievement.id} style={styles.achievementCard}>
                 <View style={styles.achievementContent}>

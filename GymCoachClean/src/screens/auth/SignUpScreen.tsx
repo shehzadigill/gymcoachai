@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,14 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
-import { Button, LoadingSpinner } from '../../components/common/UI';
+import {useAuth} from '../../contexts/AuthContext';
+import {Button, LoadingSpinner} from '../../components/common/UI';
+import {useTranslation} from 'react-i18next';
+import FloatingSettingsButton from '../../components/common/FloatingSettingsButton';
 
-export default function SignUpScreen({ navigation }: any) {
-  const { signUp, isLoading } = useAuth();
+export default function SignUpScreen({navigation}: any) {
+  const {signUp, isLoading} = useAuth();
+  const {t} = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -27,17 +30,20 @@ export default function SignUpScreen({ navigation }: any) {
 
   const handleSignUp = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(t('auth.errors.error'), t('auth.errors.fill_all_fields'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(
+        t('auth.errors.error'),
+        t('auth.errors.passwords_dont_match'),
+      );
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long');
+      Alert.alert(t('auth.errors.error'), t('auth.errors.password_too_short'));
       return;
     }
 
@@ -47,21 +53,24 @@ export default function SignUpScreen({ navigation }: any) {
         email.trim().toLowerCase(),
         password,
         firstName.trim(),
-        lastName.trim()
+        lastName.trim(),
       );
 
       Alert.alert(
-        'Account Created',
-        'Please check your email for a verification code',
+        t('auth.account_created'),
+        t('auth.check_email_verification'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => navigation.navigate('SignIn'),
           },
-        ]
+        ],
       );
     } catch (error: any) {
-      Alert.alert('Sign Up Failed', error.message || 'Please try again');
+      Alert.alert(
+        t('auth.errors.signup_failed'),
+        error.message || t('auth.errors.try_again'),
+      );
     } finally {
       setLocalLoading(false);
     }
@@ -81,17 +90,17 @@ export default function SignUpScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FloatingSettingsButton />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidView}
-      >
+        style={styles.keyboardAvoidView}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.title}>{t('auth.create_account')}</Text>
               <Text style={styles.subtitle}>
-                Join us to start your fitness journey
+                {t('auth.join_fitness_journey')}
               </Text>
             </View>
 
@@ -99,20 +108,20 @@ export default function SignUpScreen({ navigation }: any) {
             <View style={styles.form}>
               <View style={styles.row}>
                 <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>First Name</Text>
+                  <Text style={styles.label}>{t('auth.first_name')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="First name"
+                    placeholder={t('auth.first_name')}
                     value={firstName}
                     onChangeText={setFirstName}
                     autoCapitalize="words"
                   />
                 </View>
                 <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Last Name</Text>
+                  <Text style={styles.label}>{t('auth.last_name')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Last name"
+                    placeholder={t('auth.last_name')}
                     value={lastName}
                     onChangeText={setLastName}
                     autoCapitalize="words"
@@ -121,10 +130,10 @@ export default function SignUpScreen({ navigation }: any) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email *</Text>
+                <Text style={styles.label}>{t('auth.email')} *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your email"
+                  placeholder={t('auth.enter_email')}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -134,25 +143,25 @@ export default function SignUpScreen({ navigation }: any) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Password *</Text>
+                <Text style={styles.label}>{t('auth.password')} *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your password"
+                  placeholder={t('auth.enter_password')}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
                   autoCapitalize="none"
                 />
                 <Text style={styles.helperText}>
-                  Must be at least 8 characters
+                  {t('auth.password_requirements')}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirm Password *</Text>
+                <Text style={styles.label}>{t('auth.confirm_password')} *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Confirm your password"
+                  placeholder={t('auth.confirm_password')}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry
@@ -161,7 +170,7 @@ export default function SignUpScreen({ navigation }: any) {
               </View>
 
               <Button
-                title="Create Account"
+                title={t('auth.create_account')}
                 onPress={handleSignUp}
                 loading={localLoading}
                 disabled={
@@ -176,9 +185,11 @@ export default function SignUpScreen({ navigation }: any) {
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
+              <Text style={styles.footerText}>
+                {t('auth.already_have_account')}{' '}
+              </Text>
               <TouchableOpacity onPress={navigateToSignIn}>
-                <Text style={styles.signInLink}>Sign In</Text>
+                <Text style={styles.signInLink}>{t('auth.sign_in')}</Text>
               </TouchableOpacity>
             </View>
           </View>

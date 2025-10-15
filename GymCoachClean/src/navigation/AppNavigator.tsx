@@ -1,5 +1,9 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
@@ -74,6 +78,7 @@ const NutritionStack = createNativeStackNavigator<NutritionStackParamList>();
 const WorkoutStack = createNativeStackNavigator<WorkoutStackParamList>();
 
 function AuthNavigator() {
+  console.log('[AuthNavigator] Rendering auth stack');
   return (
     <AuthStack.Navigator
       screenOptions={{
@@ -88,10 +93,13 @@ function AuthNavigator() {
 }
 
 // Import React Native components for icons
-import {View, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet, I18nManager} from 'react-native';
 import TabBarIcon from '../components/common/TabBarIcon';
+import {useTranslation} from 'react-i18next';
+import {useTheme} from '../theme';
 
 function NutritionNavigator() {
+  const {t} = useTranslation();
   return (
     <NutritionStack.Navigator
       screenOptions={{
@@ -104,8 +112,8 @@ function NutritionNavigator() {
         component={NutritionEntryScreen}
         options={{
           headerShown: true,
-          title: 'Log Meal',
-          headerBackTitle: 'Back',
+          title: t('nutrition.log_meal'),
+          headerBackTitle: t('common.back'),
         }}
       />
     </NutritionStack.Navigator>
@@ -113,6 +121,7 @@ function NutritionNavigator() {
 }
 
 function WorkoutNavigator() {
+  const {t} = useTranslation();
   return (
     <WorkoutStack.Navigator
       screenOptions={{
@@ -125,8 +134,8 @@ function WorkoutNavigator() {
         component={SessionScreen}
         options={{
           headerShown: true,
-          title: 'Workout Session',
-          headerBackTitle: 'Back',
+          title: t('workout.session'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <WorkoutStack.Screen
@@ -134,8 +143,8 @@ function WorkoutNavigator() {
         component={WorkoutDetailScreen}
         options={{
           headerShown: true,
-          title: 'Workout Details',
-          headerBackTitle: 'Back',
+          title: t('workout.details'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <WorkoutStack.Screen
@@ -143,8 +152,8 @@ function WorkoutNavigator() {
         component={CreatePlanScreen}
         options={{
           headerShown: true,
-          title: 'Create Workout Plan',
-          headerBackTitle: 'Back',
+          title: t('workout.create_plan'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <WorkoutStack.Screen
@@ -152,8 +161,8 @@ function WorkoutNavigator() {
         component={CreateExerciseScreen}
         options={{
           headerShown: true,
-          title: 'Create Exercise',
-          headerBackTitle: 'Back',
+          title: t('workout.create_exercise'),
+          headerBackTitle: t('common.back'),
         }}
       />
     </WorkoutStack.Navigator>
@@ -161,24 +170,26 @@ function WorkoutNavigator() {
 }
 
 function MainNavigator() {
+  const {t} = useTranslation();
+  const {colors, isDark} = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.tabBar.background,
           borderTopWidth: 1,
-          borderTopColor: '#e5e5e5',
+          borderTopColor: colors.tabBar.border,
           paddingBottom: 5,
         },
-        tabBarActiveTintColor: '#3b82f6',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: colors.tabBar.active,
+        tabBarInactiveTintColor: colors.tabBar.inactive,
       }}>
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: t('tabs.home'),
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="home"
@@ -193,7 +204,7 @@ function MainNavigator() {
         name="Workouts"
         component={WorkoutNavigator}
         options={{
-          tabBarLabel: 'Workouts',
+          tabBarLabel: t('tabs.workouts'),
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="fitness"
@@ -208,7 +219,7 @@ function MainNavigator() {
         name="AITrainer"
         component={AITrainerScreen}
         options={{
-          tabBarLabel: 'AI Trainer',
+          tabBarLabel: t('tabs.ai_trainer'),
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="smart-toy"
@@ -223,7 +234,7 @@ function MainNavigator() {
         name="Nutrition"
         component={NutritionNavigator}
         options={{
-          tabBarLabel: 'Nutrition',
+          tabBarLabel: t('tabs.nutrition'),
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="nutrition"
@@ -238,7 +249,7 @@ function MainNavigator() {
         name="Analytics"
         component={AnalyticsScreen}
         options={{
-          tabBarLabel: 'Analytics',
+          tabBarLabel: t('tabs.analytics'),
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="analytics"
@@ -253,7 +264,7 @@ function MainNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: t('tabs.profile'),
           tabBarIcon: ({focused, color, size}) => (
             <TabBarIcon
               name="profile"
@@ -273,8 +284,18 @@ interface AppNavigatorProps {
 }
 
 export default function AppNavigator({isAuthenticated}: AppNavigatorProps) {
+  const {isDark} = useTheme();
+  const {i18n} = useTranslation();
+  console.log(
+    '[AppNavigator] isAuthenticated:',
+    isAuthenticated,
+    'themeDark:',
+    isDark,
+  );
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      key={i18n.language}
+      theme={isDark ? DarkTheme : DefaultTheme}>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {isAuthenticated ? (
           <Stack.Screen name="Main" component={MainNavigator} />

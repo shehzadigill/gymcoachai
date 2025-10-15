@@ -162,10 +162,7 @@ class ApiClient {
     }
   }
 
-  private async apiFetch<T>(
-    endpoint: string,
-    options: RequestInit = {},
-  ): Promise<T> {
+  async apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const isDemo = await this.isDemoMode();
 
     if (isDemo) {

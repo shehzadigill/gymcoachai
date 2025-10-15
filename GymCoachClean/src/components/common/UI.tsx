@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import {useTheme} from '../../theme';
 
 interface ButtonProps {
   title: string;
@@ -26,9 +27,10 @@ export function Button({
   loading = false,
   style,
 }: ButtonProps) {
+  const {colors} = useTheme();
   const buttonStyle = [
     styles.button,
-    styles[variant],
+    getVariantStyle(variant, colors),
     styles[size],
     disabled && styles.disabled,
     style,
@@ -36,7 +38,7 @@ export function Button({
 
   const textStyle = [
     styles.text,
-    styles[`${variant}Text`],
+    getVariantTextStyle(variant, colors),
     styles[`${size}Text`],
     disabled && styles.disabledText,
   ];
@@ -46,11 +48,10 @@ export function Button({
       style={buttonStyle}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
-    >
+      activeOpacity={0.7}>
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? '#ffffff' : '#3b82f6'}
+          color={variant === 'primary' ? colors.primaryText : colors.primary}
           size="small"
         />
       ) : (
@@ -66,9 +67,16 @@ interface CardProps {
   padding?: boolean;
 }
 
-export function Card({ children, style, padding = true }: CardProps) {
+export function Card({children, style, padding = true}: CardProps) {
+  const {colors} = useTheme();
   return (
-    <View style={[styles.card, padding && styles.cardPadding, style]}>
+    <View
+      style={[
+        styles.card,
+        {backgroundColor: colors.card, borderColor: colors.border},
+        padding && styles.cardPadding,
+        style,
+      ]}>
       {children}
     </View>
   );
@@ -81,11 +89,12 @@ interface LoadingSpinnerProps {
 
 export function LoadingSpinner({
   size = 'large',
-  color = '#3b82f6',
+  color = undefined,
 }: LoadingSpinnerProps) {
+  const {colors} = useTheme();
   return (
     <View style={styles.spinner}>
-      <ActivityIndicator size={size} color={color} />
+      <ActivityIndicator size={size} color={color || colors.primary} />
     </View>
   );
 }
@@ -98,17 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  primary: {
-    backgroundColor: '#3b82f6',
-  },
-  secondary: {
-    backgroundColor: '#f3f4f6',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-  },
+  // variant colors are computed via theme helpers
   disabled: {
     opacity: 0.5,
   },
@@ -131,15 +130,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  primaryText: {
-    color: '#ffffff',
-  },
-  secondaryText: {
-    color: '#374151',
-  },
-  outlineText: {
-    color: '#3b82f6',
-  },
+  // text colors are computed via theme helpers
   disabledText: {
     opacity: 0.5,
   },
@@ -157,6 +148,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -177,3 +169,39 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 });
+
+function getVariantStyle(
+  variant: NonNullable<ButtonProps['variant']>,
+  colors: ReturnType<typeof useTheme>['colors'],
+) {
+  switch (variant) {
+    case 'primary':
+      return {backgroundColor: colors.primary};
+    case 'secondary':
+      return {backgroundColor: colors.surface};
+    case 'outline':
+      return {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: colors.primary,
+      };
+    default:
+      return {};
+  }
+}
+
+function getVariantTextStyle(
+  variant: NonNullable<ButtonProps['variant']>,
+  colors: ReturnType<typeof useTheme>['colors'],
+) {
+  switch (variant) {
+    case 'primary':
+      return {color: colors.primaryText};
+    case 'secondary':
+      return {color: colors.text};
+    case 'outline':
+      return {color: colors.primary};
+    default:
+      return {};
+  }
+}
