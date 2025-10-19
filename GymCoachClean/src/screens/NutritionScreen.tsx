@@ -15,12 +15,13 @@ import {useFocusEffect} from '@react-navigation/native';
 import {Card, LoadingSpinner, Button} from '../components/common/UI';
 import {useAuth} from '../contexts/AuthContext';
 import apiClient from '../services/api';
-import notificationService from '../services/notifications';
 import {useTranslation} from 'react-i18next';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import {useTheme} from '../theme';
 
 export default function NutritionScreen({navigation}: any) {
   const {t} = useTranslation();
+  const {colors, isDark} = useTheme();
   const {user} = useAuth();
   const [todaysMeals, setTodaysMeals] = useState<any>(null);
   const [nutritionStats, setNutritionStats] = useState<any>(null);
@@ -371,14 +372,16 @@ export default function NutritionScreen({navigation}: any) {
 
   if (loading && !todaysMeals) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView
+        style={[styles.container, {backgroundColor: colors.background}]}>
         <LoadingSpinner />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
@@ -387,13 +390,19 @@ export default function NutritionScreen({navigation}: any) {
         }>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Nutrition</Text>
-          <Text style={styles.subtitle}>{new Date().toLocaleDateString()}</Text>
+          <Text style={[styles.title, {color: colors.text}]}>
+            {t('nutrition.title')}
+          </Text>
+          <Text style={[styles.subtitle, {color: colors.subtext}]}>
+            {new Date().toLocaleDateString()}
+          </Text>
         </View>
 
         {/* Daily Summary */}
-        <Card style={styles.summaryCard}>
-          <Text style={styles.cardTitle}>Today's Summary</Text>
+        <Card style={[styles.summaryCard, {backgroundColor: colors.card}]}>
+          <Text style={[styles.cardTitle, {color: colors.text}]}>
+            {t('nutrition.todays_summary')}
+          </Text>
 
           {/* Nutrition Cards with Progress Bars */}
           <View style={styles.nutritionGrid}>
@@ -412,10 +421,10 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>
+              <Text style={[styles.nutritionLabel, {color: colors.text}]}>
                 {t('nutrition.calories')}
               </Text>
-              <Text style={styles.nutritionValue}>
+              <Text style={[styles.nutritionValue, {color: colors.subtext}]}>
                 {Math.round(
                   nutritionStats?.today_calories ||
                     nutritionStats?.consumed?.calories ||
@@ -458,10 +467,10 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>
+              <Text style={[styles.nutritionLabel, {color: colors.text}]}>
                 {t('nutrition.protein')}
               </Text>
-              <Text style={styles.nutritionValue}>
+              <Text style={[styles.nutritionValue, {color: colors.subtext}]}>
                 {Math.round(
                   nutritionStats?.today_protein ||
                     nutritionStats?.consumed?.protein ||
@@ -504,8 +513,10 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>{t('nutrition.carbs')}</Text>
-              <Text style={styles.nutritionValue}>
+              <Text style={[styles.nutritionLabel, {color: colors.text}]}>
+                {t('nutrition.carbs')}
+              </Text>
+              <Text style={[styles.nutritionValue, {color: colors.subtext}]}>
                 {Math.round(
                   nutritionStats?.today_carbs ||
                     nutritionStats?.consumed?.carbs ||
@@ -548,8 +559,10 @@ export default function NutritionScreen({navigation}: any) {
                   %
                 </Text>
               </View>
-              <Text style={styles.nutritionLabel}>{t('nutrition.fat')}</Text>
-              <Text style={styles.nutritionValue}>
+              <Text style={[styles.nutritionLabel, {color: colors.text}]}>
+                {t('nutrition.fat')}
+              </Text>
+              <Text style={[styles.nutritionValue, {color: colors.subtext}]}>
                 {Math.round(
                   nutritionStats?.today_fat ||
                     nutritionStats?.consumed?.fat ||
@@ -580,16 +593,21 @@ export default function NutritionScreen({navigation}: any) {
         </Card>
 
         {/* Water Intake */}
-        <Card style={styles.waterCard}>
+        <Card style={[styles.waterCard, {backgroundColor: colors.card}]}>
           <View style={styles.waterHeader}>
-            <Text style={styles.cardTitle}>💧 Water Intake</Text>
+            <Text style={[styles.cardTitle, {color: colors.text}]}>
+              💧 {t('nutrition.water_intake')}
+            </Text>
             <TouchableOpacity onPress={addWater} style={styles.addWaterButton}>
-              <Text style={styles.addWaterText}>+1 Glass</Text>
+              <Text style={styles.addWaterText}>
+                {t('nutrition.add_glass')}
+              </Text>
             </TouchableOpacity>
           </View>
           <View style={styles.waterProgress}>
-            <Text style={styles.waterText}>
-              {waterIntake?.glasses || 0} / {getWaterGoal()} glasses today
+            <Text style={[styles.waterText, {color: colors.subtext}]}>
+              {waterIntake?.glasses || 0} / {getWaterGoal()}{' '}
+              {t('nutrition.glasses_today')}
             </Text>
             <View style={styles.waterGlasses}>
               {Array.from({length: getWaterGoal()}).map((_, index) => (
@@ -619,7 +637,9 @@ export default function NutritionScreen({navigation}: any) {
 
         {/* Meals */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('nutrition.todays_meals')}</Text>
+          <Text style={[styles.sectionTitle, {color: colors.text}]}>
+            {t('nutrition.todays_meals')}
+          </Text>
 
           {['breakfast', 'lunch', 'dinner', 'snack'].map(mealType => {
             const mealsForType =

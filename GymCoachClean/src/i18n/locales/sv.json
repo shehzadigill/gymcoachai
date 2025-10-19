@@ -8,6 +8,8 @@
     "saving": "Sparar..."
   },
   "nutrition": {
+    "title": "Näring",
+    "todays_summary": "Dagens sammanfattning",
     "calories": "Kalorier",
     "protein": "Protein",
     "carbs": "Kolhydrater",
@@ -47,6 +49,9 @@
     "meal_updated": "Måltid uppdaterad framgångsrikt!",
     "meal_added": "Måltid tillagd framgångsrikt!",
     "coming_soon": "Kommer snart...",
+    "water_intake": "Vattenintag",
+    "glasses_today": "glas idag",
+    "add_glass": "+1 Glas",
     "errors": {
       "error": "Fel",
       "select_food_and_name": "Välj en mat och ange måltidsnamn.",
@@ -174,28 +179,6 @@
     "completed": "Slutförd",
     "in_progress": "Pågående",
     "scheduled": "Schemalagd"
-  },
-  "nutrition": {
-    "log_meal": "Logga måltid",
-    "breakfast": "Frukost",
-    "lunch": "Lunch",
-    "dinner": "Middag",
-    "snack": "Mellanmål",
-    "calories": "Kalorier",
-    "protein": "Protein",
-    "carbs": "Kolhydrater",
-    "fat": "Fett",
-    "fiber": "Fiber",
-    "sugar": "Socker",
-    "sodium": "Natrium",
-    "water": "Vatten",
-    "add_food": "Lägg till mat",
-    "search_food": "Sök mat",
-    "recent_foods": "Senaste maten",
-    "my_foods": "Min mat",
-    "meal_plan": "Måltidsplan",
-    "daily_summary": "Daglig sammanfattning",
-    "weekly_summary": "Veckosammanfattning"
   },
   "analytics": {
     "title": "Analys",

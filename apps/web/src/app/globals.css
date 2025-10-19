@@ -7,6 +7,73 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* RTL Support */
+[dir='rtl'] {
+  text-align: right;
+}
+
+[dir='rtl'] .flex {
+  flex-direction: row-reverse;
+}
+
+[dir='rtl'] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir='rtl'] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(0.75rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.75rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir='rtl'] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(1rem * var(--tw-space-x-reverse));
+  margin-left: calc(1rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir='rtl'] .space-x-8 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+  margin-right: calc(2rem * var(--tw-space-x-reverse));
+  margin-left: calc(2rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+[dir='rtl'] .ml-3 {
+  margin-left: 0;
+  margin-right: 0.75rem;
+}
+
+[dir='rtl'] .mr-3 {
+  margin-right: 0;
+  margin-left: 0.75rem;
+}
+
+[dir='rtl'] .text-left {
+  text-align: right;
+}
+
+[dir='rtl'] .text-right {
+  text-align: left;
+}
+
+[dir='rtl'] .justify-start {
+  justify-content: flex-end;
+}
+
+[dir='rtl'] .justify-end {
+  justify-content: flex-start;
+}
+
+[dir='rtl'] .items-start {
+  align-items: flex-end;
+}
+
+[dir='rtl'] .items-end {
+  align-items: flex-start;
+}
+
 .dark {
   --color-background: #0a0a0a;
   --color-foreground: #ededed;

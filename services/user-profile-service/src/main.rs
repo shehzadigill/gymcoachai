@@ -18,6 +18,7 @@ mod utils;
 
 use auth_layer::{AuthLayer, LambdaEvent as AuthLambdaEvent};
 use controller::{SleepController, UploadController, UserProfileController};
+use handlers::{delete_device_token, get_device_tokens, save_device_token};
 use repository::{SleepRepository, UserProfileRepository};
 use service::{SleepService, UploadService, UserProfileService};
 
@@ -136,6 +137,20 @@ async fn main() -> Result<(), LambdaError> {
         handler!(get_sleep_history),
     );
     router.get("/api/user-profiles/sleep/stats", handler!(get_sleep_stats));
+
+    // Device token management routes
+    router.post(
+        "/api/user-profiles/device-token",
+        handler!(save_device_token),
+    );
+    router.get(
+        "/api/user-profiles/device-tokens",
+        handler!(get_device_tokens),
+    );
+    router.delete(
+        "/api/user-profiles/device-token/:deviceId",
+        handler!(delete_device_token),
+    );
 
     info!("User Profile Service initialized successfully");
     info!("Starting Lambda runtime...");

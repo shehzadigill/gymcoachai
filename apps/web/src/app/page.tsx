@@ -1,37 +1,24 @@
 'use client';
 
-import { Button, Card, Badge } from '../../../../packages/ui/dist';
-import { useCurrentUser, signOut } from '../../../../packages/auth/dist';
 import Link from 'next/link';
-import {
-  Dumbbell,
-  Apple,
-  BarChart3,
-  Brain,
-  Smartphone,
-  Heart,
-  Target,
-  TrendingUp,
-  Zap,
-  Shield,
-  Clock,
-  Users,
-  Star,
-  ChevronRight,
-  Download,
-  Globe,
-} from 'lucide-react';
+import { useCurrentUser } from '@packages/auth/hooks';
+import { useTranslations } from 'next-intl';
+import { signOut } from '@packages/auth';
+import { useRouter } from 'next/navigation';
 
-export default function Home() {
-  const { isAuthenticated, isLoading, name } = useCurrentUser();
+export default function HomePage() {
+  const { isAuthenticated, isLoading } = useCurrentUser();
+  const t = useTranslations('common');
+  const router = useRouter();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -40,55 +27,41 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Dumbbell className="h-8 w-8 text-blue-600 mr-3" />
               <span className="text-2xl font-bold text-gray-900 dark:text-white">
                 GymCoach AI
               </span>
             </div>
-            <div className="hidden md:flex items-center space-x-8">
-              <Link
-                href="#features"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                Features
-              </Link>
-              <Link
-                href="#mobile"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                Mobile App
-              </Link>
-              <Link
-                href="#pricing"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                Pricing
-              </Link>
-            </div>
-            <div className="flex gap-3">
-              {isAuthenticated ? (
+            <div className="flex gap-3 items-center">
+              {isLoading ? (
+                <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+              ) : isAuthenticated ? (
                 <>
                   <Link
                     href="/dashboard"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
                   >
-                    <BarChart3 className="h-4 w-4" />
-                    Dashboard
+                    Go to Dashboard
                   </Link>
                   <button
+                    onClick={handleSignOut}
                     className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
-                    onClick={() => signOut()}
                   >
                     Sign Out
                   </button>
                 </>
               ) : (
                 <>
-                  <Link href="/auth/signin">
-                    <Button variant="outline">Sign In</Button>
+                  <Link
+                    href="/auth/signin"
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                  >
+                    Sign In
                   </Link>
-                  <Link href="/auth/signup">
-                    <Button variant="primary">Get Started</Button>
+                  <Link
+                    href="/auth/signup"
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Sign Up
                   </Link>
                 </>
               )}
@@ -98,680 +71,173 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+      <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <div className="flex justify-center mb-8">
-              <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 px-4 py-2 rounded-full text-sm font-medium">
-                <Brain className="h-4 w-4" />
-                AI-Powered Fitness Revolution
+          <div className="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
+            <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
+              <div className="sm:text-center lg:text-left">
+                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
+                  <span className="block xl:inline">Your AI-Powered</span>{' '}
+                  <span className="block text-blue-600 xl:inline">
+                    Fitness Coach
+                  </span>
+                </h1>
+                <p className="mt-3 text-base text-gray-500 dark:text-gray-300 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
+                  Get personalized workout plans, nutrition guidance, and
+                  real-time coaching powered by artificial intelligence.
+                </p>
+                <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
+                  {isAuthenticated ? (
+                    <div className="rounded-md shadow">
+                      <Link
+                        href="/dashboard"
+                        className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
+                      >
+                        Go to Dashboard
+                      </Link>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-md shadow">
+                        <Link
+                          href="/auth/signup"
+                          className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
+                        >
+                          Get Started
+                        </Link>
+                      </div>
+                      <div className="mt-3 sm:mt-0 sm:ml-3">
+                        <Link
+                          href="/auth/signin"
+                          className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:py-4 md:text-lg md:px-10"
+                        >
+                          Sign In
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-              Your Personal
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {' '}
-                AI Fitness{' '}
-              </span>
-              Coach
-            </h1>
-
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Transform your fitness journey with intelligent workout plans,
-              nutrition tracking, sleep monitoring, and real-time AI coaching.
-              Available on web and mobile.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              {isAuthenticated ? (
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-2 text-lg px-8 py-4 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                  Go to Dashboard
-                </Link>
-              ) : (
-                <>
-                  <Link href="/auth/signup">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      className="flex items-center gap-2 text-lg px-8 py-4"
-                    >
-                      <Zap className="h-5 w-5" />
-                      Start Free Trial
-                    </Button>
-                  </Link>
-                  <Link href="#demo">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="text-lg px-8 py-4"
-                    >
-                      Watch Demo
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
-
-            <div className="flex gap-4 justify-center flex-wrap">
-              <Badge variant="success" className="text-sm px-3 py-1">
-                🤖 AI-Powered
-              </Badge>
-              <Badge variant="info" className="text-sm px-3 py-1">
-                📱 Cross-Platform
-              </Badge>
-              <Badge variant="warning" className="text-sm px-3 py-1">
-                ⚡ Real-time
-              </Badge>
-              <Badge variant="default" className="text-sm px-3 py-1">
-                🔒 Secure
-              </Badge>
-            </div>
+            </main>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
+      <div className="py-12 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Powerful Features
+          <div className="lg:text-center">
+            <h2 className="text-base text-blue-600 font-semibold tracking-wide uppercase">
+              Features
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Comprehensive tools powered by AI to help you achieve your fitness
-              goals faster and smarter.
+            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+              Everything you need for fitness success
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Smart Workouts */}
-            <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-blue-100 dark:bg-blue-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Dumbbell className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                Workout Tracking
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                AI-generated workout plans that adapt to your fitness level,
-                preferences, and available equipment.
-              </p>
-              {isAuthenticated ? (
-                <Link href="/dashboard/workouts">
-                  <Button variant="primary" className="w-full">
-                    Start Workout
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="primary" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* Nutrition Tracking */}
-            <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-green-100 dark:bg-green-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Apple className="h-8 w-8 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                Nutrition Tracking
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                Log meals, track macros, and get personalized nutrition
-                recommendations powered by AI.
-              </p>
-              {isAuthenticated ? (
-                <Link href="/dashboard/nutrition">
-                  <Button variant="secondary" className="w-full">
-                    Track Nutrition
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="secondary" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* Sleep Monitoring */}
-            <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-purple-100 dark:bg-purple-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                Sleep Tracking
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                Monitor sleep patterns, quality, and get insights to optimize
-                your recovery and performance.
-              </p>
-              {isAuthenticated ? (
-                <Link href="/dashboard/sleep">
-                  <Button variant="outline" className="w-full">
-                    View Sleep Data
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="outline" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* Progress Analytics */}
-            <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-indigo-100 dark:bg-indigo-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BarChart3 className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                Progress Analytics
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                Detailed analytics and insights to track your progress and
-                optimize your fitness journey.
-              </p>
-              {isAuthenticated ? (
-                <Link href="/dashboard/analytics">
-                  <Button variant="outline" className="w-full">
-                    View Analytics
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="outline" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* AI Coaching */}
-            <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-orange-100 dark:bg-orange-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Brain className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                AI Coaching
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                Get real-time form corrections, motivation, and personalized
-                advice from your AI coach.
-              </p>
-              {isAuthenticated ? (
-                <Link href="/dashboard/coach">
-                  <Button variant="outline" className="w-full">
-                    Chat with AI
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="outline" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* Performance Metrics */}
-            <Card className="text-center p-8 hover:shadow-lg transition-shadow">
-              <div className="bg-teal-100 dark:bg-teal-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <TrendingUp className="h-8 w-8 text-teal-600 dark:text-teal-400" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                Performance Metrics
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                Track strength gains, endurance improvements, and other key
-                performance indicators.
-              </p>
-              {isAuthenticated ? (
-                <Link href="/dashboard/metrics">
-                  <Button variant="outline" className="w-full">
-                    View Metrics
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="outline" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Mobile App Section */}
-      <section
-        id="mobile"
-        className="py-20 bg-gradient-to-r from-blue-50 to-indigo-50"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-4">
-                <Smartphone className="h-5 w-5" />
-                <span className="font-semibold">Mobile Experience</span>
-              </div>
-
-              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-                Take Your Fitness Anywhere
-              </h2>
-
-              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-                Our native mobile app brings the full power of GymCoach AI to
-                your smartphone. Train anywhere, anytime, with offline support
-                and real-time coaching.
-              </p>
-
-              <div className="space-y-4 mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Offline workout support
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Real-time form analysis with camera
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Push notifications for workouts
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Sync across all devices
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="flex items-center gap-2"
-                >
-                  <Download className="h-5 w-5" />
-                  Download for iOS
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="flex items-center gap-2"
-                >
-                  <Download className="h-5 w-5" />
-                  Download for Android
-                </Button>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl p-8 text-white text-center">
-                <Smartphone className="h-32 w-32 mx-auto mb-6 opacity-20" />
-                <h3 className="text-2xl font-bold mb-4">Mobile App Preview</h3>
-                <p className="mb-6">
-                  Experience the future of fitness coaching in your pocket
-                </p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="bg-white/20 rounded-lg p-3">
-                    <Clock className="h-6 w-6 mx-auto mb-2" />
-                    <div>Quick Workouts</div>
-                  </div>
-                  <div className="bg-white/20 rounded-lg p-3">
-                    <Target className="h-6 w-6 mx-auto mb-2" />
-                    <div>Goal Tracking</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                10K+
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">
-                Active Users
-              </div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
-                1M+
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">
-                Workouts Completed
-              </div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                95%
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">
-                User Satisfaction
-              </div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-                24/7
-              </div>
-              <div className="text-gray-600 dark:text-gray-400">AI Support</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Preview Section */}
-      <section
-        id="pricing"
-        className="py-20 bg-gradient-to-br from-gray-50 to-blue-50"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Start free and upgrade when you're ready for advanced AI features.
-              No hidden fees, cancel anytime.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Free Plan */}
-            <Card className="text-center p-8 border-2 border-gray-200 relative">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Star className="h-8 w-8 text-gray-600 dark:text-gray-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Free
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                Perfect for getting started
-              </p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                  $0
-                </span>
-                <span className="text-gray-600 dark:text-gray-300">/month</span>
-              </div>
-              <ul className="text-left space-y-3 mb-8 text-sm">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Basic workout logging
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Simple nutrition tracking
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Weekly progress reports
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mr-3"></div>
-                  Limited to 3 custom workouts
-                </li>
-              </ul>
-              {isAuthenticated ? (
-                <Button variant="outline" className="w-full">
-                  Current Plan
-                </Button>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button variant="outline" className="w-full">
-                    Start Free
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* Premium Plan */}
-            <Card className="text-center p-8 border-2 border-blue-500 relative scale-105 shadow-xl">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge
-                  variant="info"
-                  className="px-4 py-1 bg-blue-600 text-white"
-                >
-                  Most Popular
-                </Badge>
-              </div>
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Zap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Premium
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                Complete AI-powered coaching
-              </p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                  $19.99
-                </span>
-                <span className="text-gray-600 dark:text-gray-300">/month</span>
-              </div>
-              <ul className="text-left space-y-3 mb-8 text-sm">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Unlimited AI workouts
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Real-time form analysis
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Advanced nutrition planning
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Comprehensive sleep analysis
-                </li>
-              </ul>
-              {isAuthenticated ? (
-                <Button
-                  variant="primary"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600"
-                >
-                  Upgrade Now
-                </Button>
-              ) : (
-                <Link href="/auth/signup">
-                  <Button
-                    variant="primary"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600"
+          <div className="mt-10">
+            <div className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
+              <div className="relative">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    Start 7-Day Free Trial
-                  </Button>
-                </Link>
-              )}
-            </Card>
-
-            {/* Enterprise Plan */}
-            <Card className="text-center p-8 border-2 border-purple-200 md:col-span-2 lg:col-span-1">
-              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Enterprise
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                For gyms and organizations
-              </p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                  Custom
-                </span>
-                <span className="text-gray-600 dark:text-gray-300">
-                  /pricing
-                </span>
-              </div>
-              <ul className="text-left space-y-3 mb-8 text-sm">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  White-label mobile apps
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Multi-tenant dashboard
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  API access & integrations
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Dedicated support
-                </li>
-              </ul>
-              <Button
-                variant="outline"
-                className="w-full border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20"
-              >
-                Contact Sales
-              </Button>
-            </Card>
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Need more details? Compare all features and see what's included in
-              each plan.
-            </p>
-            <Link href="/pricing">
-              <Button
-                variant="outline"
-                size="lg"
-                className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-900/20"
-              >
-                View Full Pricing Details
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to Transform Your Fitness Journey?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Join thousands of users who have already transformed their lives
-            with GymCoach AI.
-          </p>
-
-          {isAuthenticated ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4 rounded-xl"
-            >
-              Go to Dashboard
-            </Link>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth/signup">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4"
-                >
-                  Start Your Free Trial
-                </Button>
-              </Link>
-              <Link href="/auth/signin">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-4"
-                >
-                  Sign In
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="col-span-2">
-              <div className="flex items-center mb-4">
-                <Dumbbell className="h-8 w-8 text-blue-400 mr-3" />
-                <span className="text-2xl font-bold">GymCoach AI</span>
-              </div>
-              <p className="text-gray-400 mb-4 max-w-md">
-                Your intelligent fitness companion powered by AI. Transform your
-                fitness journey with personalized workouts, nutrition tracking,
-                and real-time coaching.
-              </p>
-              <div className="flex space-x-4">
-                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
-                  <Globe className="h-5 w-5 text-gray-400" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
                 </div>
-                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
-                  <Smartphone className="h-5 w-5 text-gray-400" />
+                <p className="ml-16 text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                  AI Workout Plans
+                </p>
+                <p className="mt-2 ml-16 text-base text-gray-500 dark:text-gray-300">
+                  Get personalized workout routines tailored to your fitness
+                  level and goals.
+                </p>
+              </div>
+
+              <div className="relative">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
                 </div>
+                <p className="ml-16 text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                  Progress Tracking
+                </p>
+                <p className="mt-2 ml-16 text-base text-gray-500 dark:text-gray-300">
+                  Monitor your progress with detailed analytics and insights.
+                </p>
+              </div>
+
+              <div className="relative">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="ml-16 text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                  Nutrition Guidance
+                </p>
+                <p className="mt-2 ml-16 text-base text-gray-500 dark:text-gray-300">
+                  Get personalized meal plans and nutrition advice to fuel your
+                  fitness journey.
+                </p>
+              </div>
+
+              <div className="relative">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="ml-16 text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                  Real-time Coaching
+                </p>
+                <p className="mt-2 ml-16 text-base text-gray-500 dark:text-gray-300">
+                  Get instant feedback and coaching during your workouts.
+                </p>
               </div>
             </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Features</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>Smart Workouts</li>
-                <li>Nutrition Tracking</li>
-                <li>Sleep Monitoring</li>
-                <li>AI Coaching</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Platform</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>Web Application</li>
-                <li>iOS App</li>
-                <li>Android App</li>
-                <li>API Access</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400">
-            <p>
-              &copy; 2025 GymCoach AI. Built with Next.js, React Native, and AWS
-              Lambda.
-            </p>
           </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

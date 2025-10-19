@@ -117,3 +117,6 @@ dependencies {
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
+
+// Apply Google Services plugin (must be at the bottom)
+apply plugin: 'com.google.gms.google-services'

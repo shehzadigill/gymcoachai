@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useCurrentUser } from '../../../../../packages/auth/dist';
+import { useCurrentUser } from '@packages/auth/hooks';
 
 interface ClientAuthWrapperProps {
   children: React.ReactNode;
@@ -34,20 +34,16 @@ export function ClientAuthWrapper({ children }: ClientAuthWrapperProps) {
   const pathname = usePathname();
   const [hasRedirected, setHasRedirected] = useState(false);
 
-  // If it's a public route, don't do any authentication logic
+  // Check if it's a public route that doesn't need auth logic
   const isPublicRoute = publicRoutes.includes(pathname);
-  if (isPublicRoute) {
-    return <>{children}</>;
-  }
+  const isAuthRoute = authRoutes.includes(pathname);
 
-  // Only use auth hook for protected routes
+  // Only use auth hook for routes that need authentication logic
   const { isAuthenticated, isLoading } = useCurrentUser();
 
   useEffect(() => {
     // Don't do anything while loading or if we've already redirected
     if (isLoading || hasRedirected) return;
-
-    const isAuthRoute = authRoutes.includes(pathname);
 
     // If user is authenticated and trying to access auth pages, redirect to dashboard
     if (isAuthenticated && isAuthRoute) {
@@ -63,15 +59,23 @@ export function ClientAuthWrapper({ children }: ClientAuthWrapperProps) {
       router.replace(`/auth/signin?redirect=${redirectUrl}`);
       return;
     }
-  }, [isAuthenticated, isLoading, pathname, router, hasRedirected]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    pathname,
+    router,
+    hasRedirected,
+    isAuthRoute,
+    isPublicRoute,
+  ]);
 
   // Reset redirect flag when pathname changes
   useEffect(() => {
     setHasRedirected(false);
   }, [pathname]);
 
-  // Show loading spinner during auth check for protected routes
-  if (isLoading) {
+  // Show loading spinner during auth check for routes that need authentication
+  if (isLoading && !isPublicRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">

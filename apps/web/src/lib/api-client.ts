@@ -16,7 +16,7 @@ export async function apiFetch<T>(
 
   // Use local proxy only in development mode and when not doing static export
   const shouldUseProxy = isLocal && isDevelopment && !isStaticExport;
-  const finalBase = shouldUseProxy ? '/api/proxy' : baseUrl;
+  const finalBase = baseUrl;
   const authHeaders = await tokenManager.getAuthHeaders();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -1119,5 +1119,89 @@ export const api = {
 
       return (await res.json()) as T;
     }
+  },
+
+  // Device token management (using notification service)
+  async saveDeviceToken(token: string, platform: string = 'web') {
+    const userId = await getCurrentUserId();
+    const response = await apiFetch('/api/notifications/devices', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        device_token: token,
+        platform: platform,
+        device_name: navigator.userAgent,
+      }),
+    });
+    return response;
+  },
+
+  async getDeviceTokens() {
+    const response = await apiFetch('/api/notifications/devices');
+    return response;
+  },
+
+  async deleteDeviceToken(deviceId: string) {
+    const response = await apiFetch(`/api/notifications/devices/${deviceId}`, {
+      method: 'DELETE',
+    });
+    return response;
+  },
+
+  // Notification management
+  async sendNotification(data: {
+    notification_type: string;
+    title: string;
+    body: string;
+    data?: any;
+    device_token?: string;
+  }) {
+    const userId = await getCurrentUserId();
+    const response = await apiFetch('/api/notifications/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        ...data,
+      }),
+    });
+    return response;
+  },
+
+  async getNotifications() {
+    const response = await apiFetch('/api/notifications');
+    return response;
+  },
+
+  async markNotificationRead(notificationId: string) {
+    const response = await apiFetch(
+      `/api/notifications/${notificationId}/read`,
+      {
+        method: 'PUT',
+      }
+    );
+    return response;
+  },
+
+  // Notification preferences
+  async getNotificationPreferences() {
+    const response = await apiFetch('/api/notifications/preferences');
+    return response;
+  },
+
+  async updateNotificationPreferences(preferences: {
+    email: boolean;
+    push: boolean;
+    workout_reminders: boolean;
+    nutrition_reminders: boolean;
+    achievement_notifications?: boolean;
+    ai_suggestions?: boolean;
+    weekly_reports?: boolean;
+    marketing_emails?: boolean;
+  }) {
+    const response = await apiFetch('/api/notifications/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+    return response;
   },
 };

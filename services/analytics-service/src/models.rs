@@ -127,7 +127,9 @@ pub struct WorkoutAnalytics {
     pub avg_workout_duration: u32, // in minutes
     pub total_duration_minutes: u32,
     pub average_workout_duration: f32,
-    pub consistency_score: f32, // 0.0 to 1.0
+    pub consistency_score: f32,         // 0.0 to 1.0
+    pub calories_burned_this_week: u32, // estimated calories burned
+    pub workouts_this_week: u32,
     pub strength_trend: Vec<StrengthProgress>,
     pub strength_gains: Vec<StrengthProgress>,
     pub most_trained_muscle_groups: Vec<String>,

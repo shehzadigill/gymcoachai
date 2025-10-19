@@ -37,6 +37,7 @@ impl WorkoutAnalyticsRepository {
         let mut total_duration_minutes = 0;
         let mut workouts_this_week = 0;
         let mut workouts_this_month = 0;
+        let mut duration_this_week = 0; // Track duration for calorie calculation
         let mut last_workout_date: Option<String> = None;
         let mut exercise_counts = std::collections::HashMap::new();
         
@@ -48,6 +49,16 @@ impl WorkoutAnalyticsRepository {
             // Extract duration
             if let Some(duration) = session.get("DurationMinutes").and_then(|v| v.as_n().ok()).and_then(|n| n.parse::<i32>().ok()) {
                 total_duration_minutes += duration;
+                
+                // Check if session is within last week for calorie calculation
+                if let Some(started_at) = session.get("StartedAt").and_then(|v| v.as_s().ok()) {
+                    if let Ok(session_date) = chrono::DateTime::parse_from_rfc3339(started_at) {
+                        let session_utc = session_date.with_timezone(&chrono::Utc);
+                        if session_utc > week_ago {
+                            duration_this_week += duration;
+                        }
+                    }
+                }
             }
             
             // Check date for weekly/monthly counts
@@ -96,6 +107,12 @@ impl WorkoutAnalyticsRepository {
         // Calculate streak (simplified - would need proper date sequence analysis)
         let current_streak = if workouts_this_week > 0 { workouts_this_week } else { 0 };
         let longest_streak = current_streak; // Simplified - would need historical analysis
+        
+        // Calculate calories burned
+        // Average calories per minute for strength training: ~6 calories/min
+        let calories_per_minute = 6.0;
+        let calories_burned_this_week = (duration_this_week as f32 * calories_per_minute) as i32;
+        let calories_burned_total = (total_duration_minutes as f32 * calories_per_minute) as i32;
         
         // Fetch strength progress data
         let strength_result = self.client
@@ -169,6 +186,8 @@ impl WorkoutAnalyticsRepository {
             last_workout_date,
             strength_progress,
             body_measurements,
+            calories_burned_this_week,
+            calories_burned_total,
         };
         
         Ok(serde_json::to_value(analytics)?)

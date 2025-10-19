@@ -50,28 +50,52 @@ export function LocaleProvider({children}: {children: React.ReactNode}) {
       });
   }, []);
 
-  const setLanguage = useCallback(async (lng: Language) => {
-    if (!supportedLanguages.includes(lng)) return;
+  const setLanguage = useCallback(
+    async (lng: Language) => {
+      if (!supportedLanguages.includes(lng)) return;
 
-    const shouldRTL = lng === 'ar';
+      const shouldRTL = lng === 'ar';
+      const currentRTL = I18nManager.isRTL;
 
-    // Force RTL change immediately
-    if (I18nManager.isRTL !== shouldRTL) {
-      I18nManager.allowRTL(shouldRTL);
-      I18nManager.forceRTL(shouldRTL);
+      console.log('[LocaleContext] Language change:', {
+        from: language,
+        to: lng,
+        currentRTL,
+        shouldRTL,
+      });
 
-      // Restart the app to apply RTL changes
-      if (__DEV__) {
-        console.log('[LocaleProvider] RTL change detected, restarting app...');
-        // In development, we'll just update the state
-        // In production, you might want to restart the app
+      // Always force RTL change if needed, even when switching back to LTR
+      if (currentRTL !== shouldRTL) {
+        console.log('[LocaleContext] RTL change needed:', {
+          from: currentRTL,
+          to: shouldRTL,
+        });
+
+        I18nManager.allowRTL(shouldRTL);
+        I18nManager.forceRTL(shouldRTL);
+
+        // Force a re-render by updating state immediately
+        setIsRTL(shouldRTL);
+
+        // In development, log the change
+        if (__DEV__) {
+          console.log('[LocaleContext] RTL change applied:', {
+            I18nManager_isRTL: I18nManager.isRTL,
+            I18nManager_allowRTL: I18nManager.allowRTL,
+          });
+        }
       }
-    }
 
-    await i18n.changeLanguage(lng);
-    setLanguageState(lng);
-    setIsRTL(shouldRTL);
-  }, []);
+      await i18n.changeLanguage(lng);
+      setLanguageState(lng);
+
+      console.log('[LocaleContext] Language change completed:', {
+        language: lng,
+        isRTL: shouldRTL,
+      });
+    },
+    [language],
+  );
 
   if (!ready) {
     console.log('[LocaleProvider] Initializing i18n...');

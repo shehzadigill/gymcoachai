@@ -313,14 +313,33 @@ pub async fn get_progress_photos(req: Request, ctx: Context) -> Result<Response,
     }
 }
 
-pub async fn upload_progress_photo(req: Request, _ctx: Context) -> Result<Response, RouterError> {
+pub async fn upload_progress_photo(req: Request, ctx: Context) -> Result<Response, RouterError> {
     let body = req.body().ok_or("Missing request body")?;
+
+    // Get user_id from path parameter or authenticated context
+    let user_id = if let Some(user_id_param) = req.path_param("userId") {
+        user_id_param.to_string()
+    } else {
+        ctx.user_id.clone().ok_or("Unauthorized")?
+    };
+
+    // Parse the body and inject userId if not present
+    let mut body_json: serde_json::Value =
+        serde_json::from_str(body).map_err(|_| RouterError::from("Invalid JSON body"))?;
+
+    // Ensure userId is in the body
+    if body_json["userId"].is_null() || body_json["userId"].as_str().unwrap_or("").is_empty() {
+        body_json["userId"] = serde_json::Value::String(user_id);
+    }
+
+    let updated_body = serde_json::to_string(&body_json)
+        .map_err(|_| RouterError::from("Failed to serialize body"))?;
 
     let controller = PROGRESS_PHOTO_CONTROLLER
         .get()
         .ok_or("Controller not initialized")?;
 
-    match controller.upload_progress_photo(body).await {
+    match controller.upload_progress_photo(&updated_body).await {
         Ok(response_value) => Ok(Response::from_json_value(response_value)),
         Err(e) => {
             error!("Error in upload_progress_photo handler: {}", e);

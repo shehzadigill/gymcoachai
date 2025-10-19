@@ -103,4 +103,26 @@ impl UserProfileService {
         // Users can only access their own profile
         auth_context.user_id == resource_user_id
     }
+
+    pub async fn save_device_token(&self, user_id: &str, token: &str, platform: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        self.user_profile_repository.save_device_token(user_id, token, platform).await
+    }
+
+    pub async fn get_device_tokens(&self, user_id: &str, auth_context: &AuthContext) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        // Check if user can access this profile
+        if !self.can_access_user_profile(auth_context, user_id) {
+            return Err("You can only access your own device tokens".into());
+        }
+
+        self.user_profile_repository.get_device_tokens(user_id).await
+    }
+
+    pub async fn delete_device_token(&self, user_id: &str, device_id: &str, auth_context: &AuthContext) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Check if user can access this profile
+        if !self.can_access_user_profile(auth_context, user_id) {
+            return Err("You can only delete your own device tokens".into());
+        }
+
+        self.user_profile_repository.delete_device_token(user_id, device_id).await
+    }
 }

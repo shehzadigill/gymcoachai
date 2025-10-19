@@ -2,6 +2,8 @@ use anyhow::{anyhow, Result};
 use aws_sdk_dynamodb::{types::AttributeValue, Client as DynamoDbClient};
 use aws_sdk_sns::{types::MessageAttributeValue, Client as SnsClient};
 use chrono::{Datelike, Duration, Timelike, Utc};
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use reqwest::Client as HttpClient;
 use serde_json::Value;
 use std::collections::HashMap;
 use tracing::{error, info, warn};
@@ -12,11 +14,14 @@ use crate::models::*;
 pub struct NotificationService {
     dynamodb: DynamoDbClient,
     sns: SnsClient,
+    http_client: HttpClient,
     table_name: String,
     workout_topic_arn: String,
     nutrition_topic_arn: String,
     achievement_topic_arn: String,
     ai_suggestions_topic_arn: String,
+    fcm_server_key: Option<String>,
+    firebase_project_id: String,
 }
 
 impl NotificationService {
@@ -24,6 +29,7 @@ impl NotificationService {
         let config = aws_config::load_from_env().await;
         let dynamodb = DynamoDbClient::new(&config);
         let sns = SnsClient::new(&config);
+        let http_client = HttpClient::new();
 
         let table_name = std::env::var("TABLE_NAME")
             .map_err(|_| anyhow!("TABLE_NAME environment variable not set"))?;
@@ -40,14 +46,21 @@ impl NotificationService {
         let ai_suggestions_topic_arn = std::env::var("AI_SUGGESTIONS_TOPIC_ARN")
             .map_err(|_| anyhow!("AI_SUGGESTIONS_TOPIC_ARN environment variable not set"))?;
 
+        let fcm_server_key = std::env::var("FCM_SERVER_KEY").ok();
+        let firebase_project_id =
+            std::env::var("FIREBASE_PROJECT_ID").unwrap_or_else(|_| "gymcoach-73528".to_string());
+
         Ok(Self {
             dynamodb,
             sns,
+            http_client,
             table_name,
             workout_topic_arn,
             nutrition_topic_arn,
             achievement_topic_arn,
             ai_suggestions_topic_arn,
+            fcm_server_key,
+            firebase_project_id,
         })
     }
 
@@ -122,11 +135,130 @@ impl NotificationService {
         body: &str,
         data: Option<&Value>,
     ) -> Result<()> {
-        // For now, we'll use SNS topics. In a real implementation, you'd:
-        // 1. Create platform endpoints for each device
-        // 2. Subscribe endpoints to topics
-        // 3. Publish to topics
+        // Use FCM if available, otherwise fall back to SNS
+        if let Some(fcm_key) = &self.fcm_server_key {
+            self.send_fcm_notification(device, title, body, data, fcm_key)
+                .await?;
+        } else {
+            self.send_sns_notification(device, notification_type, title, body, data)
+                .await?;
+        }
 
+        Ok(())
+    }
+
+    async fn generate_oauth_token(&self, fcm_key: &str) -> Result<String> {
+        // For HTTP v1 API, we need to use the service account private key
+        // This is a simplified implementation using the service account key from environment
+
+        // Parse the service account JSON (assuming it's stored in FCM_SERVER_KEY)
+        let service_account: Value =
+            serde_json::from_str(fcm_key).map_err(|_| anyhow!("Invalid service account JSON"))?;
+
+        let private_key = service_account["private_key"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing private_key in service account"))?;
+
+        let client_email = service_account["client_email"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing client_email in service account"))?;
+
+        // Create JWT claims
+        let now = Utc::now().timestamp();
+        let claims = serde_json::json!({
+            "iss": client_email,
+            "scope": "https://www.googleapis.com/auth/firebase.messaging",
+            "aud": "https://oauth2.googleapis.com/token",
+            "iat": now,
+            "exp": now + 3600, // 1 hour
+            "sub": client_email
+        });
+
+        // Generate JWT token
+        let header = Header::new(Algorithm::RS256);
+        let encoding_key = EncodingKey::from_rsa_pem(private_key.as_bytes())
+            .map_err(|e| anyhow!("Failed to create encoding key: {}", e))?;
+        let token = encode(&header, &claims, &encoding_key)
+            .map_err(|e| anyhow!("Failed to generate JWT: {}", e))?;
+
+        Ok(token)
+    }
+
+    async fn send_fcm_notification(
+        &self,
+        device: &Device,
+        title: &str,
+        body: &str,
+        data: Option<&Value>,
+        fcm_key: &str,
+    ) -> Result<()> {
+        let mut data_map = HashMap::new();
+        if let Some(d) = data {
+            if let serde_json::Value::Object(obj) = d {
+                for (k, v) in obj {
+                    data_map.insert(k.clone(), v.to_string());
+                }
+            }
+        }
+
+        // Use HTTP v1 API endpoint
+        let url = format!(
+            "https://fcm.googleapis.com/v1/projects/{}/messages:send",
+            self.firebase_project_id
+        );
+
+        let payload = serde_json::json!({
+            "message": {
+                "token": device.device_token,
+                "notification": {
+                    "title": title,
+                    "body": body,
+                },
+                "data": data_map,
+                "android": {
+                    "priority": "high"
+                },
+                "apns": {
+                    "headers": {
+                        "apns-priority": "10"
+                    }
+                }
+            }
+        });
+
+        // Generate OAuth token for HTTP v1 API
+        let oauth_token = self.generate_oauth_token(fcm_key).await?;
+
+        let response = self
+            .http_client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", oauth_token))
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            error!("FCM HTTP v1 request failed: {}", error_text);
+            return Err(anyhow!("FCM HTTP v1 request failed: {}", error_text));
+        }
+
+        info!(
+            "FCM HTTP v1 notification sent successfully to device: {}",
+            device.device_id
+        );
+        Ok(())
+    }
+
+    async fn send_sns_notification(
+        &self,
+        device: &Device,
+        notification_type: &str,
+        title: &str,
+        body: &str,
+        data: Option<&Value>,
+    ) -> Result<()> {
         let topic_arn = match notification_type {
             "workout_reminder" => &self.workout_topic_arn,
             "nutrition_reminder" | "water_reminder" => &self.nutrition_topic_arn,
@@ -183,6 +315,10 @@ impl NotificationService {
             .send()
             .await?;
 
+        info!(
+            "SNS notification sent successfully to device: {}",
+            device.device_id
+        );
         Ok(())
     }
 

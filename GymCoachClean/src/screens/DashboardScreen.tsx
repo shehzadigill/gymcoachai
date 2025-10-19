@@ -13,6 +13,7 @@ import {Card, LoadingSpinner} from '../components/common/UI';
 import apiClient from '../services/api';
 import {useTranslation} from 'react-i18next';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import {useTheme} from '../theme';
 
 const {width} = Dimensions.get('window');
 
@@ -153,6 +154,7 @@ interface DashboardData {
 
 export default function DashboardScreen() {
   const {t} = useTranslation();
+  const {colors, isDark} = useTheme();
   const {user, userProfile} = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -699,14 +701,16 @@ export default function DashboardScreen() {
 
   if (loading && !data) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView
+        style={[styles.container, {backgroundColor: colors.background}]}>
         <LoadingSpinner />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
@@ -715,8 +719,12 @@ export default function DashboardScreen() {
         }>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.subtitle}>{t('dashboard.subtitle')}</Text>
+          <Text style={[styles.greeting, {color: colors.text}]}>
+            {getGreeting()}
+          </Text>
+          <Text style={[styles.subtitle, {color: colors.subtext}]}>
+            {t('dashboard.subtitle')}
+          </Text>
         </View>
 
         {/* Quick Stats */}

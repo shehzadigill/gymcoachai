@@ -158,6 +158,26 @@ impl AnalyticsService {
             .map(|stats| stats.exercise_name.clone())
             .collect();
 
+        // Calculate calories burned (estimation based on duration and activity)
+        // Average METs for strength training: 3.5-6.0, we'll use 5.0 as average
+        // Calories burned per minute = (METs × weight_kg × 3.5) / 200
+        // For simplicity, we'll use an average estimate: ~5-7 calories per minute of workout
+        let calories_per_minute = 6.0; // Average estimate
+        let calories_burned_this_week = (total_duration_minutes as f32 * calories_per_minute) as u32;
+
+        // Calculate workouts this week (for week period)
+        let workouts_this_week = if period == "week" {
+            total_workouts
+        } else {
+            // Estimate based on weekly frequency
+            (total_workouts as f32 / match period {
+                "month" => 4.0,
+                "quarter" => 13.0,
+                "year" => 52.0,
+                _ => 1.0,
+            }) as u32
+        };
+
         let analytics = WorkoutAnalytics {
             user_id: user_id.to_string(),
             period: period.to_string(),
@@ -170,6 +190,8 @@ impl AnalyticsService {
             average_workout_duration: total_duration_minutes as f32 / total_workouts.max(1) as f32,
             avg_workout_duration: (total_duration_minutes / total_workouts.max(1) as u32),
             consistency_score,
+            calories_burned_this_week,
+            workouts_this_week,
             strength_trend: strength_progress.clone(),
             strength_gains: strength_progress,
             most_trained_muscle_groups: vec!["chest".to_string(), "legs".to_string()],

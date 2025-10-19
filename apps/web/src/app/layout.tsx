@@ -4,6 +4,8 @@ import './globals.css';
 import { AuthProvider } from './providers/AuthProvider';
 import { ThemeProvider } from 'next-themes';
 import { ClientAuthWrapper } from '../components/auth/ClientAuthWrapper';
+import { NotificationInitializer } from '../components/NotificationInitializer';
+import LocaleProvider from '../components/LocaleProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,6 +19,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Load messages for the default locale
+  const messages = require('../../messages/en.json');
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -30,14 +35,12 @@ export default function RootLayout({
                   const storedTheme = localStorage.getItem('gymcoach-theme');
                   
                   if (isManual && (storedTheme === 'light' || storedTheme === 'dark')) {
-                    // User has manually set preference, use that instead of system
                     if (storedTheme === 'dark') {
                       document.documentElement.classList.add('dark');
                     } else {
                       document.documentElement.classList.remove('dark');
                     }
                   } else if (!storedTheme) {
-                    // First time visit, follow system preference
                     const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                     if (systemPrefersDark) {
                       document.documentElement.classList.add('dark');
@@ -60,7 +63,12 @@ export default function RootLayout({
           disableTransitionOnChange={false}
         >
           <AuthProvider>
-            <ClientAuthWrapper>{children}</ClientAuthWrapper>
+            <ClientAuthWrapper>
+              <LocaleProvider messages={messages} locale="en">
+                <NotificationInitializer />
+                {children}
+              </LocaleProvider>
+            </ClientAuthWrapper>
           </AuthProvider>
         </ThemeProvider>
       </body>

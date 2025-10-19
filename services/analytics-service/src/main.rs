@@ -207,12 +207,20 @@ async fn main() -> Result<(), LambdaError> {
         "/api/analytics/progress-photos/upload",
         handler!(upload_progress_photo),
     );
+    router.post(
+        "/api/analytics/progress-photos/:userId/upload",
+        handler!(upload_progress_photo),
+    );
     router.put(
         "/api/analytics/progress-photos/:photoId",
         handler!(update_progress_photo),
     );
     router.delete(
         "/api/analytics/progress-photos/:photoId",
+        handler!(delete_progress_photo),
+    );
+    router.delete(
+        "/api/analytics/progress-photos/:userId/:photoId",
         handler!(delete_progress_photo),
     );
     router.get(

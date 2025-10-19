@@ -1,5 +1,6 @@
 use auth_layer::AuthContext;
 use lambda_router::{Context, Request, Response, RouterError};
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{SLEEP_CONTROLLER, UPLOAD_CONTROLLER, USER_PROFILE_CONTROLLER};
@@ -341,6 +342,95 @@ pub async fn get_sleep_stats(req: Request, ctx: Context) -> Result<Response, Rou
         Err(e) => {
             error!("Error in get_sleep_stats handler: {}", e);
             Ok(Response::internal_error("Failed to process request"))
+        }
+    }
+}
+
+// ==================== DEVICE TOKEN HANDLERS ====================
+
+#[derive(Deserialize)]
+pub struct DeviceTokenRequest {
+    pub token: String,
+    pub platform: String,
+}
+
+#[derive(Serialize)]
+pub struct DeviceTokenResponse {
+    pub success: bool,
+    pub message: String,
+    pub device_id: Option<String>,
+}
+
+pub async fn save_device_token(req: Request, ctx: Context) -> Result<Response, RouterError> {
+    let user_id = get_user_id(&req, &ctx)?;
+    let auth_context = get_auth_context(&ctx);
+
+    let body = req.body().ok_or("Missing request body")?;
+    let payload: DeviceTokenRequest =
+        serde_json::from_str(body).map_err(|e| format!("Invalid request body: {}", e))?;
+
+    let controller = USER_PROFILE_CONTROLLER
+        .get()
+        .ok_or("Controller not initialized")?;
+
+    // Construct path for controller
+    let path = format!("/api/user-profiles/device-token");
+
+    let request_body = serde_json::json!({
+        "user_id": user_id,
+        "token": payload.token,
+        "platform": payload.platform
+    });
+
+    match controller
+        .save_device_token(&path, &auth_context, &request_body)
+        .await
+    {
+        Ok(response_value) => Ok(Response::from_json_value(response_value)),
+        Err(e) => {
+            error!("Error in save_device_token handler: {}", e);
+            Ok(Response::internal_error("Failed to save device token"))
+        }
+    }
+}
+
+pub async fn get_device_tokens(req: Request, ctx: Context) -> Result<Response, RouterError> {
+    let user_id = get_user_id(&req, &ctx)?;
+    let auth_context = get_auth_context(&ctx);
+
+    let controller = USER_PROFILE_CONTROLLER
+        .get()
+        .ok_or("Controller not initialized")?;
+
+    // Construct path for controller
+    let path = format!("/api/user-profiles/device-tokens/{}", user_id);
+
+    match controller.get_device_tokens(&path, &auth_context).await {
+        Ok(response_value) => Ok(Response::from_json_value(response_value)),
+        Err(e) => {
+            error!("Error in get_device_tokens handler: {}", e);
+            Ok(Response::internal_error("Failed to get device tokens"))
+        }
+    }
+}
+
+pub async fn delete_device_token(req: Request, ctx: Context) -> Result<Response, RouterError> {
+    let user_id = get_user_id(&req, &ctx)?;
+    let device_id = req.path_param("deviceId").ok_or("Missing deviceId")?;
+    let auth_context = get_auth_context(&ctx);
+
+    let controller = USER_PROFILE_CONTROLLER
+        .get()
+        .ok_or("Controller not initialized")?;
+
+    // Construct path for controller
+    let path = format!("/api/user-profiles/device-token/{}/{}", user_id, device_id);
+
+    match controller.delete_device_token(&path, &auth_context).await {
+        Ok(response_value) => Ok(Response::from_json_value(response_value)),
+        Err(e) => {
+            error!("Error in delete_device_token handler: {}", e);
+            Ok(Response::internal_error("Failed to delete device token"))
         }
     }
 }

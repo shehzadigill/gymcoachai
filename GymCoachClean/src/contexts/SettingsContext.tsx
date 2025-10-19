@@ -8,6 +8,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../theme';
+import {useLocale} from './LocaleContext';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'ar' | 'sv';
@@ -37,6 +38,7 @@ export function SettingsProvider({children}: SettingsProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const {i18n} = useTranslation();
   const {setMode: setTheme} = useTheme();
+  const {setLanguage: setLocaleLanguage} = useLocale();
 
   // Load settings from storage on mount
   useEffect(() => {
@@ -75,17 +77,14 @@ export function SettingsProvider({children}: SettingsProviderProps) {
   };
 
   const applyTheme = (mode: ThemeMode) => {
-    if (mode === 'system') {
-      // Use system theme - you can implement system theme detection here
-      setTheme('light'); // Default to light for now
-    } else {
-      setTheme(mode);
-    }
+    console.log('[SettingsContext] Applying theme:', mode);
+    setTheme(mode);
   };
 
   const applyLanguage = async (lang: Language) => {
     try {
-      await i18n.changeLanguage(lang);
+      console.log('[SettingsContext] Applying language:', lang);
+      await setLocaleLanguage(lang);
     } catch (error) {
       console.error('Error changing language:', error);
     }
@@ -93,6 +92,7 @@ export function SettingsProvider({children}: SettingsProviderProps) {
 
   const setThemeMode = async (mode: ThemeMode) => {
     try {
+      console.log('[SettingsContext] Setting theme mode:', mode);
       setThemeModeState(mode);
       await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch (error) {
@@ -102,6 +102,7 @@ export function SettingsProvider({children}: SettingsProviderProps) {
 
   const setLanguage = async (lang: Language) => {
     try {
+      console.log('[SettingsContext] Setting language:', lang);
       setLanguageState(lang);
       await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
     } catch (error) {

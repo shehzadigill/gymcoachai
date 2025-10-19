@@ -1,7 +1,6 @@
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_s3::Client as S3Client;
-use aws_sdk_s3::presigning::PresigningConfig;
 use anyhow::Result;
 use base64::Engine;
 use std::collections::HashMap;
@@ -147,15 +146,19 @@ impl ProgressPhotoRepository {
             .send()
             .await?;
         
-        // Generate presigned URL for the uploaded image
-        let presigned_url = self.s3_client
-            .get_object()
-            .bucket(&self.bucket_name)
-            .key(&key)
-            .presigned(PresigningConfig::expires_in(std::time::Duration::from_secs(3600))?)
-            .await?;
+        // Get CloudFront URL from environment variable, or construct permanent URL
+        let cloudfront_domain = std::env::var("CLOUDFRONT_DOMAIN")
+            .unwrap_or_else(|_| "".to_string());
         
-        Ok(presigned_url.uri().to_string())
+        let photo_url = if !cloudfront_domain.is_empty() {
+            // Use CloudFront URL for permanent access
+            format!("https://{}/progress-photos/{}", cloudfront_domain, key)
+        } else {
+            // Fallback to S3 URL (not recommended for production)
+            format!("https://{}.s3.amazonaws.com/{}", self.bucket_name, key)
+        };
+        
+        Ok(photo_url)
     }
 
     pub async fn get_progress_photo_by_id(&self, photo_id: &str) -> Result<ProgressPhoto> {

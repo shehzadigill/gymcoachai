@@ -8,6 +8,8 @@
     "saving": "Saving..."
   },
   "nutrition": {
+    "title": "Nutrition",
+    "todays_summary": "Today's Summary",
     "calories": "Calories",
     "protein": "Protein",
     "carbs": "Carbs",
@@ -47,6 +49,9 @@
     "meal_updated": "Meal updated successfully!",
     "meal_added": "Meal added successfully!",
     "coming_soon": "Coming soon...",
+    "water_intake": "Water Intake",
+    "glasses_today": "glasses today",
+    "add_glass": "+1 Glass",
     "errors": {
       "error": "Error",
       "select_food_and_name": "Please select a food and enter a meal name.",
@@ -143,9 +148,6 @@
     "details": "Workout Details",
     "create_plan": "Create Workout Plan",
     "create_exercise": "Create Exercise"
-  },
-  "nutrition": {
-    "log_meal": "Log Meal"
   },
   "profile": {
     "title": "Profile",

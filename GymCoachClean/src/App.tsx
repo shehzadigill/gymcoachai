@@ -4,11 +4,15 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AuthProvider, useAuth} from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import SplashScreen from './screens/auth/SplashScreen';
-import notificationService from './services/notifications';
+import {
+  registerDeviceToken,
+  setupNotificationHandlers,
+} from './services/notifications';
 import {ThemeProvider} from './theme';
 import {LocaleProvider} from './contexts/LocaleContext';
 import {SettingsProvider} from './contexts/SettingsContext';
 import './i18n';
+import './services/firebase'; // Initialize Firebase first
 
 // Create a query client for React Query
 const queryClient = new QueryClient({
@@ -28,20 +32,25 @@ function AppContent() {
     const initializeNotifications = async () => {
       try {
         console.log('Initializing notification service...');
-        const hasPermission = await notificationService.initialize();
-        if (hasPermission) {
-          console.log('Notifications enabled');
-        } else {
-          console.log('Notifications disabled - permissions denied');
-        }
+
+        // Set up notification handlers
+        setupNotificationHandlers();
+
+        // Register device token
+        await registerDeviceToken();
+
+        console.log('Notifications initialized successfully');
       } catch (error) {
         console.error('Failed to initialize notifications:', error);
+        console.log('App will continue without push notifications');
       }
     };
 
-    // Initialize notifications after a short delay
-    setTimeout(initializeNotifications, 1000);
-  }, []);
+    // Initialize notifications after a short delay (only if authenticated)
+    if (isAuthenticated) {
+      setTimeout(initializeNotifications, 1000);
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     console.log('[AppContent] Loading auth state -> showing SplashScreen');
@@ -64,15 +73,15 @@ export default function App() {
   console.log('[App] Mounting providers');
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <SettingsProvider>
-          <LocaleProvider>
+      <LocaleProvider>
+        <ThemeProvider>
+          <SettingsProvider>
             <AuthProvider>
               <AppContent />
             </AuthProvider>
-          </LocaleProvider>
-        </SettingsProvider>
-      </ThemeProvider>
+          </SettingsProvider>
+        </ThemeProvider>
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }

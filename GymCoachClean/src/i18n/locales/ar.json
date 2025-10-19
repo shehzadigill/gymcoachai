@@ -8,6 +8,8 @@
     "saving": "جارٍ الحفظ..."
   },
   "nutrition": {
+    "title": "التغذية",
+    "todays_summary": "ملخص اليوم",
     "calories": "السعرات الحرارية",
     "protein": "البروتين",
     "carbs": "الكربوهيدرات",
@@ -47,6 +49,9 @@
     "meal_updated": "تم تحديث الوجبة بنجاح!",
     "meal_added": "تم إضافة الوجبة بنجاح!",
     "coming_soon": "قريباً...",
+    "water_intake": "تناول الماء",
+    "glasses_today": "كوب اليوم",
+    "add_glass": "+1 كوب",
     "errors": {
       "error": "خطأ",
       "select_food_and_name": "يرجى اختيار طعام وإدخال اسم الوجبة.",
@@ -143,9 +148,6 @@
     "details": "تفاصيل التمرين",
     "create_plan": "إنشاء خطة تمرين",
     "create_exercise": "إنشاء تمرين"
-  },
-  "nutrition": {
-    "log_meal": "تسجيل وجبة"
   },
   "profile": {
     "title": "الملف الشخصي",

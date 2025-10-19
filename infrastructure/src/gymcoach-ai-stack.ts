@@ -526,8 +526,9 @@ export class GymCoachAIStack extends cdk.Stack {
         NUTRITION_REMINDERS_TOPIC_ARN: nutritionRemindersTopic.topicArn,
         ACHIEVEMENT_TOPIC_ARN: achievementTopic.topicArn,
         AI_SUGGESTIONS_TOPIC_ARN: aiSuggestionsTopic.topicArn,
-        FIREBASE_SERVER_KEY: 'YOUR_FIREBASE_SERVER_KEY',
-        FIREBASE_PROJECT_ID: 'YOUR_FIREBASE_PROJECT_ID',
+        FCM_SERVER_KEY: process.env.FCM_SERVER_KEY || 'placeholder',
+        FIREBASE_PROJECT_ID:
+          process.env.FIREBASE_PROJECT_ID || 'gymcoach-73528',
       }
     );
 
@@ -665,32 +666,29 @@ export class GymCoachAIStack extends cdk.Stack {
           var request = event.request;
           var uri = request.uri;
           
-          // Check if the URI is asking for a file with an extension
-          if (uri.includes('.')) {
+          // If URI has a file extension, return as-is
+          if (/\\.[a-zA-Z0-9]+$/.test(uri)) {
             return request;
           }
           
-          // Handle root path
-          if (uri === '/') {
-            request.uri = '/index.html';
-            return request;
-          }
-          
-          // Check if the URI ends with a slash
+          // If URI ends with /, append index.html
           if (uri.endsWith('/')) {
-            // URI has trailing slash, append index.html
             request.uri += 'index.html';
-          } else {
-            // URI doesn't have trailing slash, redirect to version with trailing slash
-            // by appending /index.html (equivalent to adding trailing slash + index.html)
-            request.uri += '/index.html';
+            return request;
+          }
+          
+          // For paths without extension and without trailing slash,
+          // check if it's likely a route (not a file)
+          if (!uri.includes('.')) {
+            // For static export, always serve the specific route's index.html
+            request.uri = uri + '/index.html';
           }
           
           return request;
         }
       `),
         comment:
-          'URL rewrite function for SPA routing with trailing slash support',
+          'URL rewrite function for SPA routing - serves index.html for all routes',
       }
     );
 
@@ -833,6 +831,15 @@ export class GymCoachAIStack extends cdk.Stack {
         comment: 'GymCoach AI CloudFront Distribution',
       }
     );
+
+    // Update analytics service with CloudFront domain for progress photos
+    // NOTE: This creates a circular dependency in CDK, so set it manually after deployment:
+    // aws lambda update-function-configuration --function-name AnalyticsService \
+    //   --environment "Variables={CLOUDFRONT_DOMAIN=<your-cloudfront-domain>}"
+    // analyticsServiceLambda.addEnvironment(
+    //   'CLOUDFRONT_DOMAIN',
+    //   this.distribution.distributionDomainName
+    // );
 
     // Grant permissions to Lambda functions for S3 access
     this.userUploadsBucket.grantReadWrite(userProfileServiceLambda);
@@ -1033,6 +1040,12 @@ export class GymCoachAIStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CloudFrontDistributionURL', {
       value: `https://${this.distribution.distributionDomainName}`,
       description: 'CloudFront Distribution URL',
+    });
+
+    new cdk.CfnOutput(this, 'PostDeploymentInstructions', {
+      value:
+        'After deployment, set CLOUDFRONT_DOMAIN environment variable in AnalyticsService Lambda function',
+      description: 'Manual step required after deployment',
     });
 
     // Removed monitoring stack to avoid CloudWatch costs

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
+import { useTranslations } from 'next-intl';
 import {
   Apple,
   Plus,
@@ -87,6 +88,7 @@ interface DailyNutrition {
 
 export default function NutritionPage() {
   const user = useCurrentUser();
+  const t = useTranslations('nutrition');
 
   // All hooks must be called before any conditional returns
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -221,10 +223,10 @@ export default function NutritionPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Authentication Required
+            {t('auth_required')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Please sign in to access your nutrition data.
+            {t('auth_required_message')}
           </p>
         </div>
       </div>
@@ -843,11 +845,9 @@ export default function NutritionPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Nutrition
+            {t('title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track your daily nutrition intake
-          </p>
+          <p className="text-gray-600 dark:text-gray-400">{t('subtitle')}</p>
         </div>
         <div className="flex space-x-2">
           <input

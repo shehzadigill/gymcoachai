@@ -33,34 +33,86 @@ pub struct UserProfile {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DailyGoals {
+    #[serde(default)]
     pub calories: i32,
+    #[serde(default)]
     pub water: i32,
+    #[serde(default)]
     pub protein: i32,
+    #[serde(default)]
     pub carbs: i32,
+    #[serde(default)]
     pub fat: i32,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UserPreferences {
+    #[serde(default = "default_units")]
     pub units: String, // "metric" or "imperial"
+    #[serde(default = "default_timezone")]
     pub timezone: String,
+    #[serde(default)]
     pub notifications: NotificationSettings,
+    #[serde(default)]
     pub privacy: PrivacySettings,
     pub daily_goals: Option<DailyGoals>,
     pub ai_trainer: Option<AITrainerPreferences>,
 }
 
+fn default_units() -> String {
+    "metric".to_string()
+}
+
+fn default_timezone() -> String {
+    "UTC".to_string()
+}
+
+impl Default for NotificationSettings {
+    fn default() -> Self {
+        Self {
+            email: true,
+            push: true,
+            workout_reminders: true,
+            nutrition_reminders: true,
+            water_reminders: true,
+            progress_photos: true,
+            achievements: true,
+            ai_suggestions: true,
+            workout_reminder_time: None,
+            nutrition_reminder_times: None,
+        }
+    }
+}
+
+impl Default for PrivacySettings {
+    fn default() -> Self {
+        Self {
+            profile_visibility: "private".to_string(),
+            workout_sharing: false,
+            progress_sharing: false,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSettings {
+    #[serde(default)]
     pub email: bool,
+    #[serde(default)]
     pub push: bool,
+    #[serde(default)]
     pub workout_reminders: bool,
+    #[serde(default)]
     pub nutrition_reminders: bool,
+    #[serde(default)]
     pub water_reminders: bool,
+    #[serde(default)]
     pub progress_photos: bool,
+    #[serde(default)]
     pub achievements: bool,
+    #[serde(default)]
     pub ai_suggestions: bool,
     pub workout_reminder_time: Option<String>, // HH:MM format
     pub nutrition_reminder_times: Option<Vec<String>>, // ["08:00", "13:00", "19:00"]
@@ -69,9 +121,16 @@ pub struct NotificationSettings {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PrivacySettings {
+    #[serde(default = "default_profile_visibility")]
     pub profile_visibility: String, // "public", "private", "friends"
+    #[serde(default)]
     pub workout_sharing: bool,
+    #[serde(default)]
     pub progress_sharing: bool,
+}
+
+fn default_profile_visibility() -> String {
+    "private".to_string()
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

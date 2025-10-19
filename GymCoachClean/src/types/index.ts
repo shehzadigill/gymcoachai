@@ -18,6 +18,19 @@ export interface UserProfile {
   fitnessLevel?: 'beginner' | 'intermediate' | 'advanced';
   goals?: string[];
   preferences?: UserPreferences;
+  profileImageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProgressPhoto {
+  id: string;
+  userId: string;
+  photoUrl: string;
+  thumbnailUrl?: string;
+  notes?: string;
+  weight?: number;
+  date: string;
   createdAt: string;
   updatedAt: string;
 }

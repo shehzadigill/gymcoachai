@@ -6,6 +6,7 @@ members = [
     "services/metrics-collector",
     "services/notification-service",
     "services/notification-scheduler",
+    "services/notification-sender",
     "services/nutrition-service",
     "services/performance-optimizer",
     "services/security-middleware",

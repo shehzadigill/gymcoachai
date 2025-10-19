@@ -657,6 +657,27 @@ impl UserProfileRepository {
             profile.date_of_birth = Some(birth_date.to_string());
         }
 
+        // Handle profileImageUrl - convert S3 key to full S3 URL if needed
+        if let Some(profile_image) = update_data.get("profileImageUrl").and_then(|v| v.as_str()) {
+            // If it's an S3 key (not a full URL), convert to full S3 URL
+            let image_url =
+                if profile_image.starts_with("http://") || profile_image.starts_with("https://") {
+                    // Already a full URL, use as-is
+                    profile_image.to_string()
+                } else {
+                    // It's an S3 key, convert to full S3 URL
+                    let bucket_name = std::env::var("USER_UPLOADS_BUCKET")
+                        .unwrap_or_else(|_| "gymcoach-ai-user-uploads".to_string());
+                    let region =
+                        std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
+                    format!(
+                        "https://{}.s3.{}.amazonaws.com/{}",
+                        bucket_name, region, profile_image
+                    )
+                };
+            profile.profile_image_url = Some(image_url);
+        }
+
         // Save the updated profile
         self.update_user_profile(user_id, &profile).await
     }
@@ -1045,6 +1066,125 @@ impl UserProfileRepository {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    pub async fn save_device_token(
+        &self,
+        user_id: &str,
+        token: &str,
+        platform: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        use uuid::Uuid;
+
+        let device_id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+
+        let mut item = std::collections::HashMap::new();
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!("USER#{}", user_id)),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("DEVICE#{}", device_id)),
+        );
+        item.insert("deviceId".to_string(), AttributeValue::S(device_id.clone()));
+        item.insert("userId".to_string(), AttributeValue::S(user_id.to_string()));
+        item.insert(
+            "deviceToken".to_string(),
+            AttributeValue::S(token.to_string()),
+        );
+        item.insert(
+            "platform".to_string(),
+            AttributeValue::S(platform.to_string()),
+        );
+        item.insert("isActive".to_string(), AttributeValue::Bool(true));
+        item.insert("createdAt".to_string(), AttributeValue::S(now.to_rfc3339()));
+        item.insert(
+            "lastUsedAt".to_string(),
+            AttributeValue::S(now.to_rfc3339()),
+        );
+
+        self.dynamodb_client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await?;
+
+        Ok(device_id)
+    }
+
+    pub async fn get_device_tokens(
+        &self,
+        user_id: &str,
+    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        let result = self
+            .dynamodb_client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("USER#{}", user_id)))
+            .expression_attribute_values(":sk", AttributeValue::S("DEVICE#".to_string()))
+            .send()
+            .await?;
+
+        let mut devices = Vec::new();
+        if let Some(items) = result.items {
+            for item in items {
+                let device_id = item
+                    .get("deviceId")
+                    .and_then(|v| v.as_s().ok())
+                    .map_or("", |v| v);
+                let platform = item
+                    .get("platform")
+                    .and_then(|v| v.as_s().ok())
+                    .map_or("", |v| v);
+                let is_active = item
+                    .get("isActive")
+                    .and_then(|v| v.as_bool().ok())
+                    .map_or(false, |v| *v);
+                let created_at = item
+                    .get("createdAt")
+                    .and_then(|v| v.as_s().ok())
+                    .map_or("", |v| v);
+                let last_used_at = item
+                    .get("lastUsedAt")
+                    .and_then(|v| v.as_s().ok())
+                    .map_or("", |v| v);
+
+                let device = serde_json::json!({
+                    "device_id": device_id,
+                    "platform": platform,
+                    "is_active": is_active,
+                    "created_at": created_at,
+                    "last_used_at": last_used_at
+                });
+                devices.push(device);
+            }
+        }
+
+        Ok(serde_json::json!({
+            "devices": devices
+        }))
+    }
+
+    pub async fn delete_device_token(
+        &self,
+        user_id: &str,
+        device_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.dynamodb_client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("DEVICE#{}", device_id)))
+            .update_expression("SET isActive = :active")
+            .expression_attribute_values(":active", AttributeValue::Bool(false))
+            .send()
+            .await?;
 
         Ok(())
     }

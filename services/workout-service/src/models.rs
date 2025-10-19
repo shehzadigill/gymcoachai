@@ -125,6 +125,8 @@ pub struct WorkoutAnalytics {
     pub last_workout_date: Option<String>,
     pub strength_progress: Vec<StrengthProgress>,
     pub body_measurements: Vec<BodyMeasurement>,
+    pub calories_burned_this_week: i32,
+    pub calories_burned_total: i32,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

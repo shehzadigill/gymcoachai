@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { signUp } from '../../../../../../packages/auth/dist';
-import { Button, Card, Input } from '../../../../../../packages/ui/dist';
+import { signUp } from '@packages/auth';
+import { Button, Card, Input } from '../../../components/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Dumbbell,
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function SignUpPage() {
+  const t = useTranslations('auth');
   const [formData, setFormData] = useState({
     username: '',
     email: '',

@@ -1,12 +1,12 @@
 import type { NextConfig } from 'next';
 import withPWA from 'next-pwa';
-// import nextIntl from './next-intl.config';
+import createNextIntlPlugin from 'next-intl/plugin';
 
 const isStaticExport = process.env.NEXT_EXPORT === 'true';
 
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 const nextConfig: NextConfig = {
-  // Disable i18n for static export (not compatible with App Router + static export)
-  // i18n: !isStaticExport ? nextIntl : undefined,
   output: isStaticExport ? 'export' : undefined,
   trailingSlash: true,
   images: {
@@ -18,29 +18,8 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: isStaticExport, // Skip ESLint for static export
   },
-  // async rewrites() {
-  //   // Rewrites don't work with static export
-  //   if (isStaticExport) {
-  //     return [];
-  //   }
-  //   const nutritionUrl = process.env.NEXT_PUBLIC_NUTRITION_URL;
-  //   const cfBase = process.env.NEXT_PUBLIC_CLOUDFRONT_URL;
-  //   const rules: any[] = [];
-  //   // Prefer direct Nutrition service URL in dev if provided
-  //   if (nutritionUrl) {
-  //     rules.push({
-  //       source: '/api/nutrition/:path*',
-  //       destination: `${nutritionUrl}/api/nutrition/:path*`,
-  //     });
-  //   }
-  //   if (cfBase) {
-  //     rules.push({
-  //       source: '/api/:path*',
-  //       destination: `${cfBase}/api/:path*`,
-  //     });
-  //   }
-  //   return rules;
-  // },
+  // Disable experimental features that might cause issues with static export
+  serverExternalPackages: [],
 };
 
 const pwaConfig = {
@@ -48,7 +27,8 @@ const pwaConfig = {
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  buildExcludes: [/middleware-manifest\.json$/],
+  buildExcludes: [/middleware-manifest\.json$/, /\.txt$/],
+  publicExcludes: ['!robots.txt', '!sitemap.xml'],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -176,4 +156,4 @@ const pwaConfig = {
   ],
 };
 
-export default withPWA(pwaConfig)(nextConfig);
+export default withPWA(pwaConfig)(withNextIntl(nextConfig));

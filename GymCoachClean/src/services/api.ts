@@ -957,6 +957,107 @@ class ApiClient {
       return (await res.json()) as T;
     }
   }
+
+  // Device token management
+  async saveDeviceToken(token: string, platform: string = 'mobile') {
+    const response = await this.fetch('/api/user-profiles/device-token', {
+      method: 'POST',
+      body: JSON.stringify({token, platform}),
+    });
+    return response.json();
+  }
+
+  async getDeviceTokens() {
+    const response = await this.fetch('/api/user-profiles/device-tokens');
+    return response.json();
+  }
+
+  async deleteDeviceToken(deviceId: string) {
+    const response = await this.fetch(
+      `/api/user-profiles/device-token/${deviceId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+    return response.json();
+  }
+
+  // Profile Image Upload
+  async generateProfileImageUploadUrl(
+    fileType: string = 'image/jpeg',
+  ): Promise<{
+    upload_url: string;
+    key: string;
+    bucket_name: string;
+    expires_in: number;
+  }> {
+    return this.apiFetch('/api/user-profiles/profile/upload', {
+      method: 'POST',
+      body: JSON.stringify({file_type: fileType}),
+    });
+  }
+
+  async updateProfileImage(imageKey: string): Promise<UserProfile> {
+    return this.updateUserProfile({
+      profileImageUrl: imageKey,
+    });
+  }
+
+  // Progress Photos
+  async getProgressPhotos(): Promise<any[]> {
+    const userId = await this.getCurrentUserId();
+    return this.apiFetch(`/api/analytics/progress-photos/${userId}`);
+  }
+
+  async generateProgressPhotoUploadUrl(
+    fileType: string = 'image/jpeg',
+    notes?: string,
+    weight?: number,
+  ): Promise<{
+    upload_url: string;
+    photo_id: string;
+    key: string;
+  }> {
+    const userId = await this.getCurrentUserId();
+    return this.apiFetch(`/api/analytics/progress-photos/${userId}/upload`, {
+      method: 'POST',
+      body: JSON.stringify({
+        file_type: fileType,
+        notes,
+        weight,
+      }),
+    });
+  }
+
+  async updateProgressPhoto(
+    photoId: string,
+    updates: {notes?: string; weight?: number},
+  ): Promise<any> {
+    return this.apiFetch(`/api/analytics/progress-photos/${photoId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteProgressPhoto(photoId: string): Promise<void> {
+    const userId = await this.getCurrentUserId();
+    return this.apiFetch(
+      `/api/analytics/progress-photos/${userId}/${photoId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  }
+
+  async getProgressPhotoAnalytics(): Promise<any> {
+    const userId = await this.getCurrentUserId();
+    return this.apiFetch(`/api/analytics/progress-photos/${userId}/analytics`);
+  }
+
+  async getProgressPhotoTimeline(): Promise<any[]> {
+    const userId = await this.getCurrentUserId();
+    return this.apiFetch(`/api/analytics/progress-photos/${userId}/timeline`);
+  }
 }
 
 export const apiClient = new ApiClient();

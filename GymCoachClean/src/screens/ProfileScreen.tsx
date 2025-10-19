@@ -10,15 +10,17 @@ import {
   Alert,
   Switch,
   Modal,
+  Image,
 } from 'react-native';
 import {useAuth} from '../contexts/AuthContext';
 import {Card, Button, LoadingSpinner} from '../components/common/UI';
-import notificationService from '../services/notifications';
 import apiClient from '../services/api';
 import {useTranslation} from 'react-i18next';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 import {useLocale} from '../contexts/LocaleContext';
+import * as notificationService from '../services/notifications';
 import {useTheme} from '../theme';
+import {pickImage, uploadImageToS3, getFileInfo} from '../services/imageUpload';
 
 export default function ProfileScreen() {
   const {t} = useTranslation();
@@ -269,6 +271,67 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleProfileImagePress = async () => {
+    if (!editing) {
+      // If not in edit mode, just show the full image
+      if (userProfile?.profileImageUrl) {
+        // Could open a modal to show full image
+        Alert.alert('Profile Image', 'Edit mode to change profile image');
+      }
+      return;
+    }
+
+    // Show options to take photo or choose from library
+    Alert.alert('Profile Image', 'Choose an option', [
+      {
+        text: 'Take Photo',
+        onPress: () => uploadProfileImage(true),
+      },
+      {
+        text: 'Choose from Library',
+        onPress: () => uploadProfileImage(false),
+      },
+      {text: 'Cancel', style: 'cancel'},
+    ]);
+  };
+
+  const uploadProfileImage = async (fromCamera: boolean = false) => {
+    try {
+      setSaving(true);
+
+      // Pick image
+      const image = await pickImage(fromCamera);
+      if (!image) {
+        setSaving(false);
+        return;
+      }
+
+      // Get file info
+      const fileInfo = getFileInfo(image.uri);
+
+      // Get upload URL
+      const uploadData = await apiClient.generateProfileImageUploadUrl(
+        fileInfo.type,
+      );
+
+      // Upload to S3
+      await uploadImageToS3(uploadData.upload_url, image.uri, fileInfo.type);
+
+      // Update profile with new image key
+      await apiClient.updateProfileImage(uploadData.key);
+
+      // Refresh user profile
+      await refreshUser();
+
+      Alert.alert('Success', 'Profile image updated successfully!');
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      Alert.alert('Error', 'Failed to upload profile image. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       {text: 'Cancel', style: 'cancel'},
@@ -354,14 +417,28 @@ export default function ProfileScreen() {
       {/* User Info */}
       <Card style={styles.userInfoCard}>
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {profileData.firstName?.[0] ||
-                userProfile?.firstName?.[0] ||
-                user?.email?.[0]?.toUpperCase() ||
-                '?'}
-            </Text>
-          </View>
+          <TouchableOpacity
+            style={styles.avatar}
+            onPress={handleProfileImagePress}>
+            {userProfile?.profileImageUrl ? (
+              <Image
+                source={{uri: userProfile.profileImageUrl}}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.avatarText}>
+                {profileData.firstName?.[0] ||
+                  userProfile?.firstName?.[0] ||
+                  user?.email?.[0]?.toUpperCase() ||
+                  '?'}
+              </Text>
+            )}
+            {editing && (
+              <View style={styles.avatarEditBadge}>
+                <Text style={styles.avatarEditText}>✏️</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <View style={styles.userBasicInfo}>
             <Text style={[styles.userName, {color: colors.text}]}>
               {profileData.firstName && profileData.lastName
@@ -1587,6 +1664,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#3b82f6',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditText: {
+    fontSize: 12,
   },
   avatarText: {
     fontSize: 24,

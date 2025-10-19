@@ -1,70 +1,75 @@
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { initializeApp, getApps } from 'firebase/app';
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported,
+} from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'YOUR_API_KEY',
-  authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
-    'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
-  storageBucket:
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-    'YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || 'YOUR_SENDER_ID',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || 'YOUR_APP_ID',
+  // apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  // authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  // projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  // messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  // appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: 'AIzaSyD3MDNNkmFKlWmkJmw8OBZl8sftkTq6aSQ',
+  authDomain: 'gymcoach-73528.firebaseapp.com',
+  projectId: 'gymcoach-73528',
+  storageBucket: 'gymcoach-73528.firebasestorage.app',
+  messagingSenderId: '460820256285',
+  appId: '1:460820256285:web:7f787f160e7894353b98f4',
+  measurementId: 'G-44P0Y1YDHR',
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app =
+  getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Firebase Cloud Messaging and get a reference to the service
-let messaging: any = null;
-
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  messaging = getMessaging(app);
-}
-
-export { messaging };
-
-export const requestNotificationPermission = async (): Promise<
-  string | null
-> => {
-  if (!messaging) {
-    console.warn('Firebase messaging not available');
-    return null;
-  }
-
+export async function getFCMToken(): Promise<string | null> {
   try {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      const token = await getToken(messaging, {
-        vapidKey:
-          process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 'YOUR_VAPID_KEY',
-      });
-      console.log('FCM Token:', token);
-      return token;
-    } else {
-      console.log('Notification permission denied');
+    const supported = await isSupported();
+    if (!supported) {
+      console.log('Firebase messaging not supported in this browser');
       return null;
     }
+
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      console.log('Not in browser environment, skipping FCM token generation');
+      return null;
+    }
+
+    // Wait for service worker to be ready (handled by PWA)
+    if ('serviceWorker' in navigator) {
+      try {
+        await navigator.serviceWorker.ready;
+        console.log('Service worker is ready for Firebase messaging');
+      } catch (error) {
+        console.error('Service worker not ready:', error);
+        // Continue anyway, Firebase might still work
+      }
+    }
+
+    const messaging = getMessaging(app);
+    const token = await getToken(messaging, {
+      vapidKey:
+        process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ||
+        'BEl62iUYgUivxIkv69yViEuiBIa40HIcFfF7iaW2XgQ',
+    });
+    return token;
   } catch (error) {
     console.error('Error getting FCM token:', error);
     return null;
   }
-};
+}
 
-export const onMessageListener = () => {
-  if (!messaging) {
-    return Promise.resolve(null);
-  }
+export async function setupNotificationListener(
+  callback: (payload: any) => void
+) {
+  const supported = await isSupported();
+  if (!supported) return;
 
-  return new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      console.log('Message received:', payload);
-      resolve(payload);
-    });
-  });
-};
+  const messaging = getMessaging(app);
+  onMessage(messaging, callback);
+}
 
 export default app;
