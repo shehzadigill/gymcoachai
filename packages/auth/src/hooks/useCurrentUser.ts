@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
 import { configureAuth } from '../config';

@@ -52,13 +52,14 @@ impl ProgressPhotoService {
             )
             .await?;
 
+        // FIXED: Store correct S3 key format matching the upload path
         let progress_photo = ProgressPhoto {
             id: photo_id.clone(),
             user_id: user_id.clone(),
             workout_session_id,
             photo_type: photo_type.unwrap_or_else(|| "progress".to_string()),
             photo_url: photo_url.clone(),
-            s3_key: format!("users/{}/progress-photos/{}", user_id, photo_id),
+            s3_key: format!("progress-photos/{}", photo_id), // Match the actual S3 key structure
             taken_at: taken_at.clone(),
             notes,
             created_at: created_at.clone(),
@@ -68,6 +69,10 @@ impl ProgressPhotoService {
         };
 
         self.repository.create_progress_photo(&progress_photo).await
+    }
+
+    pub async fn get_progress_photo_by_id(&self, photo_id: &str) -> Result<ProgressPhoto> {
+        self.repository.get_progress_photo_by_id(photo_id).await
     }
 
     pub async fn update_progress_photo(

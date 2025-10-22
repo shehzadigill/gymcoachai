@@ -506,7 +506,11 @@ export class GymCoachAIStack extends cdk.Stack {
     );
     const analyticsServiceLambda = this.createLambdaFunction(
       'AnalyticsService',
-      'analytics-service'
+      'analytics-service',
+      {
+        // Add CloudFront domain placeholder - will be updated after deployment
+        CLOUDFRONT_DOMAIN: '', // Update manually after first deployment
+      }
     );
     const nutritionServiceLambda = this.createLambdaFunction(
       'NutritionService',
@@ -666,8 +670,49 @@ export class GymCoachAIStack extends cdk.Stack {
           var request = event.request;
           var uri = request.uri;
           
+          // Handle root path - redirect to /en (default locale)
+          if (uri === '/' || uri === '') {
+            // Check for preferred locale in cookie
+            var cookies = request.cookies;
+            var preferredLocale = 'en'; // default
+            
+            if (cookies.preferredLocale && cookies.preferredLocale.value) {
+              var locale = cookies.preferredLocale.value;
+              var supportedLocales = ['en', 'ar', 'sv'];
+              if (supportedLocales.indexOf(locale) !== -1) {
+                preferredLocale = locale;
+              }
+            }
+            
+            // Redirect to the preferred locale
+            return {
+              statusCode: 302,
+              statusDescription: 'Found',
+              headers: {
+                location: { value: '/' + preferredLocale }
+              }
+            };
+          }
+          
           // If URI has a file extension, return as-is
           if (/\\.[a-zA-Z0-9]+$/.test(uri)) {
+            return request;
+          }
+          
+          // Handle locale routes (e.g., /en, /ar, /sv)
+          var supportedLocales = ['en', 'ar', 'sv'];
+          var pathSegments = uri.split('/').filter(function(segment) { return segment.length > 0; });
+          
+          // If the first segment is a supported locale
+          if (pathSegments.length > 0 && supportedLocales.indexOf(pathSegments[0]) !== -1) {
+            // For locale routes, serve the specific route's index.html
+            if (pathSegments.length === 1) {
+              // Root locale route (e.g., /en)
+              request.uri = '/' + pathSegments[0] + '/index.html';
+            } else {
+              // Nested locale route (e.g., /en/profile)
+              request.uri = uri + '/index.html';
+            }
             return request;
           }
           
@@ -688,7 +733,7 @@ export class GymCoachAIStack extends cdk.Stack {
         }
       `),
         comment:
-          'URL rewrite function for SPA routing - serves index.html for all routes',
+          'URL rewrite function for SPA routing with i18n support - serves index.html for all routes including locale routes and handles locale redirection from root',
       }
     );
 
@@ -832,14 +877,14 @@ export class GymCoachAIStack extends cdk.Stack {
       }
     );
 
-    // Update analytics service with CloudFront domain for progress photos
-    // NOTE: This creates a circular dependency in CDK, so set it manually after deployment:
-    // aws lambda update-function-configuration --function-name AnalyticsService \
-    //   --environment "Variables={CLOUDFRONT_DOMAIN=<your-cloudfront-domain>}"
-    // analyticsServiceLambda.addEnvironment(
-    //   'CLOUDFRONT_DOMAIN',
-    //   this.distribution.distributionDomainName
-    // );
+    // Add CloudFront domain to analytics service environment
+    // This must be done via CDK output and manual update to avoid circular dependency
+    new cdk.CfnOutput(this, 'CloudFrontDomainForAnalytics', {
+      value: this.distribution.distributionDomainName,
+      description:
+        'CloudFront domain - use this to update AnalyticsService Lambda CLOUDFRONT_DOMAIN env var',
+      exportName: 'GymCoachAI-CloudFrontDomain',
+    });
 
     // Grant permissions to Lambda functions for S3 access
     this.userUploadsBucket.grantReadWrite(userProfileServiceLambda);

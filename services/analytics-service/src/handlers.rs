@@ -343,7 +343,10 @@ pub async fn upload_progress_photo(req: Request, ctx: Context) -> Result<Respons
         Ok(response_value) => Ok(Response::from_json_value(response_value)),
         Err(e) => {
             error!("Error in upload_progress_photo handler: {}", e);
-            Ok(Response::internal_error("Failed to process request"))
+            Ok(Response::internal_error(&format!(
+                "Failed to upload progress photo: {}",
+                e
+            )))
         }
     }
 }
@@ -365,18 +368,42 @@ pub async fn update_progress_photo(req: Request, _ctx: Context) -> Result<Respon
     }
 }
 
-pub async fn delete_progress_photo(req: Request, _ctx: Context) -> Result<Response, RouterError> {
+pub async fn delete_progress_photo(req: Request, ctx: Context) -> Result<Response, RouterError> {
     let photo_id = req.path_param("photoId").ok_or("Missing photoId")?;
+
+    // Get the authenticated user context
+    let auth_context = get_auth_context(&ctx);
+    let authenticated_user_id = &auth_context.user_id;
 
     let controller = PROGRESS_PHOTO_CONTROLLER
         .get()
         .ok_or("Controller not initialized")?;
 
-    match controller.delete_progress_photo(photo_id).await {
-        Ok(response_value) => Ok(Response::from_json_value(response_value)),
+    // First, get the photo to verify ownership
+    match controller.get_progress_photo_by_id(photo_id).await {
+        Ok(photo) => {
+            // Verify that the photo belongs to the authenticated user
+            if photo.user_id != *authenticated_user_id {
+                return Ok(Response::forbidden(
+                    "You can only delete your own progress photos",
+                ));
+            }
+
+            // Proceed with deletion
+            match controller.delete_progress_photo(photo_id).await {
+                Ok(response_value) => Ok(Response::from_json_value(response_value)),
+                Err(e) => {
+                    error!("Error in delete_progress_photo handler: {}", e);
+                    Ok(Response::internal_error(&format!(
+                        "Failed to delete progress photo: {}",
+                        e
+                    )))
+                }
+            }
+        }
         Err(e) => {
-            error!("Error in delete_progress_photo handler: {}", e);
-            Ok(Response::internal_error("Failed to process request"))
+            error!("Error getting photo for deletion: {}", e);
+            Ok(Response::not_found("Progress photo not found"))
         }
     }
 }

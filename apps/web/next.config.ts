@@ -1,10 +1,10 @@
 import type { NextConfig } from 'next';
 import withPWA from 'next-pwa';
-import createNextIntlPlugin from 'next-intl/plugin';
 
 const isStaticExport = process.env.NEXT_EXPORT === 'true';
 
-const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+// DO NOT use next-intl plugin for static exports - it requires middleware which doesn't run
+// Instead, we handle locale in the layout directly
 
 const nextConfig: NextConfig = {
   output: isStaticExport ? 'export' : undefined,
@@ -156,4 +156,4 @@ const pwaConfig = {
   ],
 };
 
-export default withPWA(pwaConfig)(withNextIntl(nextConfig));
+export default withPWA(pwaConfig)(nextConfig);

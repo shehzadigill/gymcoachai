@@ -659,9 +659,12 @@ impl UserProfileRepository {
 
         // Handle profileImageUrl - convert S3 key to full S3 URL if needed
         if let Some(profile_image) = update_data.get("profileImageUrl").and_then(|v| v.as_str()) {
-            // If it's an S3 key (not a full URL), convert to full S3 URL
-            let image_url =
-                if profile_image.starts_with("http://") || profile_image.starts_with("https://") {
+            // Skip empty strings
+            if !profile_image.is_empty() {
+                // If it's an S3 key (not a full URL), convert to full S3 URL
+                let image_url = if profile_image.starts_with("http://")
+                    || profile_image.starts_with("https://")
+                {
                     // Already a full URL, use as-is
                     profile_image.to_string()
                 } else {
@@ -675,7 +678,15 @@ impl UserProfileRepository {
                         bucket_name, region, profile_image
                     )
                 };
-            profile.profile_image_url = Some(image_url);
+                profile.profile_image_url = Some(image_url);
+
+                // Log for debugging
+                tracing::info!(
+                    "Updated profile image URL for user {}: {}",
+                    user_id,
+                    profile_image,
+                );
+            }
         }
 
         // Save the updated profile

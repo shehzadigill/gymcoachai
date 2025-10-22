@@ -29,13 +29,17 @@ const authRoutes = [
   '/auth/codeVerification',
 ];
 
+const supportedLocales = ['en', 'ar', 'sv'];
+
 export function ClientAuthWrapper({ children }: ClientAuthWrapperProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [hasRedirected, setHasRedirected] = useState(false);
 
   // Check if it's a public route that doesn't need auth logic
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicRoute =
+    publicRoutes.includes(pathname) ||
+    supportedLocales.some((locale) => pathname.startsWith(`/${locale}`));
   const isAuthRoute = authRoutes.includes(pathname);
 
   // Only use auth hook for routes that need authentication logic

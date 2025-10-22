@@ -7,6 +7,11 @@ echo "🚀 Deploying frontend static export to S3..."
 # Build the app with static export
 echo "📦 Building Next.js app with static export..."
 cd /Users/babar/projects/gymcoach-ai/apps/web
+
+# Clean cache to ensure fresh build
+echo "🧹 Cleaning build cache..."
+rm -rf .next out
+
 npm run build:static
 
 # Check if out directory exists

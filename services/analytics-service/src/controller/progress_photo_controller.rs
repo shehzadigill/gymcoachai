@@ -116,6 +116,17 @@ impl ProgressPhotoController {
         }
     }
 
+    pub async fn get_progress_photo_by_id(
+        &self,
+        photo_id: &str,
+    ) -> Result<crate::models::ProgressPhoto> {
+        if photo_id.is_empty() {
+            return Err(anyhow::anyhow!("Photo ID is required"));
+        }
+
+        self.service.get_progress_photo_by_id(photo_id).await
+    }
+
     pub async fn delete_progress_photo(&self, photo_id: &str) -> Result<Value> {
         if photo_id.is_empty() {
             return Ok(ResponseBuilder::bad_request("Photo ID is required"));

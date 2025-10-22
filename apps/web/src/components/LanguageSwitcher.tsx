@@ -1,29 +1,65 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
-import { locales, localeNames, isRTL } from '@/i18n/config';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { locales, localeNames, isRTL } from '../i18n/config';
+import { useEffect, useState } from 'react';
 
 export default function LanguageSwitcher() {
   const t = useTranslations('settings.language');
   const locale = useLocale();
-  const router = useRouter();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Sync current locale to localStorage and update local state when locale changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('preferredLocale', locale);
+      document.cookie = `preferredLocale=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+  }, [locale]);
+
   const handleLanguageChange = (newLocale: string) => {
-    // Remove the current locale from the pathname
-    const pathWithoutLocale = pathname.replace(`/${locale}`, '') || '/';
+    // Save preferred locale to localStorage and cookie
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('preferredLocale', newLocale);
+      document.cookie = `preferredLocale=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
 
-    // Add the new locale
-    const newPath =
-      newLocale === 'en'
-        ? pathWithoutLocale
-        : `/${newLocale}${pathWithoutLocale}`;
+    // Extract the path without locale
+    let pathWithoutLocale = pathname;
 
-    router.push(newPath);
-    setIsOpen(false);
+    // All paths must have locale prefix, so remove it
+    for (const loc of locales) {
+      if (pathname.startsWith(`/${loc}/`)) {
+        // Remove the locale prefix: /en/dashboard -> /dashboard
+        pathWithoutLocale = pathname.substring(`/${loc}`.length);
+        break;
+      } else if (pathname === `/${loc}`) {
+        // Handle root locale path: /en -> /
+        pathWithoutLocale = '/';
+        break;
+      }
+    }
+
+    // Ensure path starts with / for root or already has it
+    if (pathWithoutLocale === '') {
+      pathWithoutLocale = '/';
+    } else if (!pathWithoutLocale.startsWith('/')) {
+      pathWithoutLocale = `/${pathWithoutLocale}`;
+    }
+
+    // Build new path with new locale
+    const newPath = `/${newLocale}${pathWithoutLocale}`;
+
+    console.log('Changing locale from', locale, 'to', newLocale);
+    console.log('Current pathname:', pathname);
+    console.log('Path without locale:', pathWithoutLocale);
+    console.log('New path:', newPath);
+
+    // For static exports, use window.location to force a full reload
+    // This ensures the locale context updates properly
+    window.location.href = newPath;
   };
 
   return (
