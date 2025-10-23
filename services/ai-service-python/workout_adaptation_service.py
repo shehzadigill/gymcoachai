@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timezone, timedelta
 import statistics
 from collections import defaultdict, Counter
-import numpy as np
+# import numpy as np  # Removed to avoid Lambda dependency issues
 
 from user_data_service import UserDataService
 from pattern_analyzer import PatternAnalyzer

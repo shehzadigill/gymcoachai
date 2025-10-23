@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { api } from '../../../lib/api-client';
+import { aiService } from '../../../lib/ai-service-client';
 import { useCurrentUser } from '@packages/auth';
 import {
   Play,
@@ -17,9 +18,19 @@ import {
   Edit,
   Trash2,
   MoreVertical,
+  Brain,
+  AlertTriangle,
+  BarChart3,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import ExerciseFormModal from '../../../components/modals/ExerciseFormModal';
 import ExerciseSelectionModal from '../../../components/modals/ExerciseSelectionModal';
+import WorkoutAdaptationModal from '../../../components/modals/WorkoutAdaptationModal';
+import PerformanceAnalytics from '../../../components/workouts/PerformanceAnalytics';
+import { ConfidenceIndicator } from '../../../components/ai/visualizations';
+import ContextualAITrigger from '../../../components/ai/ContextualAITrigger';
+import type { WorkoutAdaptation } from '../../../types/ai-service';
 
 interface Workout {
   id: string;
@@ -143,13 +154,35 @@ export default function WorkoutsPage() {
     'session' | 'plan' | null
   >(null);
 
+  // AI-related state
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    adaptations: WorkoutAdaptation | null;
+    performance: any;
+    injuryRisk: any;
+  }>({
+    adaptations: null,
+    performance: null,
+    injuryRisk: null,
+  });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [showAdaptationModal, setShowAdaptationModal] = useState(false);
+  const [selectedPlanForAdaptation, setSelectedPlanForAdaptation] =
+    useState<WorkoutPlan | null>(null);
+  const [showPerformanceAnalytics, setShowPerformanceAnalytics] =
+    useState(false);
+
   useEffect(() => {
     fetchWorkouts();
     fetchWorkoutPlans();
     if (activeView === 'exercises') {
       fetchExercises();
     }
-  }, [activeView]);
+    // Load AI suggestions when user data is available
+    if (user?.id) {
+      fetchAISuggestions();
+    }
+  }, [activeView, user?.id]);
 
   const fetchWorkouts = async () => {
     try {
@@ -268,6 +301,96 @@ export default function WorkoutsPage() {
       setExercises([]);
     } finally {
       setExercisesLoading(false);
+    }
+  };
+
+  // AI Functions
+  const fetchAISuggestions = async () => {
+    if (!user?.id) return;
+
+    try {
+      setAiLoading(true);
+      setAiError(null);
+
+      // Get active workout plan for adaptations
+      const activePlan = workoutPlans.find((plan) => plan.isActive);
+
+      if (activePlan) {
+        // Analyze workout plan adaptations
+        const adaptationResponse = await aiService.adaptWorkoutPlan({
+          workoutPlanId: activePlan.id,
+          recentPerformance: {},
+          userFeedback: '',
+          injuryStatus: 'none',
+          equipmentAvailable: ['dumbbells', 'barbell', 'bodyweight'],
+        });
+
+        // Assess injury risk
+        const injuryResponse = await aiService.assessInjuryRisk();
+
+        setAiSuggestions((prev) => ({
+          ...prev,
+          adaptations: adaptationResponse.data,
+          injuryRisk: injuryResponse.data,
+        }));
+      }
+
+      // Analyze performance trends
+      const performanceResponse = await aiService.analyzePerformance({});
+
+      setAiSuggestions((prev) => ({
+        ...prev,
+        performance: performanceResponse.data,
+      }));
+    } catch (err: any) {
+      console.error('Failed to fetch AI suggestions:', err);
+      setAiError(err.message || 'Failed to fetch AI suggestions');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleOptimizePlan = (plan: WorkoutPlan) => {
+    setSelectedPlanForAdaptation(plan);
+    setShowAdaptationModal(true);
+  };
+
+  const handleCheckInjuryRisk = async () => {
+    if (!user?.id) return;
+
+    try {
+      setAiLoading(true);
+      const injuryResponse = await aiService.assessInjuryRisk();
+
+      setAiSuggestions((prev) => ({
+        ...prev,
+        injuryRisk: injuryResponse.data,
+      }));
+    } catch (err: any) {
+      console.error('Failed to check injury risk:', err);
+      setAiError(err.message || 'Failed to check injury risk');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleFindAlternatives = async (exerciseId: string) => {
+    if (!user?.id) return;
+
+    try {
+      setAiLoading(true);
+      const alternatives = await aiService.substituteExercise(
+        exerciseId,
+        'user_preference'
+      );
+
+      // Show alternatives in a modal or notification
+      console.log('Exercise alternatives:', alternatives);
+    } catch (err: any) {
+      console.error('Failed to find alternatives:', err);
+      setAiError(err.message || 'Failed to find alternatives');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -717,6 +840,129 @@ export default function WorkoutsPage() {
         </div>
       </div>
 
+      {/* AI Suggestions Section */}
+      {user?.id && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Brain className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                AI Workout Intelligence
+              </h3>
+              <Sparkles className="w-4 h-4 text-purple-500" />
+            </div>
+            {aiLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            )}
+          </div>
+
+          {aiError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <span className="text-sm text-red-600">{aiError}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Workout Adaptations */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900">Plan Adaptations</h4>
+                {aiSuggestions.adaptations && (
+                  <ConfidenceIndicator score={0.8} size="sm" />
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                AI-powered workout plan optimizations based on your progress
+              </p>
+              <button
+                onClick={() => {
+                  const activePlan = workoutPlans.find((plan) => plan.isActive);
+                  if (activePlan) handleOptimizePlan(activePlan);
+                }}
+                disabled={
+                  !workoutPlans.find((plan) => plan.isActive) || aiLoading
+                }
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Optimize My Plan
+              </button>
+            </div>
+
+            {/* Injury Risk Assessment */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900">Injury Risk</h4>
+                {aiSuggestions.injuryRisk && (
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      aiSuggestions.injuryRisk.risk === 'low'
+                        ? 'bg-green-100 text-green-800'
+                        : aiSuggestions.injuryRisk.risk === 'medium'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {aiSuggestions.injuryRisk.risk?.toUpperCase() || 'UNKNOWN'}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Assess injury risk and get prevention recommendations
+              </p>
+              <button
+                onClick={handleCheckInjuryRisk}
+                disabled={aiLoading}
+                className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Check Injury Risk
+              </button>
+            </div>
+
+            {/* Performance Analytics */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900">Performance</h4>
+                {aiSuggestions.performance && (
+                  <ConfidenceIndicator score={0.8} size="sm" />
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Analyze performance trends and get insights
+              </p>
+              <button
+                onClick={() => setShowPerformanceAnalytics(true)}
+                disabled={aiLoading}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                View Analytics
+              </button>
+            </div>
+          </div>
+
+          {/* Quick AI Actions */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => router.push('/ai-trainer?context=workout')}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+            >
+              <Brain className="w-4 h-4" />
+              <span>Ask AI About Workouts</span>
+            </button>
+            <button
+              onClick={() => handleFindAlternatives('example-exercise-id')}
+              disabled={aiLoading}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+            >
+              <Target className="w-4 h-4" />
+              <span>Find Exercise Alternatives</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Content based on active view */}
       {activeView === 'sessions' && (
         <>
@@ -825,6 +1071,30 @@ export default function WorkoutsPage() {
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
               <div className="text-red-600 dark:text-red-400">{plansError}</div>
             </div>
+          )}
+
+          {/* Contextual AI Trigger for Workout Plans */}
+          {workoutPlans.length > 0 && (
+            <ContextualAITrigger
+              context={{
+                type: 'workout',
+                data: {
+                  plans: workoutPlans,
+                  activePlan: workoutPlans.find((plan) => plan.isActive),
+                  totalPlans: workoutPlans.length,
+                },
+                title: 'Need help with your workout plans?',
+                description:
+                  'Get AI-powered advice on optimizing your workout routines and achieving your fitness goals.',
+                suggestedQuestions: [
+                  'How can I improve my current workout plan?',
+                  'What exercises should I add to target specific muscle groups?',
+                  'How should I progress my workouts over time?',
+                  'Are there any exercises I should avoid or modify?',
+                ],
+              }}
+              className="mb-6"
+            />
           )}
 
           {/* Workout Plans Grid */}
@@ -2382,6 +2652,44 @@ function PlanCustomExerciseModal({
           </button>
         </div>
       </div>
+
+      {/* AI Modals */}
+      {showAdaptationModal && selectedPlanForAdaptation && (
+        <WorkoutAdaptationModal
+          isOpen={showAdaptationModal}
+          onClose={() => {
+            setShowAdaptationModal(false);
+            setSelectedPlanForAdaptation(null);
+          }}
+          currentPlan={selectedPlanForAdaptation}
+          onApplyAdaptations={(adaptations) => {
+            console.log('Applied adaptations:', adaptations);
+            // Here you would typically update the workout plan with the adaptations
+            fetchWorkoutPlans(); // Refresh the plans
+          }}
+        />
+      )}
+
+      {showPerformanceAnalytics && user?.id && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Performance Analytics
+              </h2>
+              <button
+                onClick={() => setShowPerformanceAnalytics(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[80vh]">
+              <PerformanceAnalytics userId={user.id} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

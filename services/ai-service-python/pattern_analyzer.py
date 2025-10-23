@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timezone, timedelta
 import statistics
 from collections import defaultdict, Counter
-import numpy as np
+# import numpy as np  # Removed to avoid Lambda dependency issues
 
 logger = logging.getLogger(__name__)
 
@@ -579,9 +579,16 @@ class PatternAnalyzer:
         if len(values) < 3:
             return 'insufficient_data'
         
-        # Simple linear trend detection
-        x = list(range(len(values)))
-        slope = np.polyfit(x, values, 1)[0]
+        # Simple linear trend detection using least squares
+        n = len(values)
+        x = list(range(n))
+        sum_x = sum(x)
+        sum_y = sum(values)
+        sum_xy = sum(x[i] * values[i] for i in range(n))
+        sum_x2 = sum(x_val ** 2 for x_val in x)
+        
+        # Calculate slope using least squares formula
+        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
         
         if slope > self.trend_threshold:
             return 'increasing'

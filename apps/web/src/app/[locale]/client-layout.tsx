@@ -11,6 +11,7 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import LocaleSync from '../../components/LocaleSync';
+import { AINotificationHandler } from '../../components/ai/AINotificationHandler';
 import {
   LayoutDashboard,
   Dumbbell,
@@ -259,6 +260,9 @@ export default function ClientLayout({
             <div className="px-4 sm:px-6 lg:px-8 py-6">{children}</div>
           </main>
         </div>
+
+        {/* AI Notification Handler */}
+        <AINotificationHandler />
       </div>
     </AuthGuard>
   );

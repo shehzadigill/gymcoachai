@@ -19,6 +19,12 @@ from proactive_coach_service import ProactiveCoachService
 from progress_monitor import ProgressMonitor
 from memory_service import MemoryService
 from personalization_engine import PersonalizationEngine
+from workout_adaptation_service import WorkoutAdaptationService
+from performance_analyzer import PerformanceAnalyzer
+from exercise_substitution import ExerciseSubstitutionService
+from nutrition_intelligence import NutritionIntelligence
+from macro_optimizer import MacroOptimizer
+from meal_timing_service import MealTimingService
 
 # Configure logging
 logger = logging.getLogger()

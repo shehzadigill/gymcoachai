@@ -19,6 +19,8 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import NutritionIntelligencePanel from '../../../components/nutrition/NutritionIntelligencePanel';
+import ContextualAITrigger from '../../../components/ai/ContextualAITrigger';
 
 interface Food {
   id: string;
@@ -927,6 +929,32 @@ export default function NutritionPage() {
         />
       </div>
 
+      {/* Contextual AI Trigger for Nutrition */}
+      {dailyNutrition && (
+        <ContextualAITrigger
+          context={{
+            type: 'nutrition',
+            data: {
+              dailyNutrition,
+              meals: meals.filter((meal) =>
+                meal.timestamp.startsWith(selectedDate)
+              ),
+              selectedDate,
+            },
+            title: 'Need help with your nutrition?',
+            description:
+              'Get AI-powered advice on your daily nutrition, macro balance, and meal planning.',
+            suggestedQuestions: [
+              'How do my macros look today?',
+              'What should I eat to reach my goals?',
+              'How can I improve my nutrition?',
+              'What are good food substitutions?',
+            ],
+          }}
+          className="mb-6"
+        />
+      )}
+
       {/* Weekly Stats */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
@@ -970,6 +998,9 @@ export default function NutritionPage() {
           </div>
         )}
       </div>
+
+      {/* AI Nutrition Intelligence */}
+      {user?.id && <NutritionIntelligencePanel userId={user.id} />}
 
       {/* Water Intake */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -1649,6 +1680,7 @@ function AddFoodModal({
   onClose: () => void;
   onAdd: () => void;
 }) {
+  const t = useTranslations('nutrition_page');
   if (!selectedFood) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -1900,7 +1932,7 @@ function EditMealModal({
 }) {
   const [name, setName] = useState<string>(meal.name);
   const [mealType, setMealType] = useState<string>(meal.mealType);
-
+  const t = useTranslations('nutrition_page');
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
@@ -1984,6 +2016,7 @@ function CustomMealModal({
     mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   }) => void;
 }) {
+  const t = useTranslations('nutrition_page');
   const [name, setName] = useState('');
   const [calories, setCalories] = useState(0);
   const [protein, setProtein] = useState(0);

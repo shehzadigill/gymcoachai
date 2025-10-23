@@ -11,6 +11,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
 // Removed MonitoringStack import to avoid CloudWatch costs
 
@@ -756,6 +757,39 @@ export class GymCoachAIStack extends cdk.Stack {
       cdk.Fn.split('/', notificationServiceUrl.url)
     );
 
+    // WAF Web ACL - COMMENTED OUT (requires us-east-1 region for CloudFront)
+    // TODO: Create WAF in us-east-1 region separately or use cross-region approach
+    // const wafWebAcl = new wafv2.CfnWebACL(this, 'GymCoachAIWAF', {
+    //   name: 'gymcoach-ai-waf-basic',
+    //   description: 'Basic WAF for GymCoach AI - Essential protection only (cost-optimized)',
+    //   scope: 'CLOUDFRONT',
+    //   defaultAction: { allow: {} },
+    //   rules: [
+    //     // Basic rate limiting rule - ESSENTIAL (keeps costs low)
+    //     {
+    //       name: 'BasicRateLimitRule',
+    //       priority: 1,
+    //       action: { block: {} },
+    //       statement: {
+    //         rateBasedStatement: {
+    //           limit: 5000, // 5000 requests per 5 minutes
+    //           aggregateKeyType: 'IP',
+    //         },
+    //       },
+    //       visibilityConfig: {
+    //         sampledRequestsEnabled: false,
+    //         cloudWatchMetricsEnabled: false,
+    //         metricName: 'BasicRateLimitMetric',
+    //       },
+    //     },
+    //   ],
+    //   visibilityConfig: {
+    //     sampledRequestsEnabled: false,
+    //     cloudWatchMetricsEnabled: false,
+    //     metricName: 'GymCoachAIWAFBasicMetric',
+    //   },
+    // });
+
     // Create CloudFront Function for URL rewriting (handles SPA routing)
     const urlRewriteFunction = new cloudfront.Function(
       this,
@@ -839,6 +873,7 @@ export class GymCoachAIStack extends cdk.Stack {
       'GymCoachAIDistribution',
       {
         defaultRootObject: 'index.html',
+        // webAclId: wafWebAcl.attrArn, // Commented out - WAF requires us-east-1 region
         defaultBehavior: {
           origin: origins.S3BucketOrigin.withOriginAccessIdentity(
             this.frontendBucket,
@@ -1248,6 +1283,11 @@ export class GymCoachAIStack extends cdk.Stack {
         'After deployment, set CLOUDFRONT_DOMAIN environment variable in AnalyticsService Lambda function',
       description: 'Manual step required after deployment',
     });
+
+    // new cdk.CfnOutput(this, 'WAFWebACLArn', {
+    //   value: wafWebAcl.attrArn,
+    //   description: 'WAF Web ACL ARN for CloudFront protection',
+    // });
 
     // Removed monitoring stack to avoid CloudWatch costs
     // this.createMonitoringStack();

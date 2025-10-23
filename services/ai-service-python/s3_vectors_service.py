@@ -4,7 +4,8 @@ import logging
 import boto3
 from typing import Dict, List, Optional, Any
 from botocore.exceptions import ClientError
-import numpy as np
+# import numpy as np  # Removed to avoid Lambda dependency issues
+import math
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -293,14 +294,10 @@ class S3VectorsService:
             Cosine similarity score (0-1)
         """
         try:
-            # Convert to numpy arrays
-            a = np.array(vec1)
-            b = np.array(vec2)
-            
-            # Calculate cosine similarity
-            dot_product = np.dot(a, b)
-            norm_a = np.linalg.norm(a)
-            norm_b = np.linalg.norm(b)
+            # Calculate cosine similarity using pure Python
+            dot_product = sum(a * b for a, b in zip(vec1, vec2))
+            norm_a = math.sqrt(sum(a * a for a in vec1))
+            norm_b = math.sqrt(sum(b * b for b in vec2))
             
             if norm_a == 0 or norm_b == 0:
                 return 0.0

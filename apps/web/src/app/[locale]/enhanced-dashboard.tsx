@@ -45,6 +45,7 @@ import {
   QuickActions,
   ProgressRing,
 } from '../../components/dashboard';
+import { AIInsightsPanel } from '../../components/dashboard/AIInsightsPanel';
 
 interface DashboardData {
   // Core metrics
@@ -1558,6 +1559,9 @@ export default function DashboardPage() {
                 <QuickActions actions={quickActions} columns={1} />
               </div>
             </DashboardSection>
+
+            {/* AI Coach Insights */}
+            <AIInsightsPanel />
 
             {/* Key Metrics Summary */}
             <DashboardSection title="Today's Summary">

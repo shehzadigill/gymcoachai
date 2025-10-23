@@ -26,6 +26,7 @@ import {
   AlertCircle,
   Bot,
 } from 'lucide-react';
+import AICoachingPreferencesPanel from '../../../components/profile/AICoachingPreferencesPanel';
 
 interface UserProfile {
   id: string;
@@ -1617,6 +1618,21 @@ function AITrainerTab({
               </div>
             </div>
           </div>
+
+          {/* AI Coaching Preferences Panel */}
+          {user?.id && (
+            <AICoachingPreferencesPanel
+              userId={user.id}
+              currentPreferences={aiPreferences}
+              onPreferencesUpdate={(newPreferences) => {
+                // Update the local state with new preferences
+                setAiPreferences((prev) => ({
+                  ...prev,
+                  ...newPreferences,
+                }));
+              }}
+            />
+          )}
         </>
       )}
     </div>
