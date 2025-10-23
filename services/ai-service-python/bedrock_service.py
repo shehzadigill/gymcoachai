@@ -151,7 +151,11 @@ Guidelines:
 Respond in a helpful, friendly tone as a personal trainer would."""
         
         if context:
-            context_str = self._format_context(context)
+            # Try enhanced context formatting first, fallback to basic formatting
+            if any(key in context for key in ['user_profile', 'fitness_analysis', 'nutrition_analysis', 'progress_summary']):
+                context_str = self._format_enhanced_context(context)
+            else:
+                context_str = self._format_context(context)
             return f"{system_prompt}\n\nUser Context:\n{context_str}\n\nUser Question/Request:\n{prompt}"
         else:
             return f"{system_prompt}\n\nUser Question/Request:\n{prompt}"
@@ -192,6 +196,138 @@ Respond in a helpful, friendly tone as a personal trainer would."""
             if nutrition.get('dailyGoals'):
                 goals = nutrition['dailyGoals']
                 context_parts.append(f"- Daily Goals: {goals.get('calories', 0)} cal, {goals.get('protein', 0)}g protein")
+        
+        return '\n'.join(context_parts)
+    
+    def _format_enhanced_context(self, context: Dict) -> str:
+        """Format enhanced context data from context builder into a readable string"""
+        context_parts = []
+        
+        # User Profile Context
+        if 'user_profile' in context:
+            profile = context['user_profile']
+            context_parts.append("=== USER PROFILE ===")
+            
+            basic_info = profile.get('basic_info', {})
+            if basic_info.get('name'):
+                context_parts.append(f"Name: {basic_info['name']}")
+            if basic_info.get('age'):
+                context_parts.append(f"Age: {basic_info['age']}")
+            if basic_info.get('experience_level'):
+                context_parts.append(f"Experience Level: {basic_info['experience_level']}")
+            if basic_info.get('height') and basic_info.get('weight'):
+                context_parts.append(f"Physical Stats: {basic_info['height']}cm, {basic_info['weight']}kg")
+            
+            goals = profile.get('goals', {})
+            if goals.get('primary_goals'):
+                context_parts.append(f"Primary Goals: {', '.join(goals['primary_goals'])}")
+            if goals.get('target_weight'):
+                context_parts.append(f"Target Weight: {goals['target_weight']}kg")
+            if goals.get('timeline'):
+                context_parts.append(f"Goal Timeline: {goals['timeline']}")
+            
+            preferences = profile.get('preferences', {})
+            if preferences.get('equipment_available'):
+                context_parts.append(f"Available Equipment: {', '.join(preferences['equipment_available'])}")
+            if preferences.get('workout_duration'):
+                context_parts.append(f"Preferred Workout Duration: {preferences['workout_duration']} minutes")
+            if preferences.get('workout_days_per_week'):
+                context_parts.append(f"Workout Days per Week: {preferences['workout_days_per_week']}")
+        
+        # Fitness Analysis Context
+        if 'fitness_analysis' in context:
+            fitness = context['fitness_analysis']
+            context_parts.append("\n=== FITNESS ANALYSIS ===")
+            
+            if 'workout_frequency' in fitness:
+                freq = fitness['workout_frequency']
+                context_parts.append(f"Workout Frequency: {freq.get('avg_per_week', 0):.1f} workouts/week")
+                context_parts.append(f"Consistency Score: {freq.get('consistency_score', 0):.2f}")
+            
+            if 'exercise_preferences' in fitness:
+                exercises = fitness['exercise_preferences']
+                if exercises.get('top_exercises'):
+                    top_exercises = list(exercises['top_exercises'].keys())[:3]
+                    context_parts.append(f"Favorite Exercises: {', '.join(top_exercises)}")
+                if exercises.get('top_muscle_groups'):
+                    top_muscles = list(exercises['top_muscle_groups'].keys())[:3]
+                    context_parts.append(f"Focus Areas: {', '.join(top_muscles)}")
+            
+            if 'strength_progression' in fitness:
+                progression = fitness['strength_progression']
+                if progression.get('overall_trend'):
+                    context_parts.append(f"Strength Trend: {progression['overall_trend']}")
+        
+        # Nutrition Analysis Context
+        if 'nutrition_analysis' in context:
+            nutrition = context['nutrition_analysis']
+            context_parts.append("\n=== NUTRITION ANALYSIS ===")
+            
+            if 'macro_adherence' in nutrition:
+                macros = nutrition['macro_adherence']
+                if macros.get('avg_adherence'):
+                    context_parts.append(f"Goal Adherence: {macros['avg_adherence']:.1%}")
+            
+            if 'calorie_consistency' in nutrition:
+                calories = nutrition['calorie_consistency']
+                if calories.get('avg_calories'):
+                    context_parts.append(f"Average Daily Calories: {calories['avg_calories']:.0f}")
+                if calories.get('consistency_score'):
+                    context_parts.append(f"Calorie Consistency: {calories['consistency_score']:.2f}")
+        
+        # Progress Summary Context
+        if 'progress_summary' in context:
+            progress = context['progress_summary']
+            context_parts.append("\n=== PROGRESS SUMMARY ===")
+            
+            recent_activity = progress.get('recent_activity', {})
+            if recent_activity.get('workouts_last_week'):
+                context_parts.append(f"Workouts This Week: {recent_activity['workouts_last_week']}")
+            if recent_activity.get('current_streak'):
+                context_parts.append(f"Current Streak: {recent_activity['current_streak']} days")
+            
+            body_changes = progress.get('body_changes', {})
+            if body_changes.get('weight_change'):
+                weight_change = body_changes['weight_change']
+                context_parts.append(f"Weight Change: {weight_change:.1f}kg ({body_changes.get('weight_change_percent', 0):.1f}%)")
+            
+            achievements = progress.get('achievements', [])
+            if achievements:
+                context_parts.append(f"Recent Achievements: {', '.join(achievements[:2])}")
+        
+        # Coaching Preferences Context
+        if 'coaching_preferences' in context:
+            coaching = context['coaching_preferences']
+            context_parts.append("\n=== COACHING PREFERENCES ===")
+            
+            if coaching.get('coaching_style'):
+                context_parts.append(f"Preferred Style: {coaching['coaching_style']}")
+            if coaching.get('communication_tone'):
+                context_parts.append(f"Communication Tone: {coaching['communication_tone']}")
+            if coaching.get('motivation_level'):
+                context_parts.append(f"Motivation Level: {coaching['motivation_level']}")
+            if coaching.get('focus_areas'):
+                context_parts.append(f"Focus Areas: {', '.join(coaching['focus_areas'])}")
+        
+        # Recommendations Context
+        if 'recommendations_context' in context:
+            recommendations = context['recommendations_context']
+            context_parts.append("\n=== RECOMMENDATIONS CONTEXT ===")
+            
+            if recommendations.get('current_challenges'):
+                challenges = recommendations['current_challenges']
+                if challenges:
+                    context_parts.append(f"Current Challenges: {', '.join(challenges[:2])}")
+            
+            if recommendations.get('improvement_opportunities'):
+                opportunities = recommendations['improvement_opportunities']
+                if opportunities:
+                    context_parts.append(f"Improvement Areas: {', '.join(opportunities[:2])}")
+            
+            if recommendations.get('risk_factors'):
+                risks = recommendations['risk_factors']
+                if risks:
+                    context_parts.append(f"Risk Factors: {', '.join(risks[:2])}")
         
         return '\n'.join(context_parts)
     

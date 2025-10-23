@@ -25,6 +25,7 @@ export class GymCoachAIStack extends cdk.Stack {
   public readonly processedImagesBucket: s3.Bucket;
   public readonly progressPhotosBucket: s3.Bucket;
   public readonly frontendBucket: s3.Bucket;
+  public readonly vectorsBucket: s3.Bucket;
   private authLayer?: lambda.LayerVersion;
   private pythonAuthLayer?: lambda.LayerVersion;
 
@@ -247,6 +248,55 @@ export class GymCoachAIStack extends cdk.Stack {
       }),
     });
 
+    // Proactive Coaching EventBridge Rules
+    const proactiveCheckInRule = new events.Rule(this, 'ProactiveCheckInRule', {
+      ruleName: 'gymcoach-ai-proactive-checkins',
+      description: 'Triggers proactive AI coach check-ins',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '9', // 9 AM UTC daily
+      }),
+    });
+
+    const progressMonitorRule = new events.Rule(this, 'ProgressMonitorRule', {
+      ruleName: 'gymcoach-ai-progress-monitoring',
+      description: 'Monitors user progress and triggers interventions',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '6', // 6 AM UTC daily
+      }),
+    });
+
+    const plateauDetectionRule = new events.Rule(this, 'PlateauDetectionRule', {
+      ruleName: 'gymcoach-ai-plateau-detection',
+      description: 'Detects workout plateaus and suggests changes',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '20', // 8 PM UTC on Sundays
+        weekDay: 'SUN',
+      }),
+    });
+
+    const motivationBoostRule = new events.Rule(this, 'MotivationBoostRule', {
+      ruleName: 'gymcoach-ai-motivation-boost',
+      description: 'Sends motivational messages based on user patterns',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '7', // 7 AM UTC on Mondays
+        weekDay: 'MON',
+      }),
+    });
+
+    const weeklyReviewRule = new events.Rule(this, 'WeeklyReviewRule', {
+      ruleName: 'gymcoach-ai-weekly-review',
+      description: 'Generates weekly progress reviews and recommendations',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '19', // 7 PM UTC on Sundays
+        weekDay: 'SUN',
+      }),
+    });
+
     // Create S3 Buckets (needed by Lambdas)
     this.userUploadsBucket = new s3.Bucket(this, 'UserUploadsBucket', {
       bucketName: `gymcoach-ai-user-uploads-${this.account}`,
@@ -417,6 +467,53 @@ export class GymCoachAIStack extends cdk.Stack {
         resources: [`${this.frontendBucket.bucketArn}/*`],
       })
     );
+
+    // Create S3 Vectors Bucket for AI Knowledge Base
+    this.vectorsBucket = new s3.Bucket(this, 'VectorsBucket', {
+      bucketName: `gymcoach-ai-vectors-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      cors: [
+        {
+          allowedHeaders: ['*'],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD,
+          ],
+          allowedOrigins: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000,
+        },
+      ],
+      lifecycleRules: [
+        {
+          id: 'DeleteIncompleteMultipartUploads',
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
+        },
+        {
+          id: 'TransitionVectorsToIA',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+        },
+        {
+          id: 'ArchiveOldVectors',
+          transitions: [
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(90),
+            },
+          ],
+        },
+      ],
+    });
 
     // Create Lambda Authorizer
     const authorizerLambda = new lambda.Function(this, 'AuthorizerLambda', {
@@ -898,6 +995,9 @@ export class GymCoachAIStack extends cdk.Stack {
     // Grant analytics service full access to progress photos bucket
     this.progressPhotosBucket.grantReadWrite(analyticsServiceLambda);
 
+    // Grant AI service access to vectors bucket
+    this.vectorsBucket.grantReadWrite(aiServiceLambda);
+
     // Allow service to read from the main DynamoDB table
     this.mainTable.grantReadData(analyticsServiceLambda);
     this.mainTable.grantReadData(nutritionServiceLambda);
@@ -993,6 +1093,57 @@ export class GymCoachAIStack extends cdk.Stack {
       new targets.LambdaFunction(notificationSchedulerLambda)
     );
 
+    // Proactive Coaching EventBridge targets
+    proactiveCheckInRule.addTarget(
+      new targets.LambdaFunction(aiServiceLambda, {
+        event: events.RuleTargetInput.fromObject({
+          source: 'proactive-checkin',
+          action: 'checkin',
+          timestamp: events.EventField.fromPath('$.time'),
+        }),
+      })
+    );
+
+    progressMonitorRule.addTarget(
+      new targets.LambdaFunction(aiServiceLambda, {
+        event: events.RuleTargetInput.fromObject({
+          source: 'progress-monitor',
+          action: 'monitor',
+          timestamp: events.EventField.fromPath('$.time'),
+        }),
+      })
+    );
+
+    plateauDetectionRule.addTarget(
+      new targets.LambdaFunction(aiServiceLambda, {
+        event: events.RuleTargetInput.fromObject({
+          source: 'plateau-detection',
+          action: 'detect-plateaus',
+          timestamp: events.EventField.fromPath('$.time'),
+        }),
+      })
+    );
+
+    motivationBoostRule.addTarget(
+      new targets.LambdaFunction(aiServiceLambda, {
+        event: events.RuleTargetInput.fromObject({
+          source: 'motivation-boost',
+          action: 'motivate',
+          timestamp: events.EventField.fromPath('$.time'),
+        }),
+      })
+    );
+
+    weeklyReviewRule.addTarget(
+      new targets.LambdaFunction(aiServiceLambda, {
+        event: events.RuleTargetInput.fromObject({
+          source: 'weekly-review',
+          action: 'review',
+          timestamp: events.EventField.fromPath('$.time'),
+        }),
+      })
+    );
+
     // Removed CloudWatch Log Groups to avoid costs
     // Lambda functions will use default log groups (free tier: 5GB/month)
 
@@ -1082,6 +1233,11 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'Frontend S3 Bucket Name',
     });
 
+    new cdk.CfnOutput(this, 'VectorsBucketName', {
+      value: this.vectorsBucket.bucketName,
+      description: 'S3 Vectors Bucket Name for AI Knowledge Base',
+    });
+
     new cdk.CfnOutput(this, 'CloudFrontDistributionURL', {
       value: `https://${this.distribution.distributionDomainName}`,
       description: 'CloudFront Distribution URL',
@@ -1152,6 +1308,7 @@ export class GymCoachAIStack extends cdk.Stack {
         STATIC_ASSETS_BUCKET: this.staticAssetsBucket.bucketName,
         PROCESSED_IMAGES_BUCKET: this.processedImagesBucket.bucketName,
         PROGRESS_PHOTOS_BUCKET: this.progressPhotosBucket.bucketName,
+        VECTORS_BUCKET: this.vectorsBucket.bucketName,
         JWT_SECRET: 'your-jwt-secret-here', // In production, use AWS Secrets Manager
         COGNITO_REGION: this.region,
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
