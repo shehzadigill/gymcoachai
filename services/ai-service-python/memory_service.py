@@ -129,15 +129,15 @@ class MemoryService:
             # Filter and rank memories
             relevant_memories = await self._filter_and_rank_memories(scored_memories)
             
-            # Format memories for use
-            formatted_memories = await self._format_memories_for_context(relevant_memories)
+            # For API retrieval, return full memory objects instead of formatted ones
+            # formatted_memories = await self._format_memories_for_context(relevant_memories)
             
             return {
                 'user_id': user_id,
                 'query': query,
                 'total_memories': len(memories),
                 'relevant_memories': len(relevant_memories),
-                'memories': formatted_memories,
+                'memories': relevant_memories,  # Return full memory objects
                 'retrieval_timestamp': datetime.now(timezone.utc).isoformat()
             }
             
@@ -186,6 +186,58 @@ class MemoryService:
             logger.error(f"Error updating memory importance for user {user_id}: {e}")
             return {'error': str(e)}
     
+    async def delete_memory(self, user_id: str, memory_id: str) -> Dict[str, Any]:
+        """
+        Delete a specific memory
+        
+        Args:
+            user_id: User ID
+            memory_id: ID of the memory to delete
+            
+        Returns:
+            Dictionary with deletion results
+        """
+        try:
+            logger.info(f"Deleting memory {memory_id} for user {user_id}")
+            
+            # Delete from DynamoDB
+            table = await self._get_table()
+            
+            try:
+                # First, verify the memory exists and belongs to the user
+                response = table.get_item(
+                    Key={
+                        'user_id': user_id,
+                        'memory_id': memory_id
+                    }
+                )
+                
+                if 'Item' not in response:
+                    return {'error': 'Memory not found'}
+                
+                # Delete the memory
+                table.delete_item(
+                    Key={
+                        'user_id': user_id,
+                        'memory_id': memory_id
+                    }
+                )
+                
+                return {
+                    'status': 'success',
+                    'message': 'Memory deleted successfully',
+                    'memory_id': memory_id,
+                    'user_id': user_id
+                }
+                
+            except Exception as e:
+                logger.error(f"Error deleting memory from DynamoDB: {e}")
+                return {'error': str(e)}
+            
+        except Exception as e:
+            logger.error(f"Error deleting memory for user {user_id}: {e}")
+            return {'error': str(e)}
+
     async def cleanup_old_memories(self, user_id: str) -> Dict[str, Any]:
         """
         Clean up old and low-importance memories

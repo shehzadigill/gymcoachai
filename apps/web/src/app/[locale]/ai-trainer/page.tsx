@@ -163,18 +163,29 @@ export default function AITrainerPage() {
       console.log('Loading enhanced AI features...');
 
       // Load personalization profile
-      const profileResponse = await aiService.analyzeUserPreferences();
+      const profileResponse = await aiService.getPersonalizationProfile();
+      console.log('Personalization profile response:', profileResponse);
       if (profileResponse.success) {
         setPersonalizationProfile(profileResponse.data);
-        setCoachingStyle(profileResponse.data.coachingStyle);
+        setCoachingStyle(profileResponse.data.coachingStyle || 'adaptive');
+      } else {
+        console.error(
+          'Failed to load personalization profile:',
+          profileResponse.error
+        );
       }
 
       // Load user memories
       const memoriesResponse = await aiService.retrieveRelevantMemories(
-        'user preferences and goals'
+        'user preferences and goals',
+        { context: 'profile_load' }
       );
+      console.log('User memories response:', memoriesResponse);
       if (memoriesResponse.success) {
-        setUserMemories(memoriesResponse.data);
+        setUserMemories(memoriesResponse.data || []);
+      } else {
+        console.error('Failed to load user memories:', memoriesResponse.error);
+        setUserMemories([]); // Set empty array as fallback
       }
 
       // Load proactive insights
@@ -346,7 +357,12 @@ export default function AITrainerPage() {
         context: {
           coachingStyle,
           userMemories: userMemories.slice(0, 5), // Include recent memories
-          personalizationProfile,
+          personalizationProfile: personalizationProfile || {
+            coachingStyle: coachingStyle,
+            communicationStyle: 'friendly',
+            motivationType: 'achievement',
+            confidence: 0.5,
+          },
         },
       });
 
@@ -374,6 +390,19 @@ export default function AITrainerPage() {
         // Update analytics if available
         if (response.data.analytics) {
           setConversationAnalytics(response.data.analytics);
+        }
+
+        // Refresh memories after conversation (to get any new memories stored)
+        try {
+          const memoriesResponse = await aiService.retrieveRelevantMemories(
+            'user preferences and goals',
+            { context: 'conversation_update' }
+          );
+          if (memoriesResponse.success) {
+            setUserMemories(memoriesResponse.data || []);
+          }
+        } catch (error) {
+          console.error('Failed to refresh memories:', error);
         }
 
         // Update rate limit

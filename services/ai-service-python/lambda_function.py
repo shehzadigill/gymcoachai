@@ -180,74 +180,76 @@ def lambda_handler(event, context):
                 return asyncio.run(handle_form_check(user_id, body))
             elif '/motivation' in path:
                 return asyncio.run(handle_motivation(user_id, body))
-        elif '/progress/monitor' in path:
-            return asyncio.run(handle_progress_monitoring(user_id, body))
-        elif '/workout/adapt' in path:
-            return asyncio.run(handle_workout_adaptation(user_id, body))
-        elif '/workout/substitute' in path:
-            return asyncio.run(handle_exercise_substitution(user_id, body))
-        elif '/workout/assess-risk' in path:
-            return asyncio.run(handle_injury_risk_assessment(user_id, body))
-        elif '/performance/analyze' in path:
-            return asyncio.run(handle_performance_analysis(user_id, body))
-        elif '/performance/anomalies' in path:
-            return asyncio.run(handle_anomaly_detection(user_id, body))
-        elif '/performance/predict' in path:
-            return asyncio.run(handle_performance_prediction(user_id, body))
-        # elif '/performance/report' in path:
-        #     return asyncio.run(handle_performance_report(user_id, body))
-        elif '/nutrition/analyze' in path:
-            return asyncio.run(handle_nutrition_analysis(user_id, body))
-        elif '/nutrition/adjust' in path:
-            return asyncio.run(handle_nutrition_adjustment(user_id, body))
-        elif '/nutrition/substitute' in path:
-            return asyncio.run(handle_food_substitution(user_id, body))
-        elif '/nutrition/hydration' in path:
-            return asyncio.run(handle_hydration_analysis(user_id, body))
-        elif '/macros/calculate' in path:
-            return asyncio.run(handle_macro_calculation(user_id, body))
-        elif '/macros/adjust' in path:
-            return asyncio.run(handle_macro_adjustment(user_id, body))
-        elif '/macros/timing' in path:
-            return asyncio.run(handle_macro_timing(user_id, body))
-        elif '/macros/modify' in path:
-            return asyncio.run(handle_macro_modification(user_id, body))
-        elif '/meals/schedule' in path:
-            return asyncio.run(handle_meal_schedule(user_id, body))
-        elif '/meals/pre-workout' in path:
-            return asyncio.run(handle_pre_workout_nutrition(user_id, body))
-        elif '/meals/post-workout' in path:
-            return asyncio.run(handle_post_workout_nutrition(user_id, body))
-        elif '/meals/timing-analysis' in path:
-            return asyncio.run(handle_meal_timing_analysis(user_id, body))
-        elif '/meals/fasting' in path:
-            return asyncio.run(handle_intermittent_fasting(user_id, body))
-        elif '/memory/store' in path:
-            return asyncio.run(handle_memory_storage(user_id, body))
-        elif '/memory/retrieve' in path:
-            return asyncio.run(handle_memory_retrieval(user_id, body))
-        elif '/memory/update' in path:
-            return asyncio.run(handle_memory_update(user_id, body))
-        elif '/memory/cleanup' in path:
-            return asyncio.run(handle_memory_cleanup(user_id, body))
-        elif '/memory/summary' in path:
-            return asyncio.run(handle_memory_summary(user_id, body))
-        elif '/personalization/analyze' in path:
-            return asyncio.run(handle_preference_analysis(user_id, body))
-        elif '/personalization/style' in path:
-            return asyncio.run(handle_coaching_style(user_id, body))
-        elif '/personalization/adapt' in path:
-            return asyncio.run(handle_message_adaptation(user_id, body))
-        elif '/personalization/feedback' in path:
-            return asyncio.run(handle_feedback_learning(user_id, body))
-        elif '/conversation/thread' in path:
-            return asyncio.run(handle_conversation_thread(user_id, body))
-        elif '/conversation/summarize' in path:
-            return asyncio.run(handle_conversation_summarization(user_id, body))
-        elif '/conversation/analytics' in path:
-            return asyncio.run(handle_conversation_analytics(user_id, body))
-        elif '/proactive/insights' in path:
-            return asyncio.run(handle_proactive_insights(user_id, body))
+            elif '/progress/monitor' in path:
+                return asyncio.run(handle_progress_monitoring(user_id, body))
+            elif '/workout/adapt' in path:
+                return asyncio.run(handle_workout_adaptation(user_id, body))
+            elif '/workout/substitute' in path:
+                return asyncio.run(handle_exercise_substitution(user_id, body))
+            elif '/workout/assess-risk' in path:
+                return asyncio.run(handle_injury_risk_assessment(user_id, body))
+            elif '/performance/analyze' in path:
+                return asyncio.run(handle_performance_analysis(user_id, body))
+            elif '/performance/anomalies' in path:
+                return asyncio.run(handle_anomaly_detection(user_id, body))
+            elif '/performance/predict' in path:
+                return asyncio.run(handle_performance_prediction(user_id, body))
+            # elif '/performance/report' in path:
+            #     return asyncio.run(handle_performance_report(user_id, body))
+            elif '/nutrition/analyze' in path:
+                return asyncio.run(handle_nutrition_analysis(user_id, body))
+            elif '/nutrition/adjust' in path:
+                return asyncio.run(handle_nutrition_adjustment(user_id, body))
+            elif '/nutrition/substitute' in path:
+                return asyncio.run(handle_food_substitution(user_id, body))
+            elif '/nutrition/hydration' in path:
+                return asyncio.run(handle_hydration_analysis(user_id, body))
+            elif '/macros/calculate' in path:
+                return asyncio.run(handle_macro_calculation(user_id, body))
+            elif '/macros/adjust' in path:
+                return asyncio.run(handle_macro_adjustment(user_id, body))
+            elif '/macros/timing' in path:
+                return asyncio.run(handle_macro_timing(user_id, body))
+            elif '/macros/modify' in path:
+                return asyncio.run(handle_macro_modification(user_id, body))
+            elif '/meals/schedule' in path:
+                return asyncio.run(handle_meal_schedule(user_id, body))
+            elif '/meals/pre-workout' in path:
+                return asyncio.run(handle_pre_workout_nutrition(user_id, body))
+            elif '/meals/post-workout' in path:
+                return asyncio.run(handle_post_workout_nutrition(user_id, body))
+            elif '/meals/timing-analysis' in path:
+                return asyncio.run(handle_meal_timing_analysis(user_id, body))
+            elif '/meals/fasting' in path:
+                return asyncio.run(handle_intermittent_fasting(user_id, body))
+            elif '/memory/store' in path:
+                return asyncio.run(handle_memory_storage(user_id, body))
+            elif '/memory/retrieve' in path:
+                return asyncio.run(handle_memory_retrieval(user_id, body))
+            elif '/memory/update' in path:
+                return asyncio.run(handle_memory_update(user_id, body))
+            elif '/memory/delete' in path:
+                return asyncio.run(handle_memory_deletion(user_id, body))
+            elif '/memory/cleanup' in path:
+                return asyncio.run(handle_memory_cleanup(user_id, body))
+            elif '/memory/summary' in path:
+                return asyncio.run(handle_memory_summary(user_id, body))
+            elif '/personalization/analyze' in path:
+                return asyncio.run(handle_preference_analysis(user_id, body))
+            elif '/personalization/style' in path:
+                return asyncio.run(handle_coaching_style(user_id, body))
+            elif '/personalization/adapt' in path:
+                return asyncio.run(handle_message_adaptation(user_id, body))
+            elif '/personalization/feedback' in path:
+                return asyncio.run(handle_feedback_learning(user_id, body))
+            elif '/conversation/thread' in path:
+                return asyncio.run(handle_conversation_thread(user_id, body))
+            elif '/conversation/summarize' in path:
+                return asyncio.run(handle_conversation_summarization(user_id, body))
+            elif '/conversation/analytics' in path:
+                return asyncio.run(handle_conversation_analytics(user_id, body))
+            elif '/proactive/insights' in path:
+                return asyncio.run(handle_proactive_insights(user_id, body))
         
         elif http_method == 'GET':
             if '/conversations' in path:
@@ -258,6 +260,10 @@ def lambda_handler(event, context):
                 return asyncio.run(handle_rag_validation())
             elif '/rag/stats' in path:
                 return asyncio.run(handle_rag_stats())
+            elif '/rag/debug' in path:
+                return asyncio.run(handle_rag_debug())
+            elif '/proactive/insights' in path:
+                return asyncio.run(handle_proactive_insights(user_id, {}))
             else:
                 return create_error_response(404, 'Endpoint not found')
         
@@ -297,6 +303,11 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     try:
         message = body.get('message', '').strip()
         conversation_id = body.get('conversationId', str(uuid.uuid4()))
+        request_context = body.get('context', {})
+        
+        # Extract personalization data from request context if provided
+        frontend_personalization_profile = request_context.get('personalizationProfile')
+        frontend_user_memories = request_context.get('userMemories', [])
         
         if not message:
             return create_error_response(400, 'Message is required')
@@ -329,12 +340,24 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
             user_id, conversation_id, max_messages=5
         )
         
+        # Get personalization profile and user memories
+        # Use frontend-provided data if available, otherwise fetch from services
+        if frontend_personalization_profile:
+            personalization_profile = frontend_personalization_profile
+        else:
+            personalization_profile = await personalization_engine.analyze_user_preferences(user_id)
+        
+        if frontend_user_memories:
+            user_memories = {'userMemories': frontend_user_memories}
+        else:
+            user_memories = await memory_service.get_memory_summary(user_id)
+        
         # Retrieve relevant context using RAG
         rag_context = await rag_service.retrieve_relevant_context(
             query=message,
             context=user_context,
             top_k=3,
-            similarity_threshold=0.7
+            similarity_threshold=0.6  # Lowered to get better recall with existing vectors
         )
         
         # Build enhanced AI prompt with RAG context
@@ -403,7 +426,9 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
                 'success': True,
                 'data': {
                     'response': bedrock_result['response'],
-                    'ragContext': rag_context_response
+                    'ragContext': rag_context_response,
+                    'personalizationProfile': personalization_profile,
+                    'userMemories': user_memories
                 },
                 'metadata': {
                     'timestamp': datetime.now().isoformat(),
@@ -945,6 +970,104 @@ async def handle_rag_stats() -> Dict[str, Any]:
         logger.error(f"Error in handle_rag_stats: {e}")
         return create_error_response(500, 'Failed to get RAG stats')
 
+async def handle_rag_debug() -> Dict[str, Any]:
+    """Handle RAG debug requests to test embedding and search"""
+    try:
+        logger.info("Running RAG debug tests...")
+        
+        debug_results = {}
+        
+        # Test 1: Embedding generation
+        test_query = "workout plan for back pain prevention"
+        logger.info(f"Testing embedding generation for: {test_query}")
+        
+        try:
+            embedding = await rag_service.embedding_service.generate_embedding(test_query)
+            debug_results['embedding_test'] = {
+                'success': embedding is not None,
+                'dimensions': len(embedding) if embedding else 0,
+                'sample_values': embedding[:5] if embedding else None
+            }
+            logger.info(f"Embedding test result: {debug_results['embedding_test']}")
+        except Exception as e:
+            debug_results['embedding_test'] = {
+                'success': False,
+                'error': str(e)
+            }
+        
+        # Test 2: S3 bucket connectivity
+        try:
+            s3_stats = await rag_service.s3_vectors.get_namespace_stats('injuries')
+            debug_results['s3_connectivity'] = {
+                'success': True,
+                'stats': s3_stats
+            }
+            logger.info(f"S3 connectivity test result: {debug_results['s3_connectivity']}")
+        except Exception as e:
+            debug_results['s3_connectivity'] = {
+                'success': False,
+                'error': str(e)
+            }
+        
+        # Test 3: Vector search with lower threshold
+        if debug_results['embedding_test']['success']:
+            try:
+                search_results = await rag_service.s3_vectors.search_vectors(
+                    embedding, 
+                    namespace='injuries', 
+                    top_k=3, 
+                    similarity_threshold=0.0  # Very low threshold to see any matches
+                )
+                debug_results['vector_search'] = {
+                    'success': True,
+                    'results_count': len(search_results),
+                    'results': search_results[:3] if search_results else []
+                }
+                logger.info(f"Vector search test result: {debug_results['vector_search']}")
+            except Exception as e:
+                debug_results['vector_search'] = {
+                    'success': False,
+                    'error': str(e)
+                }
+        
+        # Test 4: Full RAG pipeline
+        try:
+            rag_result = await rag_service.retrieve_relevant_context(
+                query=test_query,
+                namespaces=['injuries'],
+                top_k=2,
+                similarity_threshold=0.0
+            )
+            debug_results['rag_pipeline'] = {
+                'success': True,
+                'context_length': len(rag_result['context']),
+                'sources_count': len(rag_result['sources']),
+                'metadata': rag_result['metadata']
+            }
+            logger.info(f"RAG pipeline test result: {debug_results['rag_pipeline']}")
+        except Exception as e:
+            debug_results['rag_pipeline'] = {
+                'success': False,
+                'error': str(e)
+            }
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(convert_decimals({
+                'success': True,
+                'debug_results': debug_results,
+                'timestamp': datetime.now().isoformat()
+            }))
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in handle_rag_debug: {e}")
+        return create_error_response(500, f'Failed to run RAG debug: {str(e)}')
+
 async def handle_progress_monitoring(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Handle manual progress monitoring requests"""
     try:
@@ -1448,10 +1571,48 @@ async def handle_memory_storage(user_id: str, body: Dict[str, Any]) -> Dict[str,
     try:
         logger.info(f"Memory storage request for user {user_id}")
         
-        conversation_data = body.get('conversation_data', {})
+        # Check if this is a conversation data request or individual memory request
+        conversation_data = body.get('conversation_data')
         
-        # Use the memory service
-        storage_result = await memory_service.store_conversation_memory(user_id, conversation_data)
+        if conversation_data:
+            # Store conversation data and extract memories
+            storage_result = await memory_service.store_conversation_memory(user_id, conversation_data)
+        else:
+            # Store individual memory item
+            memory_id = f"mem_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+            current_time = datetime.utcnow().isoformat()
+            
+            memory_data = {
+                'memory_id': memory_id,
+                'user_id': user_id,
+                'memory_type': body.get('type', 'learning'),
+                'content': body.get('content', ''),
+                'importance_score': body.get('importance', 5),
+                'tags': body.get('tags', []),
+                'context': body.get('metadata', {}).get('context', 'user_created'),
+                'created_at': current_time,
+                'last_accessed': current_time,
+                'access_count': 0
+            }
+            
+            # Store the individual memory
+            stored_memory_id = await memory_service._store_memory(user_id, memory_data, memory_id)
+            
+            # Return in the format expected by frontend (MemoryItem interface)
+            storage_result = {
+                'status': 'success',
+                'data': {
+                    'id': memory_id,
+                    'type': body.get('type', 'learning'),
+                    'content': body.get('content', ''),
+                    'importance': body.get('importance', 5),
+                    'createdAt': current_time,
+                    'lastAccessed': current_time,
+                    'tags': body.get('tags', []),
+                    'metadata': body.get('metadata', {})
+                },
+                'message': 'Memory stored successfully'
+            }
         
         return {
             'statusCode': 200,
@@ -1474,11 +1635,37 @@ async def handle_memory_retrieval(user_id: str, body: Dict[str, Any]) -> Dict[st
         query = body.get('query', '')
         context = body.get('context', {})
         
+        # Allow empty queries to retrieve all memories
         if not query:
-            return create_error_response(400, 'Query is required')
+            query = 'all memories'  # Default query for retrieving all memories
         
         # Use the memory service
         retrieval_result = await memory_service.retrieve_relevant_memories(user_id, query, context)
+        
+        # Format response to match frontend expectations (AIResponse format)
+        memories = retrieval_result.get('memories', [])
+        
+        # Convert memory objects to match MemoryItem interface
+        formatted_memories = []
+        for memory in memories:
+            formatted_memory = {
+                'id': memory.get('memory_id', memory.get('id', '')),
+                'type': memory.get('memory_type', memory.get('type', 'learning')),
+                'content': memory.get('content', ''),
+                'importance': memory.get('importance_score', memory.get('importance', 5)),
+                'createdAt': memory.get('created_at', memory.get('createdAt', '')),
+                'lastAccessed': memory.get('last_accessed', memory.get('lastAccessed', '')),
+                'tags': memory.get('tags', []),
+                'metadata': memory.get('metadata', {})
+            }
+            formatted_memories.append(formatted_memory)
+        
+        response_data = {
+            'success': True,
+            'data': formatted_memories,
+            'total': retrieval_result.get('total_memories', len(formatted_memories)),
+            'relevantCount': retrieval_result.get('relevant_memories', len(formatted_memories))
+        }
         
         return {
             'statusCode': 200,
@@ -1486,7 +1673,7 @@ async def handle_memory_retrieval(user_id: str, body: Dict[str, Any]) -> Dict[st
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps(convert_decimals(retrieval_result))
+            'body': json.dumps(convert_decimals(response_data))
         }
         
     except Exception as e:
@@ -1519,6 +1706,36 @@ async def handle_memory_update(user_id: str, body: Dict[str, Any]) -> Dict[str, 
     except Exception as e:
         logger.error(f"Error in handle_memory_update: {e}")
         return create_error_response(500, 'Failed to update memory')
+
+async def handle_memory_deletion(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle memory deletion requests"""
+    try:
+        logger.info(f"Memory deletion request for user {user_id}")
+        
+        memory_id = body.get('memoryId', '')
+        
+        if not memory_id:
+            return create_error_response(400, 'Memory ID is required')
+        
+        # Use the memory service to delete the memory
+        delete_result = await memory_service.delete_memory(user_id, memory_id)
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'status': 'success',
+                'message': 'Memory deleted successfully',
+                'memory_id': memory_id
+            })
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in handle_memory_deletion: {e}")
+        return create_error_response(500, 'Failed to delete memory')
 
 async def handle_memory_cleanup(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Handle memory cleanup requests"""

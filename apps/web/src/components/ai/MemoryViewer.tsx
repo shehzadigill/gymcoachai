@@ -20,6 +20,9 @@ import {
   CheckCircle,
   AlertCircle,
   Sparkles,
+  X,
+  Target,
+  Settings,
 } from 'lucide-react';
 import { aiService } from '../../lib/ai-service-client';
 import { formatRelativeTime, formatMemoryType } from '../../lib/ai-utils';
@@ -65,7 +68,7 @@ export default function MemoryViewer({
   const [editingMemory, setEditingMemory] = useState<MemoryItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newMemory, setNewMemory] = useState({
-    type: 'general' as MemoryType,
+    type: 'learning' as MemoryType,
     content: '',
     importance: 5,
   });
@@ -83,8 +86,8 @@ export default function MemoryViewer({
       setLoading(true);
       setError(null);
 
-      const response = await aiService.retrieveRelevantMemories(userId, {
-        query: '',
+      const response = await aiService.retrieveRelevantMemories('', {
+        userId: userId,
         context: 'all',
         limit: 100,
         includeMetadata: true,
@@ -220,15 +223,19 @@ export default function MemoryViewer({
 
   const handleAddMemory = async () => {
     try {
-      const response = await aiService.storeConversationMemory(userId, {
+      const response = await aiService.storeConversationMemory({
         type: newMemory.type,
         content: newMemory.content,
         importance: newMemory.importance,
-        context: 'user_created',
+        tags: ['user_created'],
+        metadata: {
+          userId: userId,
+          context: 'user_created',
+        },
       });
 
       setMemories((prev) => [response.data, ...prev]);
-      setNewMemory({ type: 'general', content: '', importance: 5 });
+      setNewMemory({ type: 'learning', content: '', importance: 5 });
       setShowAddForm(false);
     } catch (err: any) {
       console.error('Failed to add memory:', err);
@@ -249,12 +256,15 @@ export default function MemoryViewer({
   };
 
   const getMemoryIcon = (type: MemoryType) => {
-    const icons = {
+    const icons: Record<MemoryType, React.ComponentType<any>> = {
       goal: Target,
       preference: Settings,
       achievement: Star,
       injury: AlertCircle,
-      general: Brain,
+      feedback: Brain,
+      learning: Brain,
+      pattern: Brain,
+      milestone: CheckCircle,
     };
     const IconComponent = icons[type] || Brain;
     return <IconComponent className="w-4 h-4" />;

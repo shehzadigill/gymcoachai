@@ -34,7 +34,7 @@ export function AINotificationHandler({ className = '' }: AINotificationProps) {
     loadAINotifications();
 
     // Set up polling for new notifications
-    const interval = setInterval(loadAINotifications, 30000); // Check every 30 seconds
+    const interval = setInterval(loadAINotifications, 3000000); // Check every 50 minutes
 
     return () => clearInterval(interval);
   }, []);

@@ -179,7 +179,7 @@ export default function AICoachingPreferencesPanel({
       setLoading(true);
       setError(null);
 
-      const response = await aiService.getPersonalizationProfile(userId);
+      const response = await aiService.getPersonalizationProfile();
       setPersonalizationProfile(response.data);
 
       // Update preferences with AI insights
@@ -256,21 +256,21 @@ export default function AICoachingPreferencesPanel({
       setLoading(true);
       setError(null);
 
-      const response = await aiService.analyzeUserPreferences(userId, {
-        currentPreferences: preferences,
-        includeRecommendations: true,
+      const response = await aiService.analyzeUserPreferences({
+        conversationHistory: true,
+        userBehavior: true,
+        feedbackHistory: true,
+        preferences: true,
       });
 
-      if (response.data?.recommendations) {
-        // Apply AI recommendations
-        const recommendations = response.data.recommendations;
-        setPreferences((prev) => ({
+      if (response.data) {
+        // Apply AI analysis to update preferences
+        const profile = response.data;
+        setPreferences((prev: typeof preferences) => ({
           ...prev,
-          coachingStyle: recommendations.coachingStyle || prev.coachingStyle,
-          communicationFrequency:
-            recommendations.communicationFrequency ||
-            prev.communicationFrequency,
-          motivationType: recommendations.motivationType || prev.motivationType,
+          coachingStyle: profile.coachingStyle || prev.coachingStyle,
+          communicationFrequency: prev.communicationFrequency, // Keep current preference
+          motivationType: profile.motivationType || prev.motivationType,
         }));
       }
     } catch (err: any) {

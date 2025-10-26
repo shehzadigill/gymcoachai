@@ -86,6 +86,29 @@ export class AIServiceClient {
     return response.json();
   }
 
+  async updateMemory(
+    userId: string,
+    memoryId: string,
+    updates: Partial<MemoryItem>
+  ): Promise<AIResponse<MemoryItem>> {
+    const response = await apiFetch<Response>('/api/ai/memory/update', {
+      method: 'POST',
+      body: JSON.stringify({ memoryId, ...updates }),
+    });
+    return response.json();
+  }
+
+  async deleteMemory(
+    userId: string,
+    memoryId: string
+  ): Promise<AIResponse<void>> {
+    const response = await apiFetch<Response>('/api/ai/memory/delete', {
+      method: 'POST',
+      body: JSON.stringify({ memoryId }),
+    });
+    return response.json();
+  }
+
   async cleanupOldMemories(): Promise<AIResponse<{ deletedCount: number }>> {
     const response = await apiFetch('/api/ai/memory/cleanup', {
       method: 'POST',
@@ -159,6 +182,47 @@ export class AIServiceClient {
       body: JSON.stringify(feedback),
     });
     return response.json();
+  }
+
+  async getPersonalizationProfile(
+    userId?: string
+  ): Promise<AIResponse<PersonalizationProfile>> {
+    const cacheKey = `personalization:profile:${userId || 'current'}`;
+    const cached = this.getCached<AIResponse<PersonalizationProfile>>(cacheKey);
+    if (cached) return cached;
+
+    // Use the analyze endpoint to get AI-driven preferences analysis
+    const result = await this.analyzeUserPreferences({
+      conversationHistory: true,
+      userBehavior: true,
+      feedbackHistory: true,
+      preferences: true,
+    });
+
+    this.setCache(cacheKey, result);
+    return result;
+  }
+
+  async updatePersonalizationProfile(
+    userId: string,
+    preferences: Partial<PersonalizationProfile>
+  ): Promise<AIResponse<void>> {
+    // Submit as feedback to the personalization system
+    await this.submitPersonalizationFeedback({
+      type: 'preferences_update',
+      rating: 5, // Neutral rating for preferences update
+      comments: JSON.stringify(preferences),
+    });
+
+    return {
+      success: true,
+      data: undefined,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        processingTime: 0,
+        confidence: 1.0,
+      },
+    };
   }
 
   // Workout Intelligence APIs
@@ -565,9 +629,13 @@ export const {
   storeConversationMemory,
   retrieveRelevantMemories,
   updateMemoryImportance,
+  updateMemory,
+  deleteMemory,
   cleanupOldMemories,
   getMemorySummary,
   analyzeUserPreferences,
+  getPersonalizationProfile,
+  updatePersonalizationProfile,
   determineCoachingStyle,
   adaptCoachingMessage,
   submitPersonalizationFeedback,

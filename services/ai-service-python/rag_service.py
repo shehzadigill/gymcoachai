@@ -17,9 +17,9 @@ class RAGService:
         self.s3_vectors = S3VectorsService()
         self.embedding_service = EmbeddingService()
         
-        # RAG configuration
+                # RAG configuration
         self.default_top_k = 5
-        self.default_similarity_threshold = 0.01  # Very low threshold to test if we can get results
+        self.default_similarity_threshold = 0.6  # Lowered to 0.6 for better recall
         self.max_context_length = 4000  # characters
         
         # Namespaces for different knowledge types
