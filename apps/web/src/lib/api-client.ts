@@ -117,7 +117,52 @@ export const api = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiFetch<any>(`/api/analytics/body-measurements/${id}${query}`);
+    const response = await apiFetch<any[]>(
+      `/api/analytics/body-measurements/${id}${query}`
+    );
+    const measurements = (await response.json()) || [];
+    // Group measurements by date for backward compatibility
+    const groupedByDate: { [key: string]: any } = {};
+
+    measurements.forEach((measurement: any) => {
+      const date = measurement.measured_at || measurement.measuredAt;
+      const dateKey = new Date(date).toDateString();
+
+      if (!groupedByDate[dateKey]) {
+        groupedByDate[dateKey] = {
+          date: date,
+          createdAt: date,
+        };
+      }
+
+      // Map measurement types to legacy fields
+      switch (measurement.measurement_type || measurement.measurementType) {
+        case 'weight':
+          groupedByDate[dateKey].weight = measurement.value;
+          break;
+        case 'body_fat':
+          groupedByDate[dateKey].bodyFat = measurement.value;
+          break;
+        case 'muscle_mass':
+          groupedByDate[dateKey].muscleMass = measurement.value;
+          break;
+        default:
+          // Store other measurements in a measurements object
+          if (!groupedByDate[dateKey].measurements) {
+            groupedByDate[dateKey].measurements = {};
+          }
+          groupedByDate[dateKey].measurements[
+            measurement.measurement_type || measurement.measurementType
+          ] = measurement.value;
+          break;
+      }
+    });
+
+    // Convert to array and sort by date (newest first)
+    return Object.values(groupedByDate).sort(
+      (a: any, b: any) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
   },
 
   async createBodyMeasurement(data: any, userId?: string) {
@@ -292,6 +337,52 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(preferences),
     });
+  },
+
+  // Separated preferences methods for cleaner architecture
+  async getUserPreferences(userId?: string) {
+    try {
+      const id = userId || (await getCurrentUserId());
+      return apiFetch<any>(`/api/user-profiles/profile/preferences/${id}`);
+    } catch (error) {
+      console.warn('API Client: User preferences fetch failed:', error);
+      return null;
+    }
+  },
+
+  async updateUserPreferencesSeparate(preferences: any, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    return apiFetch<any>(`/api/user-profiles/profile/preferences/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  },
+
+  async updateDailyGoalsSeparate(
+    dailyGoals: {
+      calories: number;
+      water: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+    },
+    userId?: string
+  ) {
+    return this.updateUserPreferencesSeparate(
+      {
+        dailyGoals: dailyGoals,
+      },
+      userId
+    );
+  },
+
+  async updateAIPreferences(aiPreferences: any, userId?: string) {
+    return this.updateUserPreferencesSeparate(
+      {
+        aiTrainer: aiPreferences,
+      },
+      userId
+    );
   },
 
   // Workout endpoints

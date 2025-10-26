@@ -21,6 +21,22 @@ import {
 } from 'lucide-react';
 import { aiService } from '../../lib/ai-service-client';
 import { ConfidenceIndicator } from '../ai/visualizations';
+import { api } from '../../lib/api-client';
+
+// AI Preferences interface for the user profile service
+interface AIPreferences {
+  coachingStyle: string;
+  communicationFrequency: string;
+  motivationType: string;
+  focusAreas: string[];
+  injuryHistory: string[];
+  equipmentAvailable: string[];
+  workoutDurationPreference: number;
+  workoutDaysPerWeek: number;
+  mealPreferences: string[];
+  allergies: string[];
+  supplementPreferences: string[];
+}
 
 interface AICoachingPreferencesPanelProps {
   userId: string;
@@ -151,7 +167,7 @@ export default function AICoachingPreferencesPanel({
   const [success, setSuccess] = useState<string | null>(null);
   const [personalizationProfile, setPersonalizationProfile] =
     useState<any>(null);
-  const [preferences, setPreferences] = useState({
+  const [preferences, setPreferences] = useState<AIPreferences>({
     coachingStyle: 'motivational',
     communicationFrequency: 'weekly',
     motivationType: 'achievement',
@@ -179,47 +195,47 @@ export default function AICoachingPreferencesPanel({
       setLoading(true);
       setError(null);
 
-      const response = await aiService.getPersonalizationProfile();
-      setPersonalizationProfile(response.data);
+      // Fetch AI preferences from user profile service
+      const userPreferences = await api.getUserPreferences(userId);
 
-      // Update preferences with AI insights
-      if (response.data) {
-        setPreferences((prev) => ({
+      if (userPreferences?.aiTrainer) {
+        setPreferences((prev: AIPreferences) => ({
           ...prev,
-          coachingStyle: response.data.coachingStyle || prev.coachingStyle,
-          communicationFrequency:
-            response.data.communicationFrequency || prev.communicationFrequency,
-          motivationType: response.data.motivationType || prev.motivationType,
+          ...userPreferences.aiTrainer,
         }));
       }
     } catch (err: any) {
-      console.error('Failed to fetch personalization profile:', err);
+      console.error('Failed to fetch AI preferences:', err);
       setError(err.message || 'Failed to load AI preferences');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePreferenceChange = (key: string, value: any) => {
-    setPreferences((prev) => ({
+  const handlePreferenceChange = (key: keyof AIPreferences, value: any) => {
+    setPreferences((prev: AIPreferences) => ({
       ...prev,
       [key]: value,
     }));
   };
 
   const handleArrayPreferenceChange = (
-    key: string,
+    key: keyof AIPreferences,
     value: string,
     checked: boolean
   ) => {
-    setPreferences((prev) => ({
-      ...prev,
+    const updatedPreferences = {
+      ...preferences,
       [key]: checked
-        ? [...(prev[key as keyof typeof prev] as string[]), value]
-        : (prev[key as keyof typeof prev] as string[]).filter(
-            (item) => item !== value
-          ),
-    }));
+        ? [...(preferences[key] as string[]), value]
+        : (preferences[key] as string[]).filter((item) => item !== value),
+    };
+    setPreferences(updatedPreferences);
+    
+    // Immediately notify parent component for real-time sync
+    if (onPreferencesUpdate) {
+      onPreferencesUpdate(updatedPreferences);
+    }
   };
 
   const handleSavePreferences = async () => {
@@ -228,17 +244,29 @@ export default function AICoachingPreferencesPanel({
       setError(null);
       setSuccess(null);
 
-      // Update personalization profile
-      await aiService.updatePersonalizationProfile(userId, {
-        coachingStyle: preferences.coachingStyle,
-        communicationFrequency: preferences.communicationFrequency,
-        motivationType: preferences.motivationType,
-        preferences: preferences,
-      });
+      console.log('💾 Saving AI preferences:', preferences);
 
-      // Update user preferences
+      // Save preferences to user profile service
+      const saveResult = await api.updateAIPreferences(preferences);
+      
+      console.log('✅ Save result:', saveResult);
+
+      // Immediately update parent component with the saved preferences
       if (onPreferencesUpdate) {
         onPreferencesUpdate(preferences);
+      }
+
+      // Also submit feedback to AI service about preference changes
+      // This helps the AI learn and improve personalization
+      try {
+        await aiService.submitPersonalizationFeedback({
+          type: 'preference_update',
+          rating: 5, // User actively updated preferences
+          comments: `User updated AI preferences: coaching style=${preferences.coachingStyle}, communication=${preferences.communicationFrequency}, motivation=${preferences.motivationType}`,
+        });
+      } catch (feedbackError) {
+        console.warn('Failed to submit preference feedback:', feedbackError);
+        // Don't fail the whole operation if feedback fails
       }
 
       setSuccess('AI coaching preferences updated successfully!');
@@ -266,12 +294,34 @@ export default function AICoachingPreferencesPanel({
       if (response.data) {
         // Apply AI analysis to update preferences
         const profile = response.data;
-        setPreferences((prev: typeof preferences) => ({
-          ...prev,
-          coachingStyle: profile.coachingStyle || prev.coachingStyle,
-          communicationFrequency: prev.communicationFrequency, // Keep current preference
-          motivationType: profile.motivationType || prev.motivationType,
-        }));
+        const oldPreferences = { ...preferences };
+        const newPreferences = {
+          ...preferences,
+          coachingStyle: profile.coachingStyle || preferences.coachingStyle,
+          communicationFrequency: preferences.communicationFrequency, // Keep current preference
+          motivationType: profile.motivationType || preferences.motivationType,
+        };
+
+        setPreferences(newPreferences);
+
+        // Submit feedback about AI analysis usage
+        try {
+          await aiService.submitPersonalizationFeedback({
+            type: 'ai_analysis_used',
+            rating: 4, // User engaged with AI analysis feature
+            comments: `User requested AI preference analysis. Changes suggested: ${
+              oldPreferences.coachingStyle !== newPreferences.coachingStyle
+                ? `coaching style from ${oldPreferences.coachingStyle} to ${newPreferences.coachingStyle}`
+                : 'no coaching style change'
+            }, ${
+              oldPreferences.motivationType !== newPreferences.motivationType
+                ? `motivation type from ${oldPreferences.motivationType} to ${newPreferences.motivationType}`
+                : 'no motivation type change'
+            }`,
+          });
+        } catch (feedbackError) {
+          console.warn('Failed to submit analysis feedback:', feedbackError);
+        }
       }
     } catch (err: any) {
       console.error('Failed to analyze preferences:', err);

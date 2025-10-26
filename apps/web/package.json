@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "build:static": "bash -c 'cp .env.static .env.production.local && rm -rf ../api.bak && mv src/app/api ../api.bak && NEXT_EXPORT=true next build --turbopack; RESULT=$?; mv ../api.bak src/app/api 2>/dev/null || true; exit $RESULT'",
+    "build:static": "bash -c 'cp .env.static .env.production.local && rm -rf ../api.bak && if [ -d \"src/app/api\" ]; then mv src/app/api ../api.bak; fi && NEXT_EXPORT=true next build --turbopack; RESULT=$?; if [ -d \"../api.bak\" ]; then mv ../api.bak src/app/api; fi; exit $RESULT'",
     "start": "next start",
     "lint": "eslint"
   },

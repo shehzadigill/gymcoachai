@@ -21,6 +21,7 @@ import {useLocale} from '../contexts/LocaleContext';
 import * as notificationService from '../services/notifications';
 import {useTheme} from '../theme';
 import {pickImage, uploadImageToS3, getFileInfo} from '../services/imageUpload';
+import {LegacyBodyMeasurement} from '../types';
 
 export default function ProfileScreen() {
   const {t} = useTranslation();
@@ -29,7 +30,7 @@ export default function ProfileScreen() {
   const {user, userProfile, signOut, updateProfile, isLoading, refreshUser} =
     useAuth();
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'goals' | 'ai-trainer' | 'settings'
+    'profile' | 'goals' | 'measurements' | 'ai-trainer' | 'settings'
   >('profile');
   const [editing, setEditing] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -60,13 +61,29 @@ export default function ProfileScreen() {
     nutritionReminders: true,
     progressUpdates: true,
   });
+  const [userPreferences, setUserPreferences] = useState<any>(null);
+  const [aiPreferences, setLocalPreferences] = useState({
+    enabled: true,
+    coachingStyle: 'balanced',
+    communicationFrequency: 'daily',
+    focusAreas: ['strength', 'cardio'],
+  });
+  const [bodyMeasurements, setBodyMeasurements] = useState<
+    LegacyBodyMeasurement[]
+  >([]);
+  const [currentWeight, setCurrentWeight] = useState('');
+  const [currentBodyFat, setCurrentBodyFat] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingGoals, setLoadingGoals] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        await Promise.all([loadNotificationSettings(), loadDailyGoals()]);
+        await Promise.all([
+          loadNotificationSettings(),
+          loadUserPreferences(),
+          loadBodyMeasurements(),
+        ]);
         loadUserProfileData();
       } catch (error) {
         console.error('Error loading profile screen data:', error);
@@ -95,7 +112,7 @@ export default function ProfileScreen() {
         email: user?.email || '',
         bio: userProfile.bio || '',
         height: userProfile.height?.toString() || '',
-        weight: userProfile.weight?.toString() || '',
+        weight: '', // Weight is now handled separately in body measurements
         fitnessLevel: userProfile.fitnessLevel || 'beginner',
         birthDate: userProfile.birthDate || '',
         gender: userProfile.gender || '',
@@ -105,52 +122,56 @@ export default function ProfileScreen() {
       if (userProfile.goals && userProfile.goals.length > 0) {
         setFitnessGoals(userProfile.goals);
       }
-
-      // Update daily goals if they exist
-      if (userProfile.preferences?.dailyGoals) {
-        setDailyGoals(userProfile.preferences.dailyGoals);
-      }
     } else {
       console.log('No userProfile data available');
     }
   };
 
-  const loadNotificationSettings = async () => {
+  const loadUserPreferences = async () => {
     try {
-      const settings = await notificationService.getNotificationSettings();
-      setNotificationSettings(settings);
+      const preferences = await apiClient.getUserPreferences();
+      if (preferences) {
+        setUserPreferences(preferences);
+
+        // Update daily goals from preferences
+        if (preferences.dailyGoals) {
+          setDailyGoals(preferences.dailyGoals);
+        }
+
+        // Update AI preferences
+        if (preferences.aiTrainer) {
+          setLocalPreferences(preferences.aiTrainer);
+        }
+      }
     } catch (error) {
-      console.error('Error loading notification settings:', error);
+      console.error('Error loading user preferences:', error);
     }
   };
 
-  const loadDailyGoals = async () => {
+  const loadBodyMeasurements = async () => {
     try {
-      setLoadingGoals(true);
+      const measurements = await apiClient.getBodyMeasurements();
+      setBodyMeasurements(measurements);
 
-      // First try to load from user profile preferences (saved goals)
-      if (userProfile?.preferences?.dailyGoals) {
-        setDailyGoals(userProfile.preferences.dailyGoals);
-        return;
-      }
-
-      // Fall back to nutrition stats API if no saved goals
-      const nutritionStats = await apiClient.getNutritionStats();
-      if (nutritionStats) {
-        setDailyGoals({
-          calories:
-            nutritionStats.daily_goal || nutritionStats.calorieGoal || 2000,
-          water: nutritionStats.water_goal || 8,
-          protein: nutritionStats.protein_goal || 150,
-          carbs: nutritionStats.carb_goal || 200,
-          fat: nutritionStats.fat_goal || 65,
-        });
+      // Set current weight from latest measurement
+      if (measurements && measurements.length > 0) {
+        const latest = measurements[0];
+        setCurrentWeight(latest.weight?.toString() || '');
+        setCurrentBodyFat(latest.bodyFat?.toString() || '');
       }
     } catch (error) {
-      console.error('Error loading daily goals:', error);
-      // Keep default values if API fails
-    } finally {
-      setLoadingGoals(false);
+      console.error('Error loading body measurements:', error);
+    }
+  };
+
+  const loadNotificationSettings = async () => {
+    try {
+      // TODO: Implement getNotificationSettings in notification service
+      // const settings = await notificationService.getNotificationSettings();
+      // setNotificationSettings(settings);
+      console.log('Loading notification settings (TODO: implement)');
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
     }
   };
 
@@ -161,8 +182,8 @@ export default function ProfileScreen() {
       const updatedData = {
         firstName: profileData.firstName.trim(),
         lastName: profileData.lastName.trim(),
+        bio: profileData.bio?.trim(),
         height: profileData.height ? parseFloat(profileData.height) : undefined,
-        weight: profileData.weight ? parseFloat(profileData.weight) : undefined,
         fitnessLevel: profileData.fitnessLevel as
           | 'beginner'
           | 'intermediate'
@@ -234,8 +255,8 @@ export default function ProfileScreen() {
   const saveDailyGoals = async () => {
     setSaving(true);
     try {
-      // Save daily goals to backend using dedicated API method
-      await apiClient.updateDailyGoals(dailyGoals);
+      // Save daily goals using the separated preferences API
+      await apiClient.updateDailyGoalsSeparate(dailyGoals);
       console.log('Daily goals saved successfully:', dailyGoals);
       Alert.alert('Success', 'Daily goals saved successfully!');
     } catch (error) {
@@ -245,24 +266,117 @@ export default function ProfileScreen() {
       setSaving(false);
     }
   };
+
+  const saveBodyMeasurement = async () => {
+    if (!currentWeight && !currentBodyFat) {
+      Alert.alert(
+        'Error',
+        'Please enter at least weight or body fat percentage',
+      );
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const promises = [];
+
+      // Create weight measurement if provided
+      if (currentWeight) {
+        const weightData = {
+          measurementType: 'weight',
+          value: parseFloat(currentWeight),
+          unit: 'kg', // You might want to make this configurable
+          notes: 'Weight measurement from profile',
+        };
+        promises.push(apiClient.createBodyMeasurement(weightData));
+      }
+
+      // Create body fat measurement if provided
+      if (currentBodyFat) {
+        const bodyFatData = {
+          measurementType: 'body_fat',
+          value: parseFloat(currentBodyFat),
+          unit: '%',
+          notes: 'Body fat measurement from profile',
+        };
+        promises.push(apiClient.createBodyMeasurement(bodyFatData));
+      }
+
+      await Promise.all(promises);
+
+      // Reload measurements to show the new ones
+      await loadBodyMeasurements();
+
+      // Clear the inputs
+      setCurrentWeight('');
+      setCurrentBodyFat('');
+
+      Alert.alert('Success', 'Body measurement saved successfully!');
+    } catch (error) {
+      console.error('Error saving body measurement:', error);
+      Alert.alert(
+        'Error',
+        'Failed to save body measurement. Please try again.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveAIPreferences = async () => {
+    try {
+      setSaving(true);
+
+      // Save preferences to user profile service
+      await apiClient.updateAIPreferences(aiPreferences);
+
+      // Also submit feedback to AI service about preference changes
+      try {
+        await apiClient.submitPersonalizationFeedback({
+          type: 'preference_update',
+          rating: 5, // User actively updated preferences
+          comments: `Mobile user updated AI preferences: coaching style=${
+            aiPreferences.coachingStyle
+          }, communication=${
+            aiPreferences.communicationFrequency
+          }, focus areas=${aiPreferences.focusAreas.join(', ')}, enabled=${
+            aiPreferences.enabled
+          }`,
+        });
+      } catch (feedbackError) {
+        console.warn('Failed to submit preference feedback:', feedbackError);
+        // Don't fail the whole operation if feedback fails
+      }
+
+      Alert.alert('Success', 'AI trainer preferences saved successfully!');
+    } catch (error) {
+      console.error('Error saving AI preferences:', error);
+      Alert.alert('Error', 'Failed to save AI preferences. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
   const handleNotificationToggle = async (key: string, value: boolean) => {
     try {
       const newSettings = {...notificationSettings, [key]: value};
       setNotificationSettings(newSettings);
 
-      await notificationService.saveNotificationSettings(newSettings);
+      // TODO: Implement saveNotificationSettings in notification service
+      // await notificationService.saveNotificationSettings(newSettings);
 
       if (key === 'nutritionReminders') {
         if (value) {
           // Enable nutrition reminders with default times
-          notificationService.scheduleNutritionReminders([
-            '08:00',
-            '13:00',
-            '19:00',
-          ]);
+          // TODO: Implement scheduleNutritionReminders in notification service
+          // notificationService.scheduleNutritionReminders([
+          //   '08:00',
+          //   '13:00',
+          //   '19:00',
+          // ]);
         } else {
           // Disable nutrition reminders
-          notificationService.cancelNutritionReminders();
+          // TODO: Implement cancelNutritionReminders in notification service
+          // notificationService.cancelNutritionReminders();
         }
       }
     } catch (error) {
@@ -477,6 +591,17 @@ export default function ProfileScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.tab, activeTab === 'measurements' && styles.activeTab]}
+          onPress={() => setActiveTab('measurements')}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'measurements' && styles.activeTabText,
+            ]}>
+            Body Measurements
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'ai-trainer' && styles.activeTab]}
           onPress={() => setActiveTab('ai-trainer')}>
           <Text
@@ -608,19 +733,6 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.formField}>
-                  <Text style={styles.label}>{t('profile.weight_kg')}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={profileData.weight}
-                    onChangeText={text =>
-                      setProfileData(prev => ({...prev, weight: text}))
-                    }
-                    placeholder={t('profile.weight_kg')}
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View style={styles.formField}>
                   <Text style={styles.label}>{t('profile.fitness_level')}</Text>
                   <View style={styles.fitnessLevelContainer}>
                     {[
@@ -727,17 +839,6 @@ export default function ProfileScreen() {
                     <Text style={styles.infoValue}>
                       {profileData.height
                         ? `${profileData.height} cm`
-                        : t('profile.not_set')}
-                    </Text>
-                  </View>
-
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>
-                      {t('profile.weight_kg')}:
-                    </Text>
-                    <Text style={styles.infoValue}>
-                      {profileData.weight
-                        ? `${profileData.weight} kg`
                         : t('profile.not_set')}
                     </Text>
                   </View>
@@ -896,8 +997,87 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* Body Measurements Tab Content */}
+        {activeTab === 'measurements' && (
+          <>
+            {/* Add New Measurement */}
+            <Card style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Add New Measurement</Text>
+
+              <View style={styles.formField}>
+                <Text style={styles.label}>Weight (kg)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={currentWeight}
+                  onChangeText={setCurrentWeight}
+                  placeholder="Enter your current weight"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.formField}>
+                <Text style={styles.label}>Body Fat (%)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={currentBodyFat}
+                  onChangeText={setCurrentBodyFat}
+                  placeholder="Enter your body fat percentage"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <Button
+                title={saving ? 'Saving...' : 'Save Measurement'}
+                onPress={saveBodyMeasurement}
+                disabled={saving}
+                style={styles.saveButton}
+              />
+            </Card>
+
+            {/* Measurement History */}
+            <Card style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Recent Measurements</Text>
+
+              {bodyMeasurements.length > 0 ? (
+                bodyMeasurements.slice(0, 5).map((measurement, index) => (
+                  <View key={index} style={styles.measurementItem}>
+                    <View style={styles.measurementDate}>
+                      <Text style={styles.measurementDateText}>
+                        {new Date(measurement.date).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <View style={styles.measurementValues}>
+                      {measurement.weight && (
+                        <Text style={styles.measurementText}>
+                          Weight: {measurement.weight} kg
+                        </Text>
+                      )}
+                      {measurement.bodyFat && (
+                        <Text style={styles.measurementText}>
+                          Body Fat: {measurement.bodyFat}%
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noDataText}>
+                  No measurements recorded yet. Add your first measurement
+                  above!
+                </Text>
+              )}
+            </Card>
+          </>
+        )}
+
         {/* AI Trainer Tab Content */}
-        {activeTab === 'ai-trainer' && <AITrainerTabContent />}
+        {activeTab === 'ai-trainer' && (
+          <AITrainerTabContent
+            preferences={aiPreferences}
+            onSave={saveAIPreferences}
+            onUpdate={setLocalPreferences}
+          />
+        )}
 
         {/* Settings Tab Content */}
         {activeTab === 'settings' && (
@@ -1070,21 +1250,31 @@ export default function ProfileScreen() {
 }
 
 // AI Trainer Tab Content Component
-function AITrainerTabContent() {
+interface AITrainerTabProps {
+  preferences: any;
+  onSave: () => Promise<void>;
+  onUpdate: (preferences: any) => void;
+}
+
+function AITrainerTabContent({
+  preferences,
+  onSave,
+  onUpdate,
+}: AITrainerTabProps) {
   const {t} = useTranslation();
-  const [aiPreferences, setAiPreferences] = useState({
-    enabled: false,
-    coachingStyle: 'balanced' as
-      | 'motivational'
-      | 'strict'
-      | 'balanced'
-      | 'technical',
-    communicationFrequency: 'on-demand' as 'daily' | 'weekly' | 'on-demand',
-    focusAreas: [] as string[],
-    injuryHistory: [] as string[],
-    equipmentAvailable: [] as string[],
-    workoutDurationPreference: 60,
-    workoutDaysPerWeek: 3,
+  const [localPreferences, setLocalPreferences] = useState({
+    enabled: preferences?.enabled || false,
+    coachingStyle:
+      preferences?.coachingStyle ||
+      ('balanced' as 'motivational' | 'strict' | 'balanced' | 'technical'),
+    communicationFrequency:
+      preferences?.communicationFrequency ||
+      ('on-demand' as 'daily' | 'weekly' | 'on-demand'),
+    focusAreas: preferences?.focusAreas || ([] as string[]),
+    injuryHistory: preferences?.injuryHistory || ([] as string[]),
+    equipmentAvailable: preferences?.equipmentAvailable || ([] as string[]),
+    workoutDurationPreference: preferences?.workoutDurationPreference || 60,
+    workoutDaysPerWeek: preferences?.workoutDaysPerWeek || 3,
     mealPreferences: [] as string[],
     allergies: [] as string[],
     supplementPreferences: [] as string[],
@@ -1172,7 +1362,7 @@ function AITrainerTabContent() {
 
   const addItem = (type: keyof typeof newItem, value: string) => {
     if (value.trim()) {
-      const updatedPreferences = {...aiPreferences};
+      const updatedPreferences = {...localPreferences};
       switch (type) {
         case 'focusArea':
           updatedPreferences.focusAreas = [
@@ -1211,49 +1401,56 @@ function AITrainerTabContent() {
           ];
           break;
       }
-      setAiPreferences(updatedPreferences);
+      setLocalPreferences(updatedPreferences);
       setNewItem({...newItem, [type]: ''});
     }
   };
 
   const removeItem = (type: keyof typeof newItem, index: number) => {
-    const updatedPreferences = {...aiPreferences};
+    const updatedPreferences = {...localPreferences};
     switch (type) {
       case 'focusArea':
         updatedPreferences.focusAreas = updatedPreferences.focusAreas.filter(
-          (_, i) => i !== index,
+          (_: any, i: number) => i !== index,
         );
         break;
       case 'injury':
         updatedPreferences.injuryHistory =
-          updatedPreferences.injuryHistory.filter((_, i) => i !== index);
+          updatedPreferences.injuryHistory.filter(
+            (_: any, i: number) => i !== index,
+          );
         break;
       case 'equipment':
         updatedPreferences.equipmentAvailable =
-          updatedPreferences.equipmentAvailable.filter((_, i) => i !== index);
+          updatedPreferences.equipmentAvailable.filter(
+            (_: any, i: number) => i !== index,
+          );
         break;
       case 'mealPreference':
         updatedPreferences.mealPreferences =
-          updatedPreferences.mealPreferences.filter((_, i) => i !== index);
+          updatedPreferences.mealPreferences.filter(
+            (_: any, i: number) => i !== index,
+          );
         break;
       case 'allergy':
         updatedPreferences.allergies = updatedPreferences.allergies.filter(
-          (_, i) => i !== index,
+          (_: any, i: number) => i !== index,
         );
         break;
       case 'supplement':
         updatedPreferences.supplementPreferences =
           updatedPreferences.supplementPreferences.filter(
-            (_, i) => i !== index,
+            (_: any, i: number) => i !== index,
           );
         break;
     }
-    setAiPreferences(updatedPreferences);
+    setLocalPreferences(updatedPreferences);
   };
 
-  const updatePreference = (key: keyof typeof aiPreferences, value: any) => {
-    const updatedPreferences = {...aiPreferences, [key]: value};
-    setAiPreferences(updatedPreferences);
+  const updatePreference = (key: keyof typeof localPreferences, value: any) => {
+    const updatedPreferences = {...localPreferences, [key]: value};
+    setLocalPreferences(updatedPreferences);
+    onUpdate(updatedPreferences);
   };
 
   return (
@@ -1274,13 +1471,13 @@ function AITrainerTabContent() {
             </Text>
           </View>
           <Switch
-            value={aiPreferences.enabled}
+            value={localPreferences.enabled}
             onValueChange={value => updatePreference('enabled', value)}
           />
         </View>
       </Card>
 
-      {aiPreferences.enabled && (
+      {localPreferences.enabled && (
         <>
           {/* Coaching Preferences */}
           <Card style={styles.sectionCard}>
@@ -1297,14 +1494,14 @@ function AITrainerTabContent() {
                       key={style}
                       style={[
                         styles.pickerOption,
-                        aiPreferences.coachingStyle === style &&
+                        localPreferences.coachingStyle === style &&
                           styles.selectedPickerOption,
                       ]}
                       onPress={() => updatePreference('coachingStyle', style)}>
                       <Text
                         style={[
                           styles.pickerOptionText,
-                          aiPreferences.coachingStyle === style &&
+                          localPreferences.coachingStyle === style &&
                             styles.selectedPickerOptionText,
                         ]}>
                         {t(`profile.ai_trainer.coaching_styles.${style}`)}
@@ -1325,7 +1522,7 @@ function AITrainerTabContent() {
                     key={frequency}
                     style={[
                       styles.pickerOption,
-                      aiPreferences.communicationFrequency === frequency &&
+                      localPreferences.communicationFrequency === frequency &&
                         styles.selectedPickerOption,
                     ]}
                     onPress={() =>
@@ -1334,7 +1531,7 @@ function AITrainerTabContent() {
                     <Text
                       style={[
                         styles.pickerOptionText,
-                        aiPreferences.communicationFrequency === frequency &&
+                        localPreferences.communicationFrequency === frequency &&
                           styles.selectedPickerOptionText,
                       ]}>
                       {t(`profile.${frequency}`)}
@@ -1356,14 +1553,14 @@ function AITrainerTabContent() {
                     key={option.key}
                     style={[
                       styles.tagOption,
-                      aiPreferences.focusAreas.includes(option.key) &&
+                      localPreferences.focusAreas.includes(option.key) &&
                         styles.selectedTagOption,
                     ]}
                     onPress={() => {
-                      if (aiPreferences.focusAreas.includes(option.key)) {
+                      if (localPreferences.focusAreas.includes(option.key)) {
                         removeItem(
                           'focusArea',
-                          aiPreferences.focusAreas.indexOf(option.key),
+                          localPreferences.focusAreas.indexOf(option.key),
                         );
                       } else {
                         addItem('focusArea', option.key);
@@ -1372,7 +1569,7 @@ function AITrainerTabContent() {
                     <Text
                       style={[
                         styles.tagOptionText,
-                        aiPreferences.focusAreas.includes(option.key) &&
+                        localPreferences.focusAreas.includes(option.key) &&
                           styles.selectedTagOptionText,
                       ]}>
                       {option.label}
@@ -1396,16 +1593,19 @@ function AITrainerTabContent() {
                     key={option.key}
                     style={[
                       styles.tagOption,
-                      aiPreferences.equipmentAvailable.includes(option.key) &&
-                        styles.selectedTagOption,
+                      localPreferences.equipmentAvailable.includes(
+                        option.key,
+                      ) && styles.selectedTagOption,
                     ]}
                     onPress={() => {
                       if (
-                        aiPreferences.equipmentAvailable.includes(option.key)
+                        localPreferences.equipmentAvailable.includes(option.key)
                       ) {
                         removeItem(
                           'equipment',
-                          aiPreferences.equipmentAvailable.indexOf(option.key),
+                          localPreferences.equipmentAvailable.indexOf(
+                            option.key,
+                          ),
                         );
                       } else {
                         addItem('equipment', option.key);
@@ -1414,8 +1614,9 @@ function AITrainerTabContent() {
                     <Text
                       style={[
                         styles.tagOptionText,
-                        aiPreferences.equipmentAvailable.includes(option.key) &&
-                          styles.selectedTagOptionText,
+                        localPreferences.equipmentAvailable.includes(
+                          option.key,
+                        ) && styles.selectedTagOptionText,
                       ]}>
                       {option.label}
                     </Text>
@@ -1437,7 +1638,7 @@ function AITrainerTabContent() {
               </Text>
               <TextInput
                 style={styles.input}
-                value={aiPreferences.workoutDurationPreference.toString()}
+                value={localPreferences.workoutDurationPreference.toString()}
                 onChangeText={text =>
                   updatePreference(
                     'workoutDurationPreference',
@@ -1455,7 +1656,7 @@ function AITrainerTabContent() {
               </Text>
               <TextInput
                 style={styles.input}
-                value={aiPreferences.workoutDaysPerWeek.toString()}
+                value={localPreferences.workoutDaysPerWeek.toString()}
                 onChangeText={text =>
                   updatePreference('workoutDaysPerWeek', parseInt(text) || 3)
                 }
@@ -1479,14 +1680,16 @@ function AITrainerTabContent() {
                     key={option.key}
                     style={[
                       styles.tagOption,
-                      aiPreferences.mealPreferences.includes(option.key) &&
+                      localPreferences.mealPreferences.includes(option.key) &&
                         styles.selectedTagOption,
                     ]}
                     onPress={() => {
-                      if (aiPreferences.mealPreferences.includes(option.key)) {
+                      if (
+                        localPreferences.mealPreferences.includes(option.key)
+                      ) {
                         removeItem(
                           'mealPreference',
-                          aiPreferences.mealPreferences.indexOf(option.key),
+                          localPreferences.mealPreferences.indexOf(option.key),
                         );
                       } else {
                         addItem('mealPreference', option.key);
@@ -1495,7 +1698,7 @@ function AITrainerTabContent() {
                     <Text
                       style={[
                         styles.tagOptionText,
-                        aiPreferences.mealPreferences.includes(option.key) &&
+                        localPreferences.mealPreferences.includes(option.key) &&
                           styles.selectedTagOptionText,
                       ]}>
                       {option.label}
@@ -1524,7 +1727,7 @@ function AITrainerTabContent() {
                 </TouchableOpacity>
               </View>
               <View style={styles.tagsContainer}>
-                {aiPreferences.allergies.map((allergy, index) => (
+                {localPreferences.allergies.map((allergy, index) => (
                   <View key={index} style={styles.tag}>
                     <Text style={styles.tagText}>{allergy}</Text>
                     <TouchableOpacity
@@ -1562,7 +1765,7 @@ function AITrainerTabContent() {
                 </TouchableOpacity>
               </View>
               <View style={styles.tagsContainer}>
-                {aiPreferences.supplementPreferences.map(
+                {localPreferences.supplementPreferences.map(
                   (supplement, index) => (
                     <View key={index} style={styles.tag}>
                       <Text style={styles.tagText}>{supplement}</Text>
@@ -1599,16 +1802,18 @@ function AITrainerTabContent() {
               </TouchableOpacity>
             </View>
             <View style={styles.tagsContainer}>
-              {aiPreferences.injuryHistory.map((injury, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>{injury}</Text>
-                  <TouchableOpacity
-                    onPress={() => removeItem('injury', index)}
-                    style={styles.removeTagButton}>
-                    <Text style={styles.removeTagButtonText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+              {localPreferences.injuryHistory.map(
+                (injury: any, index: number) => (
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>{injury}</Text>
+                    <TouchableOpacity
+                      onPress={() => removeItem('injury', index)}
+                      style={styles.removeTagButton}>
+                      <Text style={styles.removeTagButtonText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ),
+              )}
             </View>
           </Card>
         </>
@@ -2136,5 +2341,38 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Body measurements styles
+  measurementItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  measurementDate: {
+    flex: 1,
+  },
+  measurementDateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  measurementValues: {
+    flex: 2,
+    alignItems: 'flex-end',
+  },
+  measurementText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 2,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#9ca3af',
+    textAlign: 'center',
+    padding: 20,
+    fontStyle: 'italic',
   },
 });

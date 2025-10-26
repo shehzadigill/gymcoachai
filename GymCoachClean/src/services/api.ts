@@ -10,6 +10,7 @@ import {
   Analytics,
   StrengthProgress,
   BodyMeasurement,
+  LegacyBodyMeasurement,
   Milestone,
   Achievement,
   ApiResponse,
@@ -413,6 +414,41 @@ class ApiClient {
     });
   }
 
+  // Separated preferences methods for cleaner architecture
+  async getUserPreferences(): Promise<any> {
+    try {
+      return this.apiFetch<any>('/api/user-profiles/profile/preferences');
+    } catch (error) {
+      console.warn('API Client: User preferences fetch failed:', error);
+      return null;
+    }
+  }
+
+  async updateUserPreferencesSeparate(preferences: any): Promise<any> {
+    return this.apiFetch<any>('/api/user-profiles/profile/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  }
+
+  async updateDailyGoalsSeparate(dailyGoals: {
+    calories: number;
+    water: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }): Promise<any> {
+    return this.updateUserPreferencesSeparate({
+      dailyGoals: dailyGoals,
+    });
+  }
+
+  async updateAIPreferences(aiPreferences: any): Promise<any> {
+    return this.updateUserPreferencesSeparate({
+      aiTrainer: aiPreferences,
+    });
+  }
+
   // Analytics methods
   async getStrengthProgress(
     userId?: string,
@@ -443,14 +479,57 @@ class ApiClient {
     userId?: string,
     startDate?: string,
     endDate?: string,
-  ): Promise<BodyMeasurement[]> {
+  ): Promise<LegacyBodyMeasurement[]> {
     const id = userId || (await this.getCurrentUserId());
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.apiFetch<BodyMeasurement[]>(
+    const measurements = await this.apiFetch<BodyMeasurement[]>(
       `/api/analytics/body-measurements/${id}${query}`,
+    );
+
+    // Group measurements by date for backward compatibility
+    const groupedByDate: {[key: string]: any} = {};
+
+    measurements.forEach((measurement: BodyMeasurement) => {
+      const dateKey = new Date(measurement.measuredAt).toDateString();
+
+      if (!groupedByDate[dateKey]) {
+        groupedByDate[dateKey] = {
+          id: measurement.id,
+          userId: measurement.userId,
+          date: measurement.measuredAt,
+          createdAt: measurement.measuredAt,
+        };
+      }
+
+      // Map measurement types to legacy fields
+      switch (measurement.measurementType) {
+        case 'weight':
+          groupedByDate[dateKey].weight = measurement.value;
+          break;
+        case 'body_fat':
+          groupedByDate[dateKey].bodyFat = measurement.value;
+          break;
+        case 'muscle_mass':
+          groupedByDate[dateKey].muscleMass = measurement.value;
+          break;
+        default:
+          // Store other measurements in a measurements object
+          if (!groupedByDate[dateKey].measurements) {
+            groupedByDate[dateKey].measurements = {};
+          }
+          groupedByDate[dateKey].measurements[measurement.measurementType] =
+            measurement.value;
+          break;
+      }
+    });
+
+    // Convert to array and sort by date (newest first)
+    return Object.values(groupedByDate).sort(
+      (a: any, b: any) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   }
 
@@ -894,6 +973,17 @@ class ApiClient {
     return this.aiFetch<any>('/api/ai/progress/analyze', {
       method: 'POST',
       body: JSON.stringify({}),
+    });
+  }
+
+  async submitPersonalizationFeedback(feedback: {
+    type: string;
+    rating: number;
+    comments?: string;
+  }): Promise<any> {
+    return this.aiFetch<any>('/api/ai/personalization/feedback', {
+      method: 'POST',
+      body: JSON.stringify({feedback_data: feedback}),
     });
   }
 

@@ -39,7 +39,7 @@ interface UserProfile {
   dateOfBirth?: string;
   gender?: 'male' | 'female' | 'other';
   height?: number; // in cm
-  weight?: number; // in kg
+  // weight removed - now tracked separately in body measurements
   fitnessLevel?: 'beginner' | 'intermediate' | 'advanced';
   fitnessGoals?: string[];
   goals?: string[]; // alias for fitnessGoals
@@ -80,6 +80,25 @@ interface UserProfile {
       supplementPreferences: string[];
     };
   };
+}
+
+interface BodyMeasurement {
+  id?: string;
+  date: string;
+  weight?: number;
+  bodyFat?: number;
+  muscleMass?: number;
+  measurements?: {
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    bicepLeft?: number;
+    bicepRight?: number;
+    thighLeft?: number;
+    thighRight?: number;
+    neck?: number;
+  };
+  notes?: string;
 }
 
 // Helper function to create default profile
@@ -143,15 +162,49 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'preferences' | 'goals' | 'ai-trainer' | 'security'
+    | 'profile'
+    | 'preferences'
+    | 'goals'
+    | 'measurements'
+    | 'ai-trainer'
+    | 'security'
   >('profile');
   const [uploading, setUploading] = useState(false);
+
+  // Body measurements state
+  const [bodyMeasurements, setBodyMeasurements] = useState<BodyMeasurement[]>(
+    []
+  );
+  const [currentWeight, setCurrentWeight] = useState('');
+  const [currentBodyFat, setCurrentBodyFat] = useState('');
+  const [loadingMeasurements, setLoadingMeasurements] = useState(false);
 
   useEffect(() => {
     if (!userLoading && user) {
       fetchProfile();
+      loadBodyMeasurements();
     }
   }, [userLoading, user]);
+
+  const loadBodyMeasurements = async () => {
+    try {
+      setLoadingMeasurements(true);
+      const measurements = await api.getBodyMeasurements();
+      console.log('Loaded body measurements:', measurements);
+      setBodyMeasurements(measurements || []);
+
+      // Set current values from latest measurement
+      if (measurements && measurements.length > 0) {
+        const latest = measurements[0];
+        setCurrentWeight(latest.weight?.toString() || '');
+        setCurrentBodyFat(latest.bodyFat?.toString() || '');
+      }
+    } catch (error) {
+      console.error('Error loading body measurements:', error);
+    } finally {
+      setLoadingMeasurements(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -215,7 +268,7 @@ export default function ProfilePage() {
         profileImageUrl: updatedProfile.profileImageUrl,
         dateOfBirth: updatedProfile.dateOfBirth,
         height: updatedProfile.height,
-        weight: updatedProfile.weight,
+        // weight removed - now tracked separately in body measurements
         fitnessGoals: updatedProfile.fitnessGoals || updatedProfile.goals || [],
         experienceLevel: updatedProfile.fitnessLevel || 'beginner',
         preferences: updatedProfile.preferences,
@@ -281,6 +334,58 @@ export default function ProfilePage() {
         console.error('Error saving preferences:', error);
         setError('Failed to save preferences. Please try again.');
       }
+    }
+  };
+
+  const saveBodyMeasurement = async () => {
+    if (!currentWeight && !currentBodyFat) {
+      setError('Please enter at least weight or body fat percentage');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const promises = [];
+
+      // Create weight measurement if provided
+      if (currentWeight) {
+        const weightData = {
+          measurementType: 'weight',
+          value: parseFloat(currentWeight),
+          unit: 'kg', // You might want to make this configurable
+          notes: 'Weight measurement from profile',
+        };
+        promises.push(api.createBodyMeasurement(weightData));
+      }
+
+      // Create body fat measurement if provided
+      if (currentBodyFat) {
+        const bodyFatData = {
+          measurementType: 'body_fat',
+          value: parseFloat(currentBodyFat),
+          unit: '%',
+          notes: 'Body fat measurement from profile',
+        };
+        promises.push(api.createBodyMeasurement(bodyFatData));
+      }
+
+      await Promise.all(promises);
+
+      // Reload measurements to show the new ones
+      await loadBodyMeasurements();
+
+      // Clear the inputs
+      setCurrentWeight('');
+      setCurrentBodyFat('');
+
+      setSuccess('Body measurement saved successfully!');
+    } catch (error) {
+      console.error('Error saving body measurement:', error);
+      setError('Failed to save body measurement. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -394,6 +499,7 @@ export default function ProfilePage() {
             { id: 'profile', name: 'Profile', icon: User },
             { id: 'preferences', name: 'Preferences', icon: Settings },
             { id: 'goals', name: 'Goals', icon: Target },
+            { id: 'measurements', name: 'Body Measurements', icon: Weight },
             { id: 'ai-trainer', name: 'AI Trainer', icon: Bot },
             { id: 'security', name: 'Security', icon: Shield },
           ].map((tab) => (
@@ -431,6 +537,18 @@ export default function ProfilePage() {
         )}
         {activeTab === 'goals' && (
           <GoalsTab profile={profile} onUpdate={handleProfileUpdate} />
+        )}
+        {activeTab === 'measurements' && (
+          <MeasurementsTab
+            measurements={bodyMeasurements}
+            currentWeight={currentWeight}
+            currentBodyFat={currentBodyFat}
+            onWeightChange={setCurrentWeight}
+            onBodyFatChange={setCurrentBodyFat}
+            onSave={saveBodyMeasurement}
+            saving={saving}
+            loading={loadingMeasurements}
+          />
         )}
         {activeTab === 'ai-trainer' && (
           <AITrainerTab
@@ -621,18 +739,7 @@ function ProfileTab({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Weight (kg)
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            value={profile.weight || ''}
-            onChange={(e) => onUpdate({ weight: Number(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          />
-        </div>
+        {/* Weight field removed - now tracked in Body Measurements tab */}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1087,6 +1194,24 @@ function AITrainerTab({
     }
   );
 
+  useEffect(() => {
+    setAiPreferences(
+      preferences?.aiTrainer || {
+        enabled: false,
+        coachingStyle: 'balanced',
+        communicationFrequency: 'on-demand',
+        focusAreas: [],
+        injuryHistory: [],
+        equipmentAvailable: [],
+        workoutDurationPreference: 60,
+        workoutDaysPerWeek: 3,
+        mealPreferences: [],
+        allergies: [],
+        supplementPreferences: [],
+      }
+    );
+  }, [preferences?.aiTrainer]);
+
   const [newItem, setNewItem] = useState({
     focusArea: '',
     injury: '',
@@ -1220,6 +1345,8 @@ function AITrainerTab({
     onUpdate({ aiTrainer: updatedPreferences });
   };
 
+  const user = useCurrentUser();
+  console.log('AI preferences for user', user?.id, aiPreferences);
   return (
     <div className="space-y-6">
       {/* Enable/Disable AI Trainer */}
@@ -1255,7 +1382,7 @@ function AITrainerTab({
       {aiPreferences.enabled && (
         <>
           {/* Coaching Style */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Coaching Preferences
             </h3>
@@ -1294,10 +1421,10 @@ function AITrainerTab({
                 </select>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Focus Areas */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Focus Areas
             </h3>
@@ -1341,10 +1468,10 @@ function AITrainerTab({
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Equipment Available */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Available Equipment
             </h3>
@@ -1388,10 +1515,10 @@ function AITrainerTab({
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Workout Preferences */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Workout Preferences
             </h3>
@@ -1431,10 +1558,10 @@ function AITrainerTab({
                 />
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Nutrition Preferences */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Nutrition Preferences
             </h3>
@@ -1572,10 +1699,10 @@ function AITrainerTab({
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Injury History */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Injury History
             </h3>
@@ -1617,7 +1744,7 @@ function AITrainerTab({
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* AI Coaching Preferences Panel */}
           {user?.id && (
@@ -2016,6 +2143,133 @@ function SecurityTab() {
           <li>• Change your password regularly</li>
           <li>• Never share your password with anyone</li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+interface MeasurementsTabProps {
+  measurements: BodyMeasurement[];
+  currentWeight: string;
+  currentBodyFat: string;
+  onWeightChange: (value: string) => void;
+  onBodyFatChange: (value: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  loading: boolean;
+}
+
+function MeasurementsTab({
+  measurements,
+  currentWeight,
+  currentBodyFat,
+  onWeightChange,
+  onBodyFatChange,
+  onSave,
+  saving,
+  loading,
+}: MeasurementsTabProps) {
+  const t = useTranslations('profile');
+
+  return (
+    <div className="space-y-6">
+      {/* Add New Measurement */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Add New Measurement
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Weight (kg)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={currentWeight}
+              onChange={(e) => onWeightChange(e.target.value)}
+              placeholder="Enter your current weight"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Body Fat (%)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={currentBodyFat}
+              onChange={(e) => onBodyFatChange(e.target.value)}
+              placeholder="Enter your body fat percentage"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={onSave}
+          disabled={saving || (!currentWeight && !currentBodyFat)}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+        >
+          <Save className="h-4 w-4" />
+          <span>{saving ? 'Saving...' : 'Save Measurement'}</span>
+        </button>
+      </div>
+
+      {/* Measurement History */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Recent Measurements
+        </h3>
+
+        {loading ? (
+          <div className="text-center py-4">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">
+              Loading measurements...
+            </p>
+          </div>
+        ) : measurements.length > 0 ? (
+          <div className="space-y-3">
+            {measurements.slice(0, 5).map((measurement, index) => (
+              <div
+                key={measurement.id || index}
+                className="flex justify-between items-center py-3 px-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {new Date(measurement.date).toLocaleDateString()}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(measurement.date).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end space-y-1">
+                  {measurement.weight && (
+                    <span className="text-gray-900 dark:text-white">
+                      Weight: {measurement.weight} kg
+                    </span>
+                  )}
+                  {measurement.bodyFat && (
+                    <span className="text-gray-900 dark:text-white">
+                      Body Fat: {measurement.bodyFat}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Weight className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">
+              No measurements recorded yet. Add your first measurement above!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

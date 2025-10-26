@@ -15,12 +15,9 @@ pub struct UserProfile {
     pub date_of_birth: Option<String>,
     // Height in centimeters
     pub height: Option<i32>, // in cm
-    // Weight in kilograms
-    pub weight: Option<f32>, // in kg
     pub fitness_goals: Vec<String>,
     pub experience_level: String,
     pub profile_image_url: Option<String>,
-    pub preferences: UserPreferences,
     pub gender: Option<String>,
     pub fitness_level: Option<String>,
     // These fields are often omitted by clients; default to empty string
@@ -234,4 +231,38 @@ pub struct SleepHistoryRequest {
 pub struct SleepStatsRequest {
     pub user_id: Option<String>,
     pub period: Option<String>, // "week", "month", "year"
+}
+
+#[derive(Deserialize, Serialize, Validate, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BodyMeasurement {
+    pub user_id: String,
+    pub date: String,
+    #[validate(range(min = 30.0, max = 500.0))]
+    pub weight: Option<f32>, // in kg
+    #[validate(range(min = 5.0, max = 50.0))]
+    pub body_fat_percentage: Option<f32>,
+    #[validate(range(min = 10.0, max = 90.0))]
+    pub muscle_mass_percentage: Option<f32>,
+    pub measurements: Option<BodyMeasurements>,
+    pub notes: Option<String>,
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub updated_at: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BodyMeasurements {
+    pub chest: Option<f32>,         // in cm
+    pub waist: Option<f32>,         // in cm
+    pub hips: Option<f32>,          // in cm
+    pub bicep_left: Option<f32>,    // in cm
+    pub bicep_right: Option<f32>,   // in cm
+    pub thigh_left: Option<f32>,    // in cm
+    pub thigh_right: Option<f32>,   // in cm
+    pub neck: Option<f32>,          // in cm
+    pub forearm_left: Option<f32>,  // in cm
+    pub forearm_right: Option<f32>, // in cm
 }

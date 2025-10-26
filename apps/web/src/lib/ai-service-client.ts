@@ -179,7 +179,7 @@ export class AIServiceClient {
   }): Promise<AIResponse<void>> {
     const response = await apiFetch('/api/ai/personalization/feedback', {
       method: 'POST',
-      body: JSON.stringify(feedback),
+      body: JSON.stringify({ feedback_data: feedback }),
     });
     return response.json();
   }

@@ -150,11 +150,8 @@ class UserDataService:
                     'macros': item.get('macros', {})
                 })
             
-            # Get daily goals from profile
-            profile = await self.get_user_profile(user_id)
-            daily_goals = None
-            if profile and 'dailyGoals' in profile:
-                daily_goals = profile['dailyGoals']
+            # Get daily goals from preferences
+            daily_goals = await self.get_daily_goals(user_id)
             
             return {
                 'meals': meals,
@@ -165,9 +162,32 @@ class UserDataService:
             logger.error(f"Error getting nutrition data for {user_id}: {e}")
             return {'meals': [], 'dailyGoals': None}
     
+    async def get_user_preferences(self, user_id: str) -> Optional[Dict]:
+        """
+        Get user preferences (separate from profile)
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            User preferences dictionary or None
+        """
+        try:
+            response = self.table.get_item(
+                Key={'PK': f'USER#{user_id}', 'SK': 'PREFERENCES'}
+            )
+            
+            if 'Item' in response:
+                return response['Item']
+            return None
+            
+        except ClientError as e:
+            logger.error(f"Error getting user preferences for {user_id}: {e}")
+            return None
+
     async def get_ai_preferences(self, user_id: str) -> Optional[Dict]:
         """
-        Get AI trainer preferences from user profile
+        Get AI trainer preferences from user preferences
         
         Args:
             user_id: User ID
@@ -176,13 +196,33 @@ class UserDataService:
             AI trainer preferences dictionary or None
         """
         try:
-            profile = await self.get_user_profile(user_id)
-            if profile and 'aiTrainer' in profile:
-                return profile['aiTrainer']
+            preferences = await self.get_user_preferences(user_id)
+            if preferences and 'aiTrainer' in preferences:
+                return preferences['aiTrainer']
             return None
             
         except Exception as e:
             logger.error(f"Error getting AI preferences for {user_id}: {e}")
+            return None
+
+    async def get_daily_goals(self, user_id: str) -> Optional[Dict]:
+        """
+        Get daily goals from user preferences
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            Daily goals dictionary or None
+        """
+        try:
+            preferences = await self.get_user_preferences(user_id)
+            if preferences and 'dailyGoals' in preferences:
+                return preferences['dailyGoals']
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting daily goals for {user_id}: {e}")
             return None
     
     async def build_user_context(self, user_id: str) -> Dict:
@@ -198,17 +238,19 @@ class UserDataService:
         try:
             # Fetch all user data in parallel
             profile = await self.get_user_profile(user_id)
+            preferences = await self.get_user_preferences(user_id)
             workouts = await self.get_recent_workouts(user_id, 3)
             measurements = await self.get_body_measurements(user_id, 2)
             nutrition = await self.get_nutrition_data(user_id, 3)
-            ai_prefs = await self.get_ai_preferences(user_id)
             
             context = {
                 'user_profile': profile or {},
+                'user_preferences': preferences or {},
                 'recent_workouts': workouts or [],
                 'body_measurements': measurements or [],
                 'nutrition_data': nutrition or {},
-                'ai_preferences': ai_prefs or {}
+                'ai_preferences': preferences.get('aiTrainer', {}) if preferences else {},
+                'daily_goals': preferences.get('dailyGoals', {}) if preferences else {}
             }
             
             return context
@@ -216,6 +258,78 @@ class UserDataService:
         except Exception as e:
             logger.error(f"Error building user context for {user_id}: {e}")
             return {}
+
+    async def add_body_measurement(self, user_id: str, measurement_data: Dict) -> bool:
+        """
+        Add a new body measurement record
+        
+        Args:
+            user_id: User ID
+            measurement_data: Measurement data dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            timestamp = datetime.now(timezone.utc).isoformat()
+            measurement_id = f"MEASUREMENT#{timestamp}"
+            
+            item = {
+                'PK': f'USER#{user_id}',
+                'SK': f'BODY_MEASUREMENT#{measurement_id}',
+                'date': measurement_data.get('date', timestamp),
+                'weight': measurement_data.get('weight', 0),
+                'bodyFat': measurement_data.get('bodyFat', 0),
+                'muscleMass': measurement_data.get('muscleMass', 0),
+                'measurements': measurement_data.get('measurements', {}),
+                'created_at': timestamp,
+                'updated_at': timestamp
+            }
+            
+            self.table.put_item(Item=item)
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Error adding body measurement for {user_id}: {e}")
+            return False
+
+    async def update_user_preferences(self, user_id: str, preferences_data: Dict) -> bool:
+        """
+        Update user preferences
+        
+        Args:
+            user_id: User ID
+            preferences_data: Preferences data dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            timestamp = datetime.now(timezone.utc).isoformat()
+            
+            # Get existing preferences
+            existing_prefs = await self.get_user_preferences(user_id)
+            if existing_prefs:
+                # Merge with existing preferences
+                existing_prefs.update(preferences_data)
+                existing_prefs['updated_at'] = timestamp
+                item = existing_prefs
+            else:
+                # Create new preferences record
+                item = {
+                    'PK': f'USER#{user_id}',
+                    'SK': 'PREFERENCES',
+                    'created_at': timestamp,
+                    'updated_at': timestamp,
+                    **preferences_data
+                }
+            
+            self.table.put_item(Item=item)
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Error updating user preferences for {user_id}: {e}")
+            return False
     
     async def get_user_stats(self, user_id: str) -> Dict:
         """
@@ -407,11 +521,8 @@ class UserDataService:
                         logger.warning(f"Error parsing meal date {meal_date}: {e}")
                         continue
             
-            # Get daily goals from profile
-            profile = await self.get_user_profile(user_id)
-            daily_goals = None
-            if profile and 'dailyGoals' in profile:
-                daily_goals = profile['dailyGoals']
+            # Get daily goals from preferences
+            daily_goals = await self.get_daily_goals(user_id)
             
             return {
                 'meals': meals,

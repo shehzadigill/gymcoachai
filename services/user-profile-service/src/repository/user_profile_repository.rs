@@ -66,10 +66,7 @@ impl UserProfileRepository {
                     .get("height")
                     .and_then(|v| v.as_n().ok())
                     .and_then(|s| s.parse().ok()),
-                weight: item
-                    .get("weight")
-                    .and_then(|v| v.as_n().ok())
-                    .and_then(|s| s.parse().ok()),
+                // weight removed - now tracked separately in body measurements
                 fitness_goals: item
                     .get("fitnessGoals")
                     .and_then(|v| v.as_l().ok())
@@ -88,201 +85,6 @@ impl UserProfileRepository {
                     .get("profileImageUrl")
                     .and_then(|v| v.as_s().ok())
                     .map(|s| s.to_string()),
-                preferences: UserPreferences {
-                    units: item
-                        .get("units")
-                        .and_then(|v| v.as_s().ok())
-                        .map_or("metric", |v| v)
-                        .to_string(),
-                    timezone: item
-                        .get("timezone")
-                        .and_then(|v| v.as_s().ok())
-                        .map_or("UTC", |v| v)
-                        .to_string(),
-                    notifications: NotificationSettings {
-                        email: *item
-                            .get("emailNotifications")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        push: *item
-                            .get("pushNotifications")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        workout_reminders: *item
-                            .get("workoutReminders")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        nutrition_reminders: *item
-                            .get("nutritionReminders")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        water_reminders: *item
-                            .get("waterReminders")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        progress_photos: *item
-                            .get("progressPhotos")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        achievements: *item
-                            .get("achievements")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        ai_suggestions: *item
-                            .get("aiSuggestions")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&true),
-                        workout_reminder_time: item
-                            .get("workoutReminderTime")
-                            .and_then(|v| v.as_s().ok())
-                            .map(|s| s.to_string()),
-                        nutrition_reminder_times: item
-                            .get("nutritionReminderTimes")
-                            .and_then(|v| v.as_l().ok())
-                            .map(|list| {
-                                list.iter()
-                                    .filter_map(|v| v.as_s().ok())
-                                    .map(|s| s.to_string())
-                                    .collect()
-                            }),
-                    },
-                    privacy: PrivacySettings {
-                        profile_visibility: item
-                            .get("profileVisibility")
-                            .and_then(|v| v.as_s().ok())
-                            .map_or("private", |v| v)
-                            .to_string(),
-                        workout_sharing: *item
-                            .get("workoutSharing")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&false),
-                        progress_sharing: *item
-                            .get("progressSharing")
-                            .and_then(|v| v.as_bool().ok())
-                            .unwrap_or(&false),
-                    },
-                    ai_trainer: item.get("aiTrainer").and_then(|v| v.as_m().ok()).and_then(
-                        |ai_map| {
-                            Some(AITrainerPreferences {
-                                enabled: *ai_map
-                                    .get("enabled")
-                                    .and_then(|v| v.as_bool().ok())
-                                    .unwrap_or(&false),
-                                coaching_style: ai_map
-                                    .get("coachingStyle")
-                                    .and_then(|v| v.as_s().ok())
-                                    .map_or("balanced", |v| v)
-                                    .to_string(),
-                                communication_frequency: ai_map
-                                    .get("communicationFrequency")
-                                    .and_then(|v| v.as_s().ok())
-                                    .map_or("on-demand", |v| v)
-                                    .to_string(),
-                                focus_areas: ai_map
-                                    .get("focusAreas")
-                                    .and_then(|v| v.as_l().ok())
-                                    .map(|list| {
-                                        list.iter()
-                                            .filter_map(|v| v.as_s().ok())
-                                            .map(|s| s.to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                                injury_history: ai_map
-                                    .get("injuryHistory")
-                                    .and_then(|v| v.as_l().ok())
-                                    .map(|list| {
-                                        list.iter()
-                                            .filter_map(|v| v.as_s().ok())
-                                            .map(|s| s.to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                                equipment_available: ai_map
-                                    .get("equipmentAvailable")
-                                    .and_then(|v| v.as_l().ok())
-                                    .map(|list| {
-                                        list.iter()
-                                            .filter_map(|v| v.as_s().ok())
-                                            .map(|s| s.to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                                workout_duration_preference: ai_map
-                                    .get("workoutDurationPreference")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(60),
-                                workout_days_per_week: ai_map
-                                    .get("workoutDaysPerWeek")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(3),
-                                meal_preferences: ai_map
-                                    .get("mealPreferences")
-                                    .and_then(|v| v.as_l().ok())
-                                    .map(|list| {
-                                        list.iter()
-                                            .filter_map(|v| v.as_s().ok())
-                                            .map(|s| s.to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                                allergies: ai_map
-                                    .get("allergies")
-                                    .and_then(|v| v.as_l().ok())
-                                    .map(|list| {
-                                        list.iter()
-                                            .filter_map(|v| v.as_s().ok())
-                                            .map(|s| s.to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                                supplement_preferences: ai_map
-                                    .get("supplementPreferences")
-                                    .and_then(|v| v.as_l().ok())
-                                    .map(|list| {
-                                        list.iter()
-                                            .filter_map(|v| v.as_s().ok())
-                                            .map(|s| s.to_string())
-                                            .collect()
-                                    })
-                                    .unwrap_or_default(),
-                            })
-                        },
-                    ),
-                    daily_goals: item.get("dailyGoals").and_then(|v| v.as_m().ok()).and_then(
-                        |goals_map| {
-                            Some(DailyGoals {
-                                calories: goals_map
-                                    .get("calories")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(2000),
-                                water: goals_map
-                                    .get("water")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(8),
-                                protein: goals_map
-                                    .get("protein")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(150),
-                                carbs: goals_map
-                                    .get("carbs")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(200),
-                                fat: goals_map
-                                    .get("fat")
-                                    .and_then(|v| v.as_n().ok())
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(65),
-                            })
-                        },
-                    ),
-                },
                 gender: item
                     .get("gender")
                     .and_then(|v| v.as_s().ok())
@@ -338,14 +140,7 @@ impl UserProfileRepository {
             "experienceLevel".to_string(),
             AttributeValue::S(profile.experience_level.clone()),
         );
-        item.insert(
-            "units".to_string(),
-            AttributeValue::S(profile.preferences.units.clone()),
-        );
-        item.insert(
-            "timezone".to_string(),
-            AttributeValue::S(profile.preferences.timezone.clone()),
-        );
+
         item.insert("updatedAt".to_string(), AttributeValue::S(now.clone()));
 
         if let Some(bio) = &profile.bio {
@@ -357,9 +152,7 @@ impl UserProfileRepository {
         if let Some(height) = profile.height {
             item.insert("height".to_string(), AttributeValue::N(height.to_string()));
         }
-        if let Some(weight) = profile.weight {
-            item.insert("weight".to_string(), AttributeValue::N(weight.to_string()));
-        }
+
         if let Some(image_url) = &profile.profile_image_url {
             item.insert(
                 "profileImageUrl".to_string(),
@@ -383,180 +176,6 @@ impl UserProfileRepository {
             .map(|goal| AttributeValue::S(goal.clone()))
             .collect();
         item.insert("fitnessGoals".to_string(), AttributeValue::L(fitness_goals));
-
-        // Add notification settings
-        item.insert(
-            "emailNotifications".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.email),
-        );
-        item.insert(
-            "pushNotifications".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.push),
-        );
-        item.insert(
-            "workoutReminders".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.workout_reminders),
-        );
-        item.insert(
-            "nutritionReminders".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.nutrition_reminders),
-        );
-        item.insert(
-            "waterReminders".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.water_reminders),
-        );
-        item.insert(
-            "progressPhotos".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.progress_photos),
-        );
-        item.insert(
-            "achievements".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.achievements),
-        );
-        item.insert(
-            "aiSuggestions".to_string(),
-            AttributeValue::Bool(profile.preferences.notifications.ai_suggestions),
-        );
-
-        if let Some(workout_time) = &profile.preferences.notifications.workout_reminder_time {
-            item.insert(
-                "workoutReminderTime".to_string(),
-                AttributeValue::S(workout_time.clone()),
-            );
-        }
-
-        if let Some(nutrition_times) = &profile.preferences.notifications.nutrition_reminder_times {
-            let times: Vec<AttributeValue> = nutrition_times
-                .iter()
-                .map(|time| AttributeValue::S(time.clone()))
-                .collect();
-            item.insert(
-                "nutritionReminderTimes".to_string(),
-                AttributeValue::L(times),
-            );
-        }
-
-        // Add privacy settings
-        item.insert(
-            "profileVisibility".to_string(),
-            AttributeValue::S(profile.preferences.privacy.profile_visibility.clone()),
-        );
-        item.insert(
-            "workoutSharing".to_string(),
-            AttributeValue::Bool(profile.preferences.privacy.workout_sharing),
-        );
-        item.insert(
-            "progressSharing".to_string(),
-            AttributeValue::Bool(profile.preferences.privacy.progress_sharing),
-        );
-
-        // Add daily goals if present
-        if let Some(daily_goals) = &profile.preferences.daily_goals {
-            let mut goals_map = std::collections::HashMap::new();
-            goals_map.insert(
-                "calories".to_string(),
-                AttributeValue::N(daily_goals.calories.to_string()),
-            );
-            goals_map.insert(
-                "water".to_string(),
-                AttributeValue::N(daily_goals.water.to_string()),
-            );
-            goals_map.insert(
-                "protein".to_string(),
-                AttributeValue::N(daily_goals.protein.to_string()),
-            );
-            goals_map.insert(
-                "carbs".to_string(),
-                AttributeValue::N(daily_goals.carbs.to_string()),
-            );
-            goals_map.insert(
-                "fat".to_string(),
-                AttributeValue::N(daily_goals.fat.to_string()),
-            );
-            item.insert("dailyGoals".to_string(), AttributeValue::M(goals_map));
-        }
-
-        // Add AI trainer preferences if present
-        if let Some(ai_trainer) = &profile.preferences.ai_trainer {
-            let mut ai_map = std::collections::HashMap::new();
-            ai_map.insert(
-                "enabled".to_string(),
-                AttributeValue::Bool(ai_trainer.enabled),
-            );
-            ai_map.insert(
-                "coachingStyle".to_string(),
-                AttributeValue::S(ai_trainer.coaching_style.clone()),
-            );
-            ai_map.insert(
-                "communicationFrequency".to_string(),
-                AttributeValue::S(ai_trainer.communication_frequency.clone()),
-            );
-            ai_map.insert(
-                "workoutDurationPreference".to_string(),
-                AttributeValue::N(ai_trainer.workout_duration_preference.to_string()),
-            );
-            ai_map.insert(
-                "workoutDaysPerWeek".to_string(),
-                AttributeValue::N(ai_trainer.workout_days_per_week.to_string()),
-            );
-
-            // Add arrays
-            let focus_areas: Vec<AttributeValue> = ai_trainer
-                .focus_areas
-                .iter()
-                .map(|area| AttributeValue::S(area.clone()))
-                .collect();
-            ai_map.insert("focusAreas".to_string(), AttributeValue::L(focus_areas));
-
-            let injury_history: Vec<AttributeValue> = ai_trainer
-                .injury_history
-                .iter()
-                .map(|injury| AttributeValue::S(injury.clone()))
-                .collect();
-            ai_map.insert(
-                "injuryHistory".to_string(),
-                AttributeValue::L(injury_history),
-            );
-
-            let equipment_available: Vec<AttributeValue> = ai_trainer
-                .equipment_available
-                .iter()
-                .map(|equipment| AttributeValue::S(equipment.clone()))
-                .collect();
-            ai_map.insert(
-                "equipmentAvailable".to_string(),
-                AttributeValue::L(equipment_available),
-            );
-
-            let meal_preferences: Vec<AttributeValue> = ai_trainer
-                .meal_preferences
-                .iter()
-                .map(|pref| AttributeValue::S(pref.clone()))
-                .collect();
-            ai_map.insert(
-                "mealPreferences".to_string(),
-                AttributeValue::L(meal_preferences),
-            );
-
-            let allergies: Vec<AttributeValue> = ai_trainer
-                .allergies
-                .iter()
-                .map(|allergy| AttributeValue::S(allergy.clone()))
-                .collect();
-            ai_map.insert("allergies".to_string(), AttributeValue::L(allergies));
-
-            let supplement_preferences: Vec<AttributeValue> = ai_trainer
-                .supplement_preferences
-                .iter()
-                .map(|supplement| AttributeValue::S(supplement.clone()))
-                .collect();
-            ai_map.insert(
-                "supplementPreferences".to_string(),
-                AttributeValue::L(supplement_preferences),
-            );
-
-            item.insert("aiTrainer".to_string(), AttributeValue::M(ai_map));
-        }
 
         // Set created_at if this is a new profile
         if profile.created_at.is_empty() {
@@ -590,38 +209,7 @@ impl UserProfileRepository {
         let mut profile: UserProfile = serde_json::from_value(current_profile)?;
 
         // Update only the fields that are provided in the update_data
-        if let Some(preferences_obj) = update_data.get("preferences") {
-            if let Some(daily_goals_obj) = preferences_obj.get("dailyGoals") {
-                let daily_goals = DailyGoals {
-                    calories: daily_goals_obj
-                        .get("calories")
-                        .and_then(|v| v.as_i64())
-                        .map(|v| v as i32)
-                        .unwrap_or(2000),
-                    water: daily_goals_obj
-                        .get("water")
-                        .and_then(|v| v.as_i64())
-                        .map(|v| v as i32)
-                        .unwrap_or(8),
-                    protein: daily_goals_obj
-                        .get("protein")
-                        .and_then(|v| v.as_i64())
-                        .map(|v| v as i32)
-                        .unwrap_or(150),
-                    carbs: daily_goals_obj
-                        .get("carbs")
-                        .and_then(|v| v.as_i64())
-                        .map(|v| v as i32)
-                        .unwrap_or(200),
-                    fat: daily_goals_obj
-                        .get("fat")
-                        .and_then(|v| v.as_i64())
-                        .map(|v| v as i32)
-                        .unwrap_or(65),
-                };
-                profile.preferences.daily_goals = Some(daily_goals);
-            }
-        }
+        // Note: preferences and daily goals now handled separately in dedicated services
 
         // Update goals if provided
         if let Some(goals_arr) = update_data.get("goals").and_then(|v| v.as_array()) {
@@ -650,9 +238,7 @@ impl UserProfileRepository {
         if let Some(height) = update_data.get("height").and_then(|v| v.as_i64()) {
             profile.height = Some(height as i32);
         }
-        if let Some(weight) = update_data.get("weight").and_then(|v| v.as_f64()) {
-            profile.weight = Some(weight as f32);
-        }
+        // Note: weight now handled separately in body measurements service
         if let Some(birth_date) = update_data.get("birthDate").and_then(|v| v.as_str()) {
             profile.date_of_birth = Some(birth_date.to_string());
         }

@@ -218,6 +218,17 @@ export interface StrengthProgress {
 export interface BodyMeasurement {
   id: string;
   userId: string;
+  measurementType: string; // "weight", "height", "body_fat", "muscle_mass", "waist", "chest", "arms", "thighs"
+  value: number;
+  unit: string; // "kg", "lbs", "cm", "inches", "%"
+  measuredAt: string;
+  notes?: string;
+}
+
+// Legacy interface for backward compatibility
+export interface LegacyBodyMeasurement {
+  id: string;
+  userId: string;
   date: string;
   weight?: number;
   bodyFat?: number;
