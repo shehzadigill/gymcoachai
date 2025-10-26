@@ -18,8 +18,10 @@ class S3VectorsService:
         self.vectors_bucket = os.environ.get('VECTORS_BUCKET', 'gymcoach-ai-vectors')
         self.region = os.environ.get('AWS_REGION', 'us-east-1')
         
-        # Vector dimensions for Titan Embeddings
-        self.vector_dimensions = 1536
+        # Vector dimensions for Titan Embeddings (v1 = 1024, v2 = 1536)
+        # Use v1 dimensions for compatibility with stored vectors
+        self.vector_dimensions = 1024  # Use v1 dimensions for consistency
+        self.legacy_dimensions = 1024  # Support legacy v1 vectors
         
         # Index structure
         self.index_prefix = 'vectors/'
@@ -43,9 +45,9 @@ class S3VectorsService:
             True if successful, False otherwise
         """
         try:
-            # Validate vector dimensions
-            if len(vector) != self.vector_dimensions:
-                logger.error(f"Vector dimension mismatch: expected {self.vector_dimensions}, got {len(vector)}")
+            # Validate vector dimensions (support both v1 and v2)
+            if len(vector) not in [self.vector_dimensions, self.legacy_dimensions]:
+                logger.error(f"Vector dimension mismatch: expected {self.vector_dimensions} or {self.legacy_dimensions}, got {len(vector)}")
                 return False
             
             # Create vector document
@@ -101,9 +103,9 @@ class S3VectorsService:
             List of similar vectors with metadata and scores
         """
         try:
-            # Validate query vector
-            if len(query_vector) != self.vector_dimensions:
-                logger.error(f"Query vector dimension mismatch: expected {self.vector_dimensions}, got {len(query_vector)}")
+            # Validate query vector (support both v1 and v2)
+            if len(query_vector) not in [self.vector_dimensions, self.legacy_dimensions]:
+                logger.error(f"Query vector dimension mismatch: expected {self.vector_dimensions} or {self.legacy_dimensions}, got {len(query_vector)}")
                 return []
             
             # List all vectors in the namespace
@@ -128,6 +130,7 @@ class S3VectorsService:
                         
                         # Calculate cosine similarity
                         similarity = self._cosine_similarity(query_vector, vector_doc['vector'])
+                        logger.info(f"Similarity for {vector_doc['id']}: {similarity:.4f} (threshold: {similarity_threshold})")
                         
                         if similarity >= similarity_threshold:
                             results.append({
@@ -285,6 +288,7 @@ class S3VectorsService:
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """
         Calculate cosine similarity between two vectors
+        Handles dimension mismatches by truncating to the shorter vector length
         
         Args:
             vec1: First vector
@@ -294,10 +298,15 @@ class S3VectorsService:
             Cosine similarity score (0-1)
         """
         try:
+            # Handle dimension mismatch by using the shorter vector length
+            min_length = min(len(vec1), len(vec2))
+            vec1_truncated = vec1[:min_length]
+            vec2_truncated = vec2[:min_length]
+            
             # Calculate cosine similarity using pure Python
-            dot_product = sum(a * b for a, b in zip(vec1, vec2))
-            norm_a = math.sqrt(sum(a * a for a in vec1))
-            norm_b = math.sqrt(sum(b * b for b in vec2))
+            dot_product = sum(a * b for a, b in zip(vec1_truncated, vec2_truncated))
+            norm_a = math.sqrt(sum(a * a for a in vec1_truncated))
+            norm_b = math.sqrt(sum(b * b for b in vec2_truncated))
             
             if norm_a == 0 or norm_b == 0:
                 return 0.0

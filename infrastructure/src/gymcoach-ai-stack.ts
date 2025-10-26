@@ -1067,7 +1067,12 @@ export class GymCoachAIStack extends cdk.Stack {
           'bedrock:InvokeModel',
           'bedrock:InvokeModelWithResponseStream',
         ],
-        resources: ['arn:aws:bedrock:*::foundation-model/deepseek.v3-v1:0'],
+        resources: [
+          'arn:aws:bedrock:*::foundation-model/deepseek.v3-v1:0',
+          'arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v1',
+          'arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0',
+          'arn:aws:bedrock:*::foundation-model/cohere.embed-english-v3',
+        ],
       })
     );
 
@@ -1325,7 +1330,7 @@ export class GymCoachAIStack extends cdk.Stack {
       environment: envVars,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256, // Optimized for cold starts
-      reservedConcurrentExecutions: 10, // Prevent cold starts during high load
+      reservedConcurrentExecutions: 20, // Increased for development/testing
       // Removed log retention to use free tier defaults (5GB/month free)
       // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
       layers: [this.createAuthLayer()],
@@ -1363,7 +1368,7 @@ export class GymCoachAIStack extends cdk.Stack {
       },
       timeout: cdk.Duration.minutes(5), // AI functions may need more time
       memorySize: 1024, // AI functions need more memory
-      reservedConcurrentExecutions: 5, // Limit concurrent executions for AI functions
+      reservedConcurrentExecutions: 20, // Increased for development/testing
       // Removed log retention to use free tier defaults (5GB/month free)
       // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
       // layers: [this.createPythonAuthLayer()], // Temporarily disabled

@@ -12,8 +12,17 @@ class EmbeddingService:
     """Service for generating embeddings using AWS Bedrock Titan Embeddings"""
     
     def __init__(self):
-        self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'us-east-1'))
-        self.embedding_model_id = 'amazon.titan-embed-text-v1'
+        region = os.environ.get('AWS_REGION', 'us-east-1')
+        
+        # Use cross-region inference for eu-north-1
+        if region == 'eu-north-1':
+            # Use eu-central-1 for embedding models (closest region with Titan support)
+            self.bedrock_runtime = boto3.client('bedrock-runtime', region_name='eu-central-1')
+            self.embedding_model_id = 'amazon.titan-embed-text-v1'  # Use v1 for compatibility with stored vectors
+            logger.info("Using cross-region inference for embeddings (eu-central-1) with titan-embed-text-v1")
+        else:
+            self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=region)
+            self.embedding_model_id = 'amazon.titan-embed-text-v1'  # Use v1 for compatibility with stored vectors
         self.max_retries = 3
         self.retry_delay = 1  # seconds
         self.max_tokens = 8192  # Titan embedding model limit
@@ -34,10 +43,17 @@ class EmbeddingService:
                 text = text[:self.max_tokens]
                 logger.warning(f"Text truncated to {self.max_tokens} tokens")
             
-            # Prepare request body for Titan Embeddings
-            body = {
-                "inputText": text
-            }
+            # Prepare request body based on model type
+            if 'cohere' in self.embedding_model_id:
+                body = {
+                    "texts": [text],
+                    "input_type": "search_document"
+                }
+            else:
+                # Titan embeddings format
+                body = {
+                    "inputText": text
+                }
             
             # Retry logic for rate limiting
             for attempt in range(self.max_retries):
@@ -50,13 +66,31 @@ class EmbeddingService:
                     
                     response_body = json.loads(response['body'].read())
                     
-                    if 'embedding' in response_body:
-                        embedding = response_body['embedding']
-                        logger.info(f"Generated embedding with {len(embedding)} dimensions")
-                        return embedding
+                    # Parse response based on model type
+                    if 'cohere' in self.embedding_model_id:
+                        if 'embeddings' in response_body and response_body['embeddings']:
+                            embedding = response_body['embeddings'][0]
+                            logger.info(f"Generated Cohere embedding with {len(embedding)} dimensions")
+                            return embedding
+                        else:
+                            logger.error(f"Invalid Cohere response structure: {response_body}")
+                            return None
                     else:
-                        logger.error(f"Invalid response structure: {response_body}")
-                        return None
+                        # Titan embeddings format
+                        if 'embedding' in response_body:
+                            embedding = response_body['embedding']
+                            logger.info(f"Generated Titan embedding with {len(embedding)} dimensions using model {self.embedding_model_id}")
+                            
+                            # Handle dimension mismatch: truncate to 1024 for compatibility with stored vectors
+                            if len(embedding) == 1536:
+                                embedding = embedding[:1024]
+                                logger.info(f"Truncated embedding from 1536 to 1024 dimensions for compatibility")
+                            
+                            logger.info(f"Final embedding dimensions: {len(embedding)}")
+                            return embedding
+                        else:
+                            logger.error(f"Invalid Titan response structure: {response_body}")
+                            return None
                         
                 except ClientError as e:
                     error_code = e.response['Error']['Code']

@@ -90,7 +90,7 @@ export default function MemoryViewer({
         includeMetadata: true,
       });
 
-      setMemories(response.data || []);
+      setMemories(response?.data || []);
     } catch (err: any) {
       console.error('Failed to fetch memories:', err);
       setError(err.message || 'Failed to fetch memories');

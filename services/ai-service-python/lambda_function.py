@@ -7,6 +7,7 @@ import boto3
 from typing import Dict, Any, Optional
 import traceback
 from decimal import Decimal
+from datetime import datetime
 
 # Import our services
 from auth_layer import AuthLayer
@@ -193,8 +194,8 @@ def lambda_handler(event, context):
             return asyncio.run(handle_anomaly_detection(user_id, body))
         elif '/performance/predict' in path:
             return asyncio.run(handle_performance_prediction(user_id, body))
-        elif '/performance/report' in path:
-            return asyncio.run(handle_performance_report(user_id, body))
+        # elif '/performance/report' in path:
+        #     return asyncio.run(handle_performance_report(user_id, body))
         elif '/nutrition/analyze' in path:
             return asyncio.run(handle_nutrition_analysis(user_id, body))
         elif '/nutrition/adjust' in path:
@@ -245,6 +246,8 @@ def lambda_handler(event, context):
             return asyncio.run(handle_conversation_summarization(user_id, body))
         elif '/conversation/analytics' in path:
             return asyncio.run(handle_conversation_analytics(user_id, body))
+        elif '/proactive/insights' in path:
+            return asyncio.run(handle_proactive_insights(user_id, body))
         
         elif http_method == 'GET':
             if '/conversations' in path:
@@ -383,6 +386,13 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         cost = calculate_cost(bedrock_result['input_tokens'], bedrock_result['output_tokens'])
         emit_metric('EstimatedCost', cost, 'None')
         
+        # Prepare RAG context for response
+        rag_context_response = {
+            'sources': rag_context['sources'],
+            'context': rag_context['context'],
+            'metadata': rag_context['metadata']
+        } if rag_context['sources'] else None
+        
         return {
             'statusCode': 200,
             'headers': {
@@ -390,7 +400,17 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps(convert_decimals({
-                'reply': bedrock_result['response'],
+                'success': True,
+                'data': {
+                    'response': bedrock_result['response'],
+                    'ragContext': rag_context_response
+                },
+                'metadata': {
+                    'timestamp': datetime.now().isoformat(),
+                    'processingTime': 0,  # Could be calculated if needed
+                    'confidence': 0.8,  # Could be calculated based on RAG confidence
+                    'sources': rag_context['sources']
+                },
                 'conversationId': conversation_id,
                 'tokensUsed': bedrock_result['tokens_used'],
                 'remainingRequests': rate_limit_result['remaining'],
@@ -1722,6 +1742,49 @@ async def handle_conversation_analytics(user_id: str, body: Dict[str, Any]) -> D
     except Exception as e:
         logger.error(f"Error in handle_conversation_analytics: {e}")
         return create_error_response(500, 'Failed to get conversation analytics')
+
+async def handle_proactive_insights(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle proactive insights requests"""
+    try:
+        logger.info(f"Proactive insights request for user {user_id}")
+        
+        # Simple test response first
+        insights = [
+            {
+                'type': 'general_motivation',
+                'title': 'Keep Going!',
+                'message': 'You\'re doing great! Keep up the consistent effort towards your fitness goals.',
+                'priority': 'low',
+                'action': 'continue_journey',
+                'confidence': 0.8
+            }
+        ]
+        
+        response_data = {
+            'insights': insights,
+            'total_count': len(insights),
+            'generated_at': datetime.now().isoformat(),
+            'user_context': {
+                'experience_level': 'beginner',
+                'fitness_goals': ['Build muscle', 'Lose weight', 'Improve endurance'],
+                'last_workout': None
+            }
+        }
+        
+        response = {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(response_data)
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in handle_proactive_insights: {e}")
+        return create_error_response(500, 'Failed to get proactive insights')
 
 async def handle_eventbridge_event(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle EventBridge events for proactive coaching"""

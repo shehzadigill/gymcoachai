@@ -42,7 +42,7 @@ export async function apiFetch<T>(
     const text = await res.text().catch(() => '');
     throw new Error(text || `Request failed: ${res.status}`);
   }
-  return (await res.json()) as T;
+  return res as T;
 }
 
 // Helper function to get current user ID from auth context

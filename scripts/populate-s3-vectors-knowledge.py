@@ -14,6 +14,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 # Import our services
+import sys
+sys.path.append('services/ai-service-python')
 from embedding_service import EmbeddingService
 from s3_vectors_service import S3VectorsService
 
@@ -631,13 +633,13 @@ class KnowledgePopulationService:
                 knowledge_text = self._create_research_knowledge_text(article)
                 
                 # Generate embedding
-                embedding = await self.embedding_service.get_knowledge_embedding(knowledge_text)
+                embedding = await self.embedding_service.generate_embedding(knowledge_text)
                 
                 if embedding:
                     # Store in S3 Vectors
                     vector_id = f"research_{article['title'].lower().replace(' ', '_')}"
                     
-                    await self.s3_vectors_service.put_vector(
+                    await self.s3_vectors_service.store_vector(
                         vector_id=vector_id,
                         vector=embedding,
                         metadata={
@@ -676,13 +678,13 @@ class KnowledgePopulationService:
                 knowledge_text = self._create_injury_knowledge_text(item)
                 
                 # Generate embedding
-                embedding = await self.embedding_service.get_knowledge_embedding(knowledge_text)
+                embedding = await self.embedding_service.generate_embedding(knowledge_text)
                 
                 if embedding:
                     # Store in S3 Vectors
                     vector_id = f"injury_{item['title'].lower().replace(' ', '_')}"
                     
-                    await self.s3_vectors_service.put_vector(
+                    await self.s3_vectors_service.store_vector(
                         vector_id=vector_id,
                         vector=embedding,
                         metadata={
@@ -721,13 +723,13 @@ class KnowledgePopulationService:
                 knowledge_text = self._create_training_knowledge_text(item)
                 
                 # Generate embedding
-                embedding = await self.embedding_service.get_knowledge_embedding(knowledge_text)
+                embedding = await self.embedding_service.generate_embedding(knowledge_text)
                 
                 if embedding:
                     # Store in S3 Vectors
                     vector_id = f"training_{item['title'].lower().replace(' ', '_')}"
                     
-                    await self.s3_vectors_service.put_vector(
+                    await self.s3_vectors_service.store_vector(
                         vector_id=vector_id,
                         vector=embedding,
                         metadata={

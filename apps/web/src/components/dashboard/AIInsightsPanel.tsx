@@ -16,7 +16,7 @@ import {
   Star,
   ArrowRight,
 } from 'lucide-react';
-import { aiService } from '../../../lib/ai-service-client';
+import { aiService } from '../../lib/ai-service-client';
 import { ConfidenceIndicator, TrendChart } from '../ai/visualizations';
 import type {
   ProactiveInsight,

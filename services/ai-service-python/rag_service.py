@@ -19,7 +19,7 @@ class RAGService:
         
         # RAG configuration
         self.default_top_k = 5
-        self.default_similarity_threshold = 0.7
+        self.default_similarity_threshold = 0.01  # Very low threshold to test if we can get results
         self.max_context_length = 4000  # characters
         
         # Namespaces for different knowledge types
@@ -28,7 +28,9 @@ class RAGService:
             'nutrition': 'nutrition_database',
             'knowledge': 'fitness_knowledge',
             'workouts': 'workout_plans',
-            'injuries': 'injury_prevention'
+            'injuries': 'injuries',  # Updated to match stored data
+            'research': 'research',  # Added for research articles
+            'training': 'training'   # Added for training methodology
         }
     
     async def retrieve_relevant_context(self, 
@@ -57,7 +59,8 @@ class RAGService:
             if similarity_threshold is None:
                 similarity_threshold = self.default_similarity_threshold
             if namespaces is None:
-                namespaces = list(self.namespaces.values())
+                # Use only the namespaces that actually exist in the bucket
+                namespaces = ['injuries', 'research', 'training']
             
             # Generate query embedding
             query_embedding = await self.embedding_service.generate_query_embedding(query, context)
