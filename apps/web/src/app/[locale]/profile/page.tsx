@@ -554,6 +554,8 @@ export default function ProfilePage() {
           <AITrainerTab
             preferences={profile.preferences}
             onUpdate={handlePreferencesUpdate}
+            shouldRefresh={activeTab === 'ai-trainer'}
+            userId={user?.id}
           />
         )}
         {activeTab === 'security' && <SecurityTab />}
@@ -1174,13 +1176,17 @@ function GoalsTab({
 function AITrainerTab({
   preferences,
   onUpdate,
+  shouldRefresh,
+  userId,
 }: {
   preferences: UserProfile['preferences'];
   onUpdate: (updates: Partial<UserProfile['preferences']>) => void;
+  shouldRefresh?: boolean;
+  userId?: string;
 }) {
   const [aiPreferences, setAiPreferences] = useState(
     preferences.aiTrainer || {
-      enabled: false,
+      enabled: true, // Default to enabled for new users
       coachingStyle: 'balanced' as const,
       communicationFrequency: 'on-demand' as const,
       focusAreas: [],
@@ -1194,23 +1200,110 @@ function AITrainerTab({
     }
   );
 
+  // Fetch fresh preferences when the AI Trainer tab becomes active
   useEffect(() => {
-    setAiPreferences(
-      preferences?.aiTrainer || {
-        enabled: false,
-        coachingStyle: 'balanced',
-        communicationFrequency: 'on-demand',
-        focusAreas: [],
-        injuryHistory: [],
-        equipmentAvailable: [],
-        workoutDurationPreference: 60,
-        workoutDaysPerWeek: 3,
-        mealPreferences: [],
-        allergies: [],
-        supplementPreferences: [],
+    const fetchFreshPreferences = async () => {
+      if (shouldRefresh && userId) {
+        try {
+          console.log(
+            '🔄 AI Trainer tab active - fetching fresh preferences...'
+          );
+          const response = await api.getUserPreferences(userId);
+          const result = await response?.json();
+
+          if (result?.aiTrainer) {
+            console.log(
+              '✅ Got fresh AI trainer preferences:',
+              result.aiTrainer
+            );
+            setAiPreferences({
+              enabled: result.aiTrainer.enabled ?? true,
+              coachingStyle:
+                result.aiTrainer.coaching_style ||
+                result.aiTrainer.coachingStyle ||
+                'balanced',
+              communicationFrequency:
+                result.aiTrainer.communication_frequency ||
+                result.aiTrainer.communicationFrequency ||
+                'on-demand',
+              focusAreas:
+                result.aiTrainer.focus_areas ||
+                result.aiTrainer.focusAreas ||
+                [],
+              injuryHistory:
+                result.aiTrainer.injury_history ||
+                result.aiTrainer.injuryHistory ||
+                [],
+              equipmentAvailable:
+                result.aiTrainer.equipment_available ||
+                result.aiTrainer.equipmentAvailable ||
+                [],
+              workoutDurationPreference:
+                result.aiTrainer.workout_duration_preference ||
+                result.aiTrainer.workoutDurationPreference ||
+                60,
+              workoutDaysPerWeek:
+                result.aiTrainer.workout_days_per_week ||
+                result.aiTrainer.workoutDaysPerWeek ||
+                3,
+              mealPreferences:
+                result.aiTrainer.meal_preferences ||
+                result.aiTrainer.mealPreferences ||
+                [],
+              allergies: result.aiTrainer.allergies || [],
+              supplementPreferences:
+                result.aiTrainer.supplement_preferences ||
+                result.aiTrainer.supplementPreferences ||
+                [],
+            });
+          } else {
+            console.log('ℹ️ No fresh AI trainer data, using defaults');
+            setAiPreferences({
+              enabled: true,
+              coachingStyle: 'balanced',
+              communicationFrequency: 'on-demand',
+              focusAreas: [],
+              injuryHistory: [],
+              equipmentAvailable: [],
+              workoutDurationPreference: 60,
+              workoutDaysPerWeek: 3,
+              mealPreferences: [],
+              allergies: [],
+              supplementPreferences: [],
+            });
+          }
+        } catch (error) {
+          console.error(
+            '❌ Error fetching fresh AI trainer preferences:',
+            error
+          );
+        }
       }
-    );
-  }, [preferences?.aiTrainer]);
+    };
+
+    fetchFreshPreferences();
+  }, [shouldRefresh, userId]);
+
+  // Also update when the parent preferences change (fallback)
+  useEffect(() => {
+    if (!shouldRefresh) {
+      setAiPreferences(
+        preferences?.aiTrainer || {
+          enabled: true, // Default to enabled for new users
+          coachingStyle: 'balanced',
+          communicationFrequency: 'on-demand',
+          focusAreas: [],
+          injuryHistory: [],
+          equipmentAvailable: [],
+          workoutDurationPreference: 60,
+          workoutDaysPerWeek: 3,
+          mealPreferences: [],
+          allergies: [],
+          supplementPreferences: [],
+        }
+      );
+    }
+  }, [preferences?.aiTrainer, shouldRefresh]);
 
   const [newItem, setNewItem] = useState({
     focusArea: '',

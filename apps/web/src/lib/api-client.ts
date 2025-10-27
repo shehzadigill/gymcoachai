@@ -5,7 +5,7 @@ const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_URL || '';
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
-): Promise<T> {
+): Promise<Response> {
   const isLocal =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' ||
@@ -42,7 +42,7 @@ export async function apiFetch<T>(
     const text = await res.text().catch(() => '');
     throw new Error(text || `Request failed: ${res.status}`);
   }
-  return res as T;
+  return res;
 }
 
 // Helper function to get current user ID from auth context
@@ -252,7 +252,8 @@ export const api = {
   // User profile endpoints
   async getUserProfile(userId?: string) {
     // Don't include user ID in path - let backend authenticate from JWT token
-    return apiFetch<any>('/api/user-profiles/profile');
+    const res = await apiFetch<any>('/api/user-profiles/profile');
+    return res.json();
   },
 
   async updateUserProfile(data: any, userId?: string) {
@@ -719,13 +720,13 @@ export const api = {
   async completeWorkoutSession(sessionId: string, userId?: string) {
     const id = userId || (await getCurrentUserId());
     // First get the session to preserve existing data
-    const session = await this.getWorkoutSession(sessionId, id);
-    let sessionData = session;
-    if (session && typeof session === 'object' && 'body' in session) {
+    const res = await this.getWorkoutSession(sessionId, id);
+    let sessionData = await res.json();
+    if (res.ok && typeof sessionData === 'object' && 'body' in sessionData) {
       sessionData =
-        typeof session.body === 'string'
-          ? JSON.parse(session.body)
-          : session.body;
+        typeof sessionData.body === 'string'
+          ? JSON.parse(sessionData.body)
+          : sessionData.body;
     }
 
     console.log('Web completeWorkoutSession - sessionData:', sessionData);
@@ -816,7 +817,7 @@ export const api = {
     const res = await apiFetch<any>(url);
 
     // Backend returns: { body: { foods: [...], next_cursor: "..." } }
-    const bodyData = res.body || res;
+    const bodyData = await res.json();
     const rawFoods = Array.isArray(bodyData.foods)
       ? bodyData.foods
       : Array.isArray(bodyData)
@@ -949,7 +950,7 @@ export const api = {
 
   // Image upload endpoints
   async generateUploadUrl(fileType: string) {
-    return apiFetch<{
+    const res = await apiFetch<{
       upload_url: string;
       key: string;
       bucket_name: string;
@@ -958,6 +959,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ file_type: fileType }),
     });
+    return await res.json();
   },
 
   async uploadImage(file: File, uploadUrl: string): Promise<void> {

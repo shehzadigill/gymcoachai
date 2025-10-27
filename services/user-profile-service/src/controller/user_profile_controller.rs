@@ -227,9 +227,12 @@ impl UserProfileController {
             .extract_user_id_from_path(path)
             .unwrap_or_else(|| auth_context.user_id.clone());
 
+        // First try parsing as complete UserPreferences
         let preferences: Result<UserPreferences, _> = DataHelper::parse_json_to_type(body);
+
         match preferences {
             Ok(prefs) => {
+                // Full preferences update
                 match self
                     .user_profile_service
                     .update_user_preferences(&user_id, &prefs, auth_context)
@@ -250,8 +253,76 @@ impl UserProfileController {
                 }
             }
             Err(_) => {
-                error!("Error parsing preferences");
-                Ok(response_helpers::invalid_data("Invalid preferences data"))
+                // Try partial update - parse as JSON Value first
+                let partial_update: Result<Value, _> = serde_json::from_str(body);
+                match partial_update {
+                    Ok(partial) => {
+                        // Get existing preferences first
+                        match self
+                            .user_profile_service
+                            .get_user_preferences(&user_id, auth_context)
+                            .await
+                        {
+                            Ok(existing_prefs_value) => {
+                                // Parse existing preferences
+                                let mut existing_prefs: UserPreferences =
+                                    serde_json::from_value(existing_prefs_value)?;
+
+                                // Apply partial updates
+                                if let Some(ai_trainer) = partial.get("aiTrainer") {
+                                    existing_prefs.ai_trainer =
+                                        serde_json::from_value(ai_trainer.clone()).ok();
+                                }
+                                if let Some(daily_goals) = partial.get("dailyGoals") {
+                                    existing_prefs.daily_goals =
+                                        serde_json::from_value(daily_goals.clone()).ok();
+                                }
+                                if let Some(units) = partial.get("units").and_then(|v| v.as_str()) {
+                                    existing_prefs.units = units.to_string();
+                                }
+                                if let Some(timezone) =
+                                    partial.get("timezone").and_then(|v| v.as_str())
+                                {
+                                    existing_prefs.timezone = timezone.to_string();
+                                }
+
+                                // Update with merged preferences
+                                match self
+                                    .user_profile_service
+                                    .update_user_preferences(
+                                        &user_id,
+                                        &existing_prefs,
+                                        auth_context,
+                                    )
+                                    .await
+                                {
+                                    Ok(updated_prefs) => Ok(ResponseBuilder::ok(updated_prefs)),
+                                    Err(e) => {
+                                        error!("Error updating user preferences: {}", e);
+                                        let msg = e.to_string();
+                                        if msg.contains("You can only update") {
+                                            Ok(ResponseBuilder::forbidden(&msg))
+                                        } else {
+                                            Ok(ResponseBuilder::internal_server_error(
+                                                "Failed to update user preferences",
+                                            ))
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("Error getting existing preferences: {}", e);
+                                Ok(ResponseBuilder::internal_server_error(
+                                    "Failed to get existing preferences",
+                                ))
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        error!("Error parsing preferences as JSON");
+                        Ok(response_helpers::invalid_data("Invalid preferences data"))
+                    }
+                }
             }
         }
     }

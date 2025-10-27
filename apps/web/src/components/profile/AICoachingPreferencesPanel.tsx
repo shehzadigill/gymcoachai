@@ -24,10 +24,11 @@ import { ConfidenceIndicator } from '../ai/visualizations';
 import { api } from '../../lib/api-client';
 
 // AI Preferences interface for the user profile service
+// Matches the backend AITrainerPreferences structure
 interface AIPreferences {
+  enabled: boolean;
   coachingStyle: string;
   communicationFrequency: string;
-  motivationType: string;
   focusAreas: string[];
   injuryHistory: string[];
   equipmentAvailable: string[];
@@ -36,6 +37,8 @@ interface AIPreferences {
   mealPreferences: string[];
   allergies: string[];
   supplementPreferences: string[];
+  // Frontend-only fields for UI state
+  motivationType?: string;
 }
 
 interface AICoachingPreferencesPanelProps {
@@ -161,25 +164,35 @@ export default function AICoachingPreferencesPanel({
   onPreferencesUpdate,
   className = '',
 }: AICoachingPreferencesPanelProps) {
+  console.log(
+    '🔧 AICoachingPreferencesPanel - currentPreferences prop:',
+    currentPreferences
+  );
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [personalizationProfile, setPersonalizationProfile] =
     useState<any>(null);
-  const [preferences, setPreferences] = useState<AIPreferences>({
-    coachingStyle: 'motivational',
-    communicationFrequency: 'weekly',
-    motivationType: 'achievement',
-    focusAreas: [] as string[],
-    injuryHistory: [] as string[],
-    equipmentAvailable: [] as string[],
-    workoutDurationPreference: 60,
-    workoutDaysPerWeek: 4,
-    mealPreferences: [] as string[],
-    allergies: [] as string[],
-    supplementPreferences: [] as string[],
-    ...currentPreferences,
+  const [preferences, setPreferences] = useState<AIPreferences>(() => {
+    const defaultPrefs = {
+      enabled: true,
+      coachingStyle: 'motivational',
+      communicationFrequency: 'weekly',
+      motivationType: 'achievement',
+      focusAreas: [] as string[],
+      injuryHistory: [] as string[],
+      equipmentAvailable: [] as string[],
+      workoutDurationPreference: 60,
+      workoutDaysPerWeek: 4,
+      mealPreferences: [] as string[],
+      allergies: [] as string[],
+      supplementPreferences: [] as string[],
+      ...currentPreferences,
+    };
+    console.log('🎯 Initial preferences state:', defaultPrefs);
+    return defaultPrefs;
   });
 
   const [activeTab, setActiveTab] = useState<
@@ -187,22 +200,99 @@ export default function AICoachingPreferencesPanel({
   >('style');
 
   useEffect(() => {
+    console.log(
+      '🚀 AICoachingPreferencesPanel mounted, fetching fresh preferences...'
+    );
     fetchPersonalizationProfile();
-  }, [userId]);
+  }, []); // Remove userId dependency to ensure fresh API call on mount
 
   const fetchPersonalizationProfile = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch AI preferences from user profile service
-      const userPreferences = await api.getUserPreferences(userId);
+      console.log('Fetching user preferences for userId:', userId);
 
-      if (userPreferences?.aiTrainer) {
+      // Fetch AI preferences from user profile service
+      const res = await api.getUserPreferences(userId);
+      const userPreferencesResponse = await res?.json();
+      console.log('User preferences response:', userPreferencesResponse);
+
+      if (userPreferencesResponse?.aiTrainer) {
+        console.log(
+          '✅ Found AI trainer preferences:',
+          userPreferencesResponse.aiTrainer
+        );
+
+        // Map backend snake_case to frontend camelCase and add defaults
+        const aiTrainerPrefs = userPreferencesResponse.aiTrainer as any;
+        const mappedPreferences: Partial<AIPreferences> = {
+          enabled: aiTrainerPrefs.enabled ?? true,
+          coachingStyle:
+            aiTrainerPrefs.coaching_style ||
+            aiTrainerPrefs.coachingStyle ||
+            'motivational',
+          communicationFrequency:
+            aiTrainerPrefs.communication_frequency ||
+            aiTrainerPrefs.communicationFrequency ||
+            'weekly',
+          focusAreas:
+            aiTrainerPrefs.focus_areas || aiTrainerPrefs.focusAreas || [],
+          injuryHistory:
+            aiTrainerPrefs.injury_history || aiTrainerPrefs.injuryHistory || [],
+          equipmentAvailable:
+            aiTrainerPrefs.equipment_available ||
+            aiTrainerPrefs.equipmentAvailable ||
+            [],
+          workoutDurationPreference:
+            aiTrainerPrefs.workout_duration_preference ||
+            aiTrainerPrefs.workoutDurationPreference ||
+            60,
+          workoutDaysPerWeek:
+            aiTrainerPrefs.workout_days_per_week ||
+            aiTrainerPrefs.workoutDaysPerWeek ||
+            4,
+          mealPreferences:
+            aiTrainerPrefs.meal_preferences ||
+            aiTrainerPrefs.mealPreferences ||
+            [],
+          allergies: aiTrainerPrefs.allergies || [],
+          supplementPreferences:
+            aiTrainerPrefs.supplement_preferences ||
+            aiTrainerPrefs.supplementPreferences ||
+            [],
+        };
+
+        const newPreferences = {
+          ...preferences,
+          ...mappedPreferences,
+        };
+
+        setPreferences(newPreferences);
+        console.log('🎯 Updated preferences state:', newPreferences);
+        console.log('🎯 Specifically enabled value:', newPreferences.enabled);
+      } else {
+        console.log(
+          'ℹ️ No AI trainer preferences found, ensuring defaults are set'
+        );
+
+        // Ensure preferences have proper defaults when no backend data exists
         setPreferences((prev: AIPreferences) => ({
           ...prev,
-          ...userPreferences.aiTrainer,
+          enabled: true, // Explicitly ensure enabled is true by default
+          coachingStyle: prev.coachingStyle || 'motivational',
+          communicationFrequency: prev.communicationFrequency || 'weekly',
+          focusAreas: prev.focusAreas || [],
+          injuryHistory: prev.injuryHistory || [],
+          equipmentAvailable: prev.equipmentAvailable || [],
+          workoutDurationPreference: prev.workoutDurationPreference || 60,
+          workoutDaysPerWeek: prev.workoutDaysPerWeek || 4,
+          mealPreferences: prev.mealPreferences || [],
+          allergies: prev.allergies || [],
+          supplementPreferences: prev.supplementPreferences || [],
         }));
+
+        console.log('🎯 Set default preferences with enabled=true');
       }
     } catch (err: any) {
       console.error('Failed to fetch AI preferences:', err);
@@ -213,10 +303,13 @@ export default function AICoachingPreferencesPanel({
   };
 
   const handlePreferenceChange = (key: keyof AIPreferences, value: any) => {
-    setPreferences((prev: AIPreferences) => ({
-      ...prev,
+    console.log('🔧 Preference change:', key, '=', value);
+    const newPreferences = {
+      ...preferences,
       [key]: value,
-    }));
+    };
+    console.log('🔧 New preferences after change:', newPreferences);
+    setPreferences(newPreferences);
   };
 
   const handleArrayPreferenceChange = (
@@ -231,7 +324,7 @@ export default function AICoachingPreferencesPanel({
         : (preferences[key] as string[]).filter((item) => item !== value),
     };
     setPreferences(updatedPreferences);
-    
+
     // Immediately notify parent component for real-time sync
     if (onPreferencesUpdate) {
       onPreferencesUpdate(updatedPreferences);
@@ -246,9 +339,26 @@ export default function AICoachingPreferencesPanel({
 
       console.log('💾 Saving AI preferences:', preferences);
 
+      // Map frontend camelCase to backend snake_case format
+      const backendPreferences = {
+        enabled: preferences.enabled,
+        coaching_style: preferences.coachingStyle,
+        communication_frequency: preferences.communicationFrequency,
+        focus_areas: preferences.focusAreas,
+        injury_history: preferences.injuryHistory,
+        equipment_available: preferences.equipmentAvailable,
+        workout_duration_preference: preferences.workoutDurationPreference,
+        workout_days_per_week: preferences.workoutDaysPerWeek,
+        meal_preferences: preferences.mealPreferences,
+        allergies: preferences.allergies,
+        supplement_preferences: preferences.supplementPreferences,
+      };
+
+      console.log('📤 Sending backend preferences:', backendPreferences);
+
       // Save preferences to user profile service
-      const saveResult = await api.updateAIPreferences(preferences);
-      
+      const saveResult = await api.updateAIPreferences(backendPreferences);
+
       console.log('✅ Save result:', saveResult);
 
       // Immediately update parent component with the saved preferences
@@ -256,13 +366,16 @@ export default function AICoachingPreferencesPanel({
         onPreferencesUpdate(preferences);
       }
 
+      // Refresh the preferences data to ensure we have the latest from backend
+      await fetchPersonalizationProfile();
+
       // Also submit feedback to AI service about preference changes
       // This helps the AI learn and improve personalization
       try {
         await aiService.submitPersonalizationFeedback({
           type: 'preference_update',
           rating: 5, // User actively updated preferences
-          comments: `User updated AI preferences: coaching style=${preferences.coachingStyle}, communication=${preferences.communicationFrequency}, motivation=${preferences.motivationType}`,
+          comments: `User updated AI preferences: enabled=${preferences.enabled}, coaching style=${preferences.coachingStyle}, communication=${preferences.communicationFrequency}, motivation=${preferences.motivationType}`,
         });
       } catch (feedbackError) {
         console.warn('Failed to submit preference feedback:', feedbackError);
@@ -361,11 +474,39 @@ export default function AICoachingPreferencesPanel({
           </h3>
           <Sparkles className="w-4 h-4 text-purple-500" />
         </div>
-        {personalizationProfile && (
-          <ConfidenceIndicator
-            score={personalizationProfile.confidence || 0.8}
-          />
-        )}
+        <div className="flex items-center space-x-4">
+          {personalizationProfile && (
+            <ConfidenceIndicator
+              score={personalizationProfile.confidence || 0.8}
+            />
+          )}
+          {/* AI Trainer Enable/Disable Toggle */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">AI Trainer:</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preferences.enabled}
+                onChange={(e) => {
+                  console.log(
+                    '🎛️ Toggle clicked, current checked:',
+                    preferences.enabled,
+                    'new value:',
+                    e.target.checked
+                  );
+                  handlePreferenceChange('enabled', e.target.checked);
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+            <span
+              className={`text-sm font-medium ${preferences.enabled ? 'text-green-600' : 'text-gray-400'}`}
+            >
+              {preferences.enabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* AI Analysis */}
@@ -446,7 +587,22 @@ export default function AICoachingPreferencesPanel({
       </div>
 
       {/* Content */}
-      <div className="space-y-6">
+      {!preferences.enabled && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center mb-6">
+          <Bot className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h4 className="text-lg font-medium text-gray-600 mb-2">
+            AI Trainer Disabled
+          </h4>
+          <p className="text-gray-500 mb-4">
+            Enable the AI trainer toggle above to configure your coaching
+            preferences.
+          </p>
+        </div>
+      )}
+
+      <div
+        className={`space-y-6 ${!preferences.enabled ? 'opacity-50 pointer-events-none' : ''}`}
+      >
         {/* Coaching Style Tab */}
         {activeTab === 'style' && (
           <div className="space-y-4">
@@ -886,7 +1042,7 @@ export default function AICoachingPreferencesPanel({
       <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-gray-200">
         <button
           onClick={handleSavePreferences}
-          disabled={saving}
+          disabled={saving || !preferences.enabled}
           className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
         >
           {saving ? (
@@ -898,7 +1054,7 @@ export default function AICoachingPreferencesPanel({
         </button>
         <button
           onClick={handleAnalyzePreferences}
-          disabled={loading}
+          disabled={loading || !preferences.enabled}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
         >
           <Brain className="w-4 h-4" />

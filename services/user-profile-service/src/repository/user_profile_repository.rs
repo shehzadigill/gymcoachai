@@ -369,7 +369,10 @@ impl UserProfileRepository {
 
         if let Some(item) = result.item {
             let preferences = UserPreferences {
-                ai_trainer: None,
+                ai_trainer: item
+                    .get("aiTrainer")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| serde_json::from_str(s).ok()),
                 units: item
                     .get("units")
                     .and_then(|v| v.as_s().ok())
@@ -595,6 +598,14 @@ impl UserProfileRepository {
             "progressSharing".to_string(),
             AttributeValue::Bool(preferences.privacy.progress_sharing),
         );
+
+        // Handle AI Trainer preferences
+        if let Some(ref ai_trainer) = preferences.ai_trainer {
+            if let Ok(ai_trainer_json) = serde_json::to_string(ai_trainer) {
+                item.insert("aiTrainer".to_string(), AttributeValue::S(ai_trainer_json));
+            }
+        }
+
         item.insert("updatedAt".to_string(), AttributeValue::S(now));
 
         self.dynamodb_client

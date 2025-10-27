@@ -131,7 +131,6 @@ fn default_profile_visibility() -> String {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct AITrainerPreferences {
     pub enabled: bool,
     pub coaching_style: String, // "motivational", "strict", "balanced", "technical"

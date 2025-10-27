@@ -23,7 +23,7 @@ import type {
   WeeklyReview,
   PerformancePrediction,
   PersonalizationProfile,
-} from '../../../types/ai-service';
+} from '../../types/ai-service';
 
 interface AIInsightsPanelProps {
   className?: string;
@@ -63,7 +63,11 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
       if (insightsResponse.success) {
         setInsights(insightsResponse.data);
       }
-
+      console.log('AI Insights:', {
+        weeklyReviewResponse,
+        predictionsResponse,
+        profileResponse,
+      });
       if (weeklyReviewResponse.success) {
         setWeeklyReview(weeklyReviewResponse.data);
       }
