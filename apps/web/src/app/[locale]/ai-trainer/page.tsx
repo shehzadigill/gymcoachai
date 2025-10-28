@@ -165,15 +165,8 @@ export default function AITrainerPage() {
       // Load personalization profile
       const profileResponse = await aiService.getPersonalizationProfile();
       console.log('Personalization profile response:', profileResponse);
-      if (profileResponse.success) {
-        setPersonalizationProfile(profileResponse.data);
-        setCoachingStyle(profileResponse.data.coachingStyle || 'adaptive');
-      } else {
-        console.error(
-          'Failed to load personalization profile:',
-          profileResponse.error
-        );
-      }
+      setPersonalizationProfile(profileResponse);
+      setCoachingStyle(profileResponse.coachingStyle || 'adaptive');
 
       // Load user memories
       const memoriesResponse = await aiService.retrieveRelevantMemories(
@@ -207,6 +200,7 @@ export default function AITrainerPage() {
   };
 
   const loadConversationAnalytics = async (conversationId: string) => {
+    if (!conversationId) return;
     try {
       const response = await aiService.getConversationAnalytics(conversationId);
       if (response.success) {

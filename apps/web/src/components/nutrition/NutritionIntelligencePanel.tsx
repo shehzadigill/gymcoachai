@@ -13,7 +13,43 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { aiService } from '../../lib/ai-service-client';
+import { api } from '../../lib/api-client';
 import { ConfidenceIndicator, ComparisonView } from '../ai/visualizations';
+// Types
+interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  fitnessGoals: string[];
+  activityLevel: string;
+  height: number;
+  weight: number;
+  age: number;
+  gender: string;
+}
+
+interface DailyGoals {
+  calories: number;
+  water: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+interface UserPreferences {
+  dailyGoals?: DailyGoals;
+  units: string;
+}
+
+interface NutritionStats {
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFats: number;
+  waterIntake: number;
+  mealsLogged: number;
+}
 
 interface NutritionIntelligencePanelProps {
   userId: string;
@@ -34,6 +70,14 @@ export default function NutritionIntelligencePanel({
     'adherence' | 'macros' | 'hydration' | 'timing'
   >('adherence');
 
+  // User data state
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userPreferences, setUserPreferences] =
+    useState<UserPreferences | null>(null);
+  const [nutritionStats, setNutritionStats] = useState<NutritionStats | null>(
+    null
+  );
+
   useEffect(() => {
     fetchNutritionIntelligence();
   }, [userId]);
@@ -43,30 +87,148 @@ export default function NutritionIntelligencePanel({
       setLoading(true);
       setError(null);
 
+      // Fetch user data first
+      const [profileResponse, preferencesResponse, nutritionStatsResponse] =
+        await Promise.all([
+          api.getUserProfile(),
+          api.getUserPreferences(),
+          api.getNutritionStats(),
+        ]);
+
+      console.log('User data fetched:', {
+        profileResponse,
+        preferencesResponse,
+        nutritionStatsResponse,
+      });
+
+      setUserProfile(profileResponse);
+      setUserPreferences(preferencesResponse);
+      setNutritionStats(nutritionStatsResponse);
+
+      // Use user's fitness goals or default goals
+      const userGoals = profileResponse?.fitnessGoals || [
+        'weight_loss',
+        'muscle_gain',
+      ];
+
       // Fetch nutrition analysis
       const nutritionResponse = await aiService.analyzeNutritionAdherence({
         days: 14,
         includeHydration: true,
         includeTiming: true,
-        goals: ['weight_loss', 'muscle_gain'],
+        goals: userGoals,
       });
 
-      // Fetch macro analysis
-      const macroResponse = await aiService.calculateOptimalMacros({
-        goals: ['weight_loss', 'muscle_gain'],
-        activityLevel: 'moderate',
-        preferences: {},
-      });
+      // Fetch macro analysis using user goals
+      const macroResponse = await aiService.calculateOptimalMacros(userGoals);
 
       // Fetch hydration analysis
-      const hydrationResponse = await aiService.analyzeHydration({
-        days: 7,
+      const hydrationResponse = await aiService.analyzeHydration(7);
+
+      // Transform data to match component expectations
+      setNutritionData(nutritionResponse.data);
+
+      // Calculate adherence based on real data
+      const dailyGoals = preferencesResponse?.dailyGoals || {
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fat: 67,
+        water: 8,
+      };
+
+      const currentStats = nutritionStatsResponse || {
+        totalCalories: 0,
+        totalProtein: 0,
+        totalCarbs: 0,
+        totalFats: 0,
+        waterIntake: 0,
+        mealsLogged: 0,
+      };
+
+      // Calculate adherence scores
+      const calorieAdherence =
+        dailyGoals.calories > 0
+          ? Math.min(
+              (currentStats.totalCalories / dailyGoals.calories) * 100,
+              100
+            )
+          : 0;
+      const proteinAdherence =
+        dailyGoals.protein > 0
+          ? Math.min(
+              (currentStats.totalProtein / dailyGoals.protein) * 100,
+              100
+            )
+          : 0;
+
+      const overallScore = Math.round(
+        (calorieAdherence + proteinAdherence) / 2
+      );
+
+      // Create adherence data structure
+      setAdherenceData({
+        score: nutritionResponse.data.adherenceScore || overallScore,
+        caloriesOnTarget: Math.round(calorieAdherence),
+        proteinGoalsMet: Math.round(proteinAdherence),
+        mealConsistency:
+          currentStats.mealsLogged >= 3 ? 85 : currentStats.mealsLogged * 30,
+        recommendations: nutritionResponse.data.recommendations?.map(
+          (r) => r.description
+        ) || [
+          `Target ${dailyGoals.calories} calories daily (currently ${currentStats.totalCalories})`,
+          `Aim for ${dailyGoals.protein}g protein daily (currently ${currentStats.totalProtein}g)`,
+          'Log meals consistently to track progress accurately',
+        ],
       });
 
-      setNutritionData(nutritionResponse.data);
-      setAdherenceData(nutritionResponse.data?.adherence);
-      setMacroAnalysis(macroResponse.data);
-      setHydrationData(hydrationResponse.data);
+      // Transform macro data using user goals and current intake
+      const targetProtein =
+        macroResponse.data.macros?.protein || dailyGoals.protein;
+      const targetCarbs = macroResponse.data.macros?.carbs || dailyGoals.carbs;
+      const targetFats = macroResponse.data.macros?.fats || dailyGoals.fat;
+
+      const totalMacroCalories =
+        targetProtein * 4 + targetCarbs * 4 + targetFats * 9;
+      const proteinPercent = Math.round(
+        ((targetProtein * 4) / totalMacroCalories) * 100
+      );
+      const carbsPercent = Math.round(
+        ((targetCarbs * 4) / totalMacroCalories) * 100
+      );
+      const fatsPercent = Math.round(
+        ((targetFats * 9) / totalMacroCalories) * 100
+      );
+
+      setMacroAnalysis({
+        protein: targetProtein,
+        carbs: targetCarbs,
+        fats: targetFats,
+        proteinPercent,
+        carbsPercent,
+        fatsPercent,
+        currentProtein: currentStats.totalProtein,
+        currentCarbs: currentStats.totalCarbs,
+        currentFats: currentStats.totalFats,
+      });
+
+      // Transform hydration data using user goals and current intake
+      const waterGoalLiters = dailyGoals.water * 0.25 || 2.0; // Convert glasses to liters (assuming 250ml per glass)
+      const currentWaterLiters = currentStats.waterIntake * 0.25 || 0;
+      const achievementRate =
+        waterGoalLiters > 0 ? currentWaterLiters / waterGoalLiters : 0;
+
+      setHydrationData({
+        averageIntake:
+          hydrationResponse.data.analysis?.averageIntake || currentWaterLiters,
+        dailyGoal: waterGoalLiters,
+        daysGoalAchieved: Math.round(achievementRate * 7), // Estimate based on current performance
+        tips: hydrationResponse.data.recommendations || [
+          `Target ${dailyGoals.water} glasses (${waterGoalLiters}L) of water daily`,
+          'Drink a glass of water before each meal',
+          'Increase intake by 2-3 glasses on workout days',
+        ],
+      });
     } catch (err: any) {
       console.error('Failed to fetch nutrition intelligence:', err);
       setError(err.message || 'Failed to fetch nutrition intelligence');
@@ -336,20 +498,43 @@ export default function NutritionIntelligencePanel({
               <h4 className="font-medium text-gray-900 mb-3">
                 Current vs Recommended
               </h4>
-              <ComparisonView
-                current={{
-                  label: 'Current Average',
-                  protein: macroAnalysis.currentProtein || 150,
-                  carbs: macroAnalysis.currentCarbs || 200,
-                  fats: macroAnalysis.currentFats || 80,
-                }}
-                recommended={{
-                  label: 'AI Recommended',
-                  protein: macroAnalysis.protein || 180,
-                  carbs: macroAnalysis.carbs || 225,
-                  fats: macroAnalysis.fats || 75,
-                }}
-              />
+
+              {/* Custom macro comparison since ComparisonView doesn't support multi-value comparison */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center">
+                      <div className="text-sm font-medium text-gray-900">
+                        Current
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        P: {macroAnalysis.currentProtein || 150}g
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        C: {macroAnalysis.currentCarbs || 200}g
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        F: {macroAnalysis.currentFats || 80}g
+                      </div>
+                    </div>
+                    <div className="text-gray-400">→</div>
+                    <div className="text-center">
+                      <div className="text-sm font-medium text-gray-900">
+                        Recommended
+                      </div>
+                      <div className="text-xs text-green-600">
+                        P: {macroAnalysis.protein || 180}g
+                      </div>
+                      <div className="text-xs text-green-600">
+                        C: {macroAnalysis.carbs || 225}g
+                      </div>
+                      <div className="text-xs text-green-600">
+                        F: {macroAnalysis.fats || 75}g
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

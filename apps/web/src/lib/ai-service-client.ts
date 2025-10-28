@@ -136,9 +136,9 @@ export class AIServiceClient {
 
   async analyzeUserPreferences(
     request?: PersonalizationAnalysisRequest
-  ): Promise<AIResponse<PersonalizationProfile>> {
+  ): Promise<PersonalizationProfile> {
     const cacheKey = `preferences:${JSON.stringify(request || {})}`;
-    const cached = this.getCached<AIResponse<PersonalizationProfile>>(cacheKey);
+    const cached = this.getCached<PersonalizationProfile>(cacheKey);
     if (cached) return cached;
 
     const response = await apiFetch('/api/ai/personalization/analyze', {
@@ -186,9 +186,9 @@ export class AIServiceClient {
 
   async getPersonalizationProfile(
     userId?: string
-  ): Promise<AIResponse<PersonalizationProfile>> {
+  ): Promise<PersonalizationProfile> {
     const cacheKey = `personalization:profile:${userId || 'current'}`;
-    const cached = this.getCached<AIResponse<PersonalizationProfile>>(cacheKey);
+    const cached = this.getCached<PersonalizationProfile>(cacheKey);
     if (cached) return cached;
 
     // Use the analyze endpoint to get AI-driven preferences analysis

@@ -344,7 +344,10 @@ export const api = {
   async getUserPreferences(userId?: string) {
     try {
       const id = userId || (await getCurrentUserId());
-      return apiFetch<any>(`/api/user-profiles/profile/preferences/${id}`);
+      const res = await apiFetch<any>(
+        `/api/user-profiles/profile/preferences/${id}`
+      );
+      return res.json();
     } catch (error) {
       console.warn('API Client: User preferences fetch failed:', error);
       return null;
@@ -461,7 +464,8 @@ export const api = {
   // Exercise Library
   async getExercises(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any[]>(`/api/workouts/exercises?userId=${id}`);
+    const res = await apiFetch(`/api/workouts/exercises?userId=${id}`);
+    return res.json();
   },
 
   async createExercise(data: any, userId?: string) {
@@ -888,7 +892,8 @@ export const api = {
   async getNutritionStats(userId?: string) {
     userId = userId || (await getCurrentUserId());
     if (userId) {
-      return apiFetch<any>(`/api/nutrition/users/${userId}/stats`);
+      const res = await apiFetch<any>(`/api/nutrition/users/${userId}/stats`);
+      return res.json();
     }
   },
 

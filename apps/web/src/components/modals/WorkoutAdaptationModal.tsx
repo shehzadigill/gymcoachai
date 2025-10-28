@@ -13,12 +13,42 @@ import {
 import { aiService } from '../../lib/ai-service-client';
 import { ConfidenceIndicator, ComparisonView } from '../ai/visualizations';
 import { formatAdaptationReasoning } from '../../lib/ai-utils';
+import PerformanceAnalytics from '../workouts/PerformanceAnalytics';
 import type {
   WorkoutAdaptation,
   Adaptation,
-  InjuryRiskAssessment,
-  PerformanceAnalysis,
+  RiskAssessment,
 } from '../../types/ai-service';
+
+// Extended types for this component
+interface ExtendedAdaptation extends Adaptation {
+  id: string;
+  title: string;
+  description: string;
+  changes?: string[];
+}
+
+interface ExtendedRiskAssessment extends RiskAssessment {
+  riskFactors: Array<{
+    description: string;
+    severity: 'low' | 'medium' | 'high';
+  }>;
+  preventionTips: string[];
+}
+
+interface ExtendedPerformanceAnalysis {
+  trends: Array<{
+    metric: string;
+    direction: 'up' | 'down' | 'stable';
+    description: string;
+    changePercentage: number;
+  }>;
+  anomalies: Array<{
+    type: string;
+    description: string;
+  }>;
+  confidence: number;
+}
 
 interface WorkoutAdaptationModalProps {
   isOpen: boolean;
@@ -49,14 +79,15 @@ export default function WorkoutAdaptationModal({
 }: WorkoutAdaptationModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [adaptations, setAdaptations] = useState<WorkoutAdaptation | null>(
-    null
-  );
-  const [injuryRisk, setInjuryRisk] = useState<InjuryRiskAssessment | null>(
+  const [adaptations, setAdaptations] = useState<{
+    adaptations: ExtendedAdaptation[];
+    confidence: number;
+  } | null>(null);
+  const [injuryRisk, setInjuryRisk] = useState<ExtendedRiskAssessment | null>(
     null
   );
   const [performanceAnalysis, setPerformanceAnalysis] =
-    useState<PerformanceAnalysis | null>(null);
+    useState<ExtendedPerformanceAnalysis | null>(null);
   const [selectedAdaptations, setSelectedAdaptations] = useState<Set<string>>(
     new Set()
   );
@@ -75,35 +106,68 @@ export default function WorkoutAdaptationModal({
       setLoading(true);
       setError(null);
 
-      // Get user's recent workout data for analysis
-      const recentWorkouts = await aiService.getRecentWorkouts(7); // Last 7 days
-      const progressData = await aiService.getProgressData(30); // Last 30 days
-
       // Analyze workout plan adaptations
       const adaptationResponse = await aiService.adaptWorkoutPlan({
-        currentPlan: currentPlan,
-        recentPerformance: recentWorkouts,
-        progressData: progressData,
-        userPreferences: {},
+        workoutPlanId: currentPlan.id,
+        userFeedback: 'Analyze current workout plan for optimizations',
       });
 
       // Assess injury risk
-      const injuryResponse = await aiService.assessInjuryRisk({
-        currentPlan: currentPlan,
-        recentWorkouts: recentWorkouts,
-        userHistory: progressData,
-      });
+      const injuryResponse = await aiService.assessInjuryRisk();
 
       // Analyze performance trends
-      const performanceResponse = await aiService.analyzePerformance({
-        workoutData: recentWorkouts,
-        timeRange: 30,
-        metrics: ['strength', 'endurance', 'volume'],
+      const performanceResponse = await aiService.analyzePerformance();
+
+      // Transform adaptations to match extended type
+      const transformedAdaptations = adaptationResponse.data.adaptations.map(
+        (adaptation, index) => ({
+          ...adaptation,
+          id: `adaptation-${index}`,
+          title: `${adaptation.type.charAt(0).toUpperCase() + adaptation.type.slice(1)} Adjustment`,
+          description: adaptation.reasoning,
+          changes: [
+            `Change ${adaptation.type} from ${adaptation.currentValue} to ${adaptation.recommendedValue}`,
+          ],
+        })
+      );
+
+      setAdaptations({
+        adaptations: transformedAdaptations,
+        confidence: adaptationResponse.data.confidence,
       });
 
-      setAdaptations(adaptationResponse);
-      setInjuryRisk(injuryResponse);
-      setPerformanceAnalysis(performanceResponse);
+      setInjuryRisk({
+        overallRisk: injuryResponse.data.risk as 'low' | 'medium' | 'high',
+        factors: injuryResponse.data.factors.map((f: any) => ({
+          factor: f.name || f.factor,
+          risk: f.severity || f.risk || 'medium',
+          description: f.description,
+          mitigation: f.recommendation || f.mitigation || '',
+        })),
+        recommendations: injuryResponse.data.recommendations,
+        confidence: 0.8,
+        riskFactors: injuryResponse.data.factors.map((f: any) => ({
+          description: f.description || f.factor,
+          severity: f.severity || f.risk || 'medium',
+        })),
+        preventionTips: injuryResponse.data.recommendations,
+      });
+
+      setPerformanceAnalysis({
+        trends: (performanceResponse.data.trends || []).map((trend: any) => ({
+          metric: trend.metric || 'Performance',
+          direction: trend.direction || 'stable',
+          description: trend.description || 'Performance trend analysis',
+          changePercentage: trend.change || 0,
+        })),
+        anomalies: (performanceResponse.data.analysis?.anomalies || []).map(
+          (anomaly: any) => ({
+            type: anomaly.type || 'Performance Issue',
+            description: anomaly.description || 'Detected performance anomaly',
+          })
+        ),
+        confidence: 0.8,
+      });
     } catch (err: any) {
       console.error('Failed to analyze workout:', err);
       setError(err.message || 'Failed to analyze workout');
@@ -111,7 +175,6 @@ export default function WorkoutAdaptationModal({
       setLoading(false);
     }
   };
-
   const handleAdaptationToggle = (adaptationId: string) => {
     const newSelected = new Set(selectedAdaptations);
     if (newSelected.has(adaptationId)) {
@@ -314,7 +377,7 @@ export default function WorkoutAdaptationModal({
                                     </span>
                                     <ul className="mt-1 list-disc list-inside text-gray-600">
                                       {adaptation.changes.map(
-                                        (change, index) => (
+                                        (change: string, index: number) => (
                                           <li key={index}>{change}</li>
                                         )
                                       )}
@@ -360,27 +423,32 @@ export default function WorkoutAdaptationModal({
                         Risk Factors
                       </h4>
                       <div className="space-y-2">
-                        {injuryRisk.riskFactors.map((factor, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                          >
-                            <span className="text-sm text-gray-700">
-                              {factor.description}
-                            </span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                factor.severity === 'low'
-                                  ? 'bg-green-100 text-green-800'
-                                  : factor.severity === 'medium'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-800'
-                              }`}
+                        {injuryRisk.riskFactors.map(
+                          (
+                            factor: { description: string; severity: string },
+                            index: number
+                          ) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                             >
-                              {factor.severity}
-                            </span>
-                          </div>
-                        ))}
+                              <span className="text-sm text-gray-700">
+                                {factor.description}
+                              </span>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  factor.severity === 'low'
+                                    ? 'bg-green-100 text-green-800'
+                                    : factor.severity === 'medium'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {factor.severity}
+                              </span>
+                            </div>
+                          )
+                        )}
                       </div>
                     </div>
 
@@ -389,14 +457,16 @@ export default function WorkoutAdaptationModal({
                         Prevention Recommendations
                       </h4>
                       <div className="space-y-2">
-                        {injuryRisk.preventionTips.map((tip, index) => (
-                          <div
-                            key={index}
-                            className="p-3 bg-blue-50 rounded-lg"
-                          >
-                            <p className="text-sm text-gray-700">{tip}</p>
-                          </div>
-                        ))}
+                        {injuryRisk.preventionTips.map(
+                          (tip: string, index: number) => (
+                            <div
+                              key={index}
+                              className="p-3 bg-blue-50 rounded-lg"
+                            >
+                              <p className="text-sm text-gray-700">{tip}</p>
+                            </div>
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
@@ -416,36 +486,38 @@ export default function WorkoutAdaptationModal({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {performanceAnalysis.trends.map((trend, index) => (
-                      <div
-                        key={index}
-                        className="p-4 border border-gray-200 rounded-lg"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">
-                            {trend.metric}
-                          </h4>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              trend.direction === 'up'
-                                ? 'bg-green-100 text-green-800'
-                                : trend.direction === 'down'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {trend.direction}
-                          </span>
+                    {performanceAnalysis.trends.map(
+                      (trend: any, index: number) => (
+                        <div
+                          key={index}
+                          className="p-4 border border-gray-200 rounded-lg"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900">
+                              {trend.metric}
+                            </h4>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                trend.direction === 'up'
+                                  ? 'bg-green-100 text-green-800'
+                                  : trend.direction === 'down'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {trend.direction}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {trend.description}
+                          </p>
+                          <div className="text-xs text-gray-500">
+                            Change: {trend.changePercentage > 0 ? '+' : ''}
+                            {trend.changePercentage.toFixed(1)}%
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {trend.description}
-                        </p>
-                        <div className="text-xs text-gray-500">
-                          Change: {trend.changePercentage > 0 ? '+' : ''}
-                          {trend.changePercentage.toFixed(1)}%
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    )}
                   </div>
 
                   {performanceAnalysis.anomalies.length > 0 && (
@@ -454,22 +526,24 @@ export default function WorkoutAdaptationModal({
                         Performance Anomalies
                       </h4>
                       <div className="space-y-2">
-                        {performanceAnalysis.anomalies.map((anomaly, index) => (
-                          <div
-                            key={index}
-                            className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
-                          >
-                            <div className="flex items-center space-x-2 mb-1">
-                              <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                              <span className="text-sm font-medium text-yellow-800">
-                                {anomaly.type}
-                              </span>
+                        {performanceAnalysis.anomalies.map(
+                          (anomaly: any, index: number) => (
+                            <div
+                              key={index}
+                              className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
+                            >
+                              <div className="flex items-center space-x-2 mb-1">
+                                <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                                <span className="text-sm font-medium text-yellow-800">
+                                  {anomaly.type}
+                                </span>
+                              </div>
+                              <p className="text-sm text-yellow-700">
+                                {anomaly.description}
+                              </p>
                             </div>
-                            <p className="text-sm text-yellow-700">
-                              {anomaly.description}
-                            </p>
-                          </div>
-                        ))}
+                          )
+                        )}
                       </div>
                     </div>
                   )}

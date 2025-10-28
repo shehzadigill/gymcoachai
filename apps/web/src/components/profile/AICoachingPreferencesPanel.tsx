@@ -404,9 +404,9 @@ export default function AICoachingPreferencesPanel({
         preferences: true,
       });
 
-      if (response.data) {
+      if (response) {
         // Apply AI analysis to update preferences
-        const profile = response.data;
+        const profile = response;
         const oldPreferences = { ...preferences };
         const newPreferences = {
           ...preferences,

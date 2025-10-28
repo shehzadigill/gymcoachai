@@ -78,7 +78,7 @@ export function AINotificationHandler({ className = '' }: AINotificationProps) {
   const getNotificationIcon = (
     notification: ProactiveInsight | ProgressMonitoringAlert
   ) => {
-    if ('type' in notification) {
+    if ('confidence' in notification) {
       // ProactiveInsight
       const icons = {
         'check-in': <MessageSquare className="h-4 w-4" />,
@@ -213,9 +213,7 @@ export function AINotificationHandler({ className = '' }: AINotificationProps) {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h4 className="font-medium text-sm mb-1">
-                          {'title' in notification
-                            ? notification.title
-                            : notification.title}
+                          {notification.title}
                         </h4>
                         <p className="text-sm opacity-90 mb-2">
                           {'message' in notification

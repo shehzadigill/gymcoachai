@@ -9,11 +9,62 @@ import {
   Target,
 } from 'lucide-react';
 import { aiService } from '../../lib/ai-service-client';
+import { api } from '../../lib/api-client';
 import { TrendChart, ConfidenceIndicator } from '../ai/visualizations';
 import type {
-  PerformanceAnalysis,
   PerformancePrediction,
+  AIResponse,
 } from '../../types/ai-service';
+
+// Types for component
+interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  fitnessGoals: string[];
+  activityLevel: string;
+  height: number;
+  weight: number;
+  age: number;
+  gender: string;
+}
+
+interface UserPreferences {
+  units: 'metric' | 'imperial';
+  dailyGoals?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    water: number;
+  };
+}
+
+interface PerformanceTrend {
+  metric: string;
+  currentValue: number;
+  direction: 'up' | 'down' | 'stable';
+  changePercentage: number;
+  dataPoints: Array<{ date: string; value: number }>;
+}
+
+interface PerformanceAnomaly {
+  type: string;
+  description: string;
+  recommendation?: string;
+}
+
+interface PerformanceAnalysis {
+  confidence: number;
+  trends: PerformanceTrend[];
+  anomalies: PerformanceAnomaly[];
+  recommendations: Array<{
+    title: string;
+    description: string;
+    priority: string;
+  }>;
+}
 
 interface PerformanceAnalyticsProps {
   userId: string;
@@ -29,10 +80,12 @@ export default function PerformanceAnalytics({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<PerformanceAnalysis | null>(null);
-  const [prediction, setPrediction] = useState<PerformancePrediction | null>(
-    null
-  );
+  const [predictions, setPredictions] = useState<PerformancePrediction[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string>('strength');
+  
+  // User data state
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
 
   useEffect(() => {
     fetchPerformanceData();
@@ -43,31 +96,128 @@ export default function PerformanceAnalytics({
       setLoading(true);
       setError(null);
 
-      // Get recent workout data
-      const recentWorkouts = await aiService.getRecentWorkouts(timeRange);
+      // Fetch user data first
+      const [profileResponse, preferencesResponse] = await Promise.all([
+        api.getUserProfile().then(res => res?.json()).catch(() => null),
+        api.getUserPreferences().then(res => res?.json()).catch(() => null)
+      ]);
 
-      // Analyze performance
+      console.log('User data fetched:', { profileResponse, preferencesResponse });
+
+      setUserProfile(profileResponse);
+      setUserPreferences(preferencesResponse);
+
+      // Get workout sessions for performance analysis
+      const workoutSessions = await api.getWorkoutSessions().then(res => res?.json()).catch(() => []);
+      
+      // Get enhanced workout analytics (if available)
+      const workoutAnalytics = await api.getWorkoutSessions(userId).then((res: any) => res?.json()).catch(() => null);
+
+      // Use user's fitness goals to determine relevant metrics
+      const userGoals = profileResponse?.fitnessGoals || ['general_fitness'];
+      const relevantMetrics = getRelevantMetrics(userGoals);
+
+      // Analyze performance using workout data
       const analysisResponse = await aiService.analyzePerformance({
-        workoutData: recentWorkouts,
+        workoutSessions,
+        analytics: workoutAnalytics,
         timeRange: timeRange,
-        metrics: ['strength', 'endurance', 'volume', 'consistency'],
+        metrics: relevantMetrics,
+        userProfile: profileResponse,
       });
 
-      // Get performance prediction
-      const predictionResponse = await aiService.predictPerformance({
-        userId: userId,
-        timeRange: timeRange,
-        metrics: ['strength', 'endurance', 'volume'],
-      });
+      // Get performance predictions
+      const predictionResponse = await aiService.predictPerformance(userId);
 
-      setAnalysis(analysisResponse);
-      setPrediction(predictionResponse);
+      // Get performance anomalies
+      const anomaliesResponse = await aiService.detectPerformanceAnomalies();
+
+      // Transform and set the analysis data
+      const transformedAnalysis: PerformanceAnalysis = {
+        confidence: analysisResponse.data?.analysis?.confidence || 0.8,
+        trends: transformAnalyticsTrends(workoutAnalytics, relevantMetrics, preferencesResponse),
+        anomalies: anomaliesResponse.data?.anomalies || [],
+        recommendations: analysisResponse.data?.recommendations || getDefaultRecommendations(userGoals)
+      };
+
+      setAnalysis(transformedAnalysis);
+      setPredictions(predictionResponse.data || []);
+
     } catch (err: any) {
       console.error('Failed to fetch performance data:', err);
       setError(err.message || 'Failed to fetch performance data');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to get relevant metrics based on user goals
+  const getRelevantMetrics = (goals: string[]): string[] => {
+    const baseMetrics = ['consistency'];
+    if (goals.includes('weight_loss')) baseMetrics.push('volume', 'endurance');
+    if (goals.includes('muscle_gain')) baseMetrics.push('strength', 'volume');
+    if (goals.includes('endurance')) baseMetrics.push('endurance', 'stamina');
+    if (goals.includes('strength')) baseMetrics.push('strength', 'power');
+    
+    return [...new Set(baseMetrics)]; // Remove duplicates
+  };
+
+  // Helper function to transform analytics data into trends
+  const transformAnalyticsTrends = (analytics: any, metrics: string[], preferences: UserPreferences | null): PerformanceTrend[] => {
+    if (!analytics) {
+      return metrics.map(metric => ({
+        metric,
+        currentValue: 0,
+        direction: 'stable' as const,
+        changePercentage: 0,
+        dataPoints: [
+          { date: new Date().toISOString(), value: 0 }
+        ]
+      }));
+    }
+
+    return metrics.map(metric => {
+      const data = analytics[metric] || { current: 0, change: 0, history: [] };
+      return {
+        metric,
+        currentValue: data.current || 0,
+        direction: data.change > 5 ? 'up' : data.change < -5 ? 'down' : 'stable',
+        changePercentage: data.change || 0,
+        dataPoints: (data.history || []).map((point: any, index: number) => ({
+          date: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString(),
+          value: point.value || 0
+        }))
+      };
+    });
+  };
+
+  // Helper function to get default recommendations based on goals
+  const getDefaultRecommendations = (goals: string[]) => {
+    const recommendations = [];
+    
+    if (goals.includes('weight_loss')) {
+      recommendations.push({
+        title: 'Increase Cardio Volume',
+        description: 'Add 2-3 cardio sessions per week to boost calorie burn',
+        priority: 'high'
+      });
+    }
+    
+    if (goals.includes('muscle_gain')) {
+      recommendations.push({
+        title: 'Progressive Overload',
+        description: 'Gradually increase weights by 5-10% when you can complete all sets',
+        priority: 'high'
+      });
+    }
+    
+    recommendations.push({
+      title: 'Consistency Focus',
+      description: 'Maintain regular workout schedule for optimal results',
+      priority: 'medium'
+    });
+    
+    return recommendations;
   };
 
   const getTrendIcon = (direction: string) => {
@@ -93,10 +243,14 @@ export default function PerformanceAnalytics({
   };
 
   const formatMetricValue = (value: number, metric: string) => {
+    const isImperial = userPreferences?.units === 'imperial';
+    
     switch (metric) {
       case 'strength':
-        return `${value.toFixed(1)} lbs`;
+      case 'power':
+        return isImperial ? `${value.toFixed(1)} lbs` : `${(value * 0.453592).toFixed(1)} kg`;
       case 'endurance':
+      case 'stamina':
         return `${value.toFixed(0)} min`;
       case 'volume':
         return `${value.toFixed(0)} sets`;
@@ -162,7 +316,7 @@ export default function PerformanceAnalytics({
 
       {/* Metric Selector */}
       <div className="flex space-x-2 mb-6">
-        {analysis.trends.map((trend) => (
+        {analysis.trends.map((trend: PerformanceTrend) => (
           <button
             key={trend.metric}
             onClick={() => setSelectedMetric(trend.metric)}
@@ -178,11 +332,11 @@ export default function PerformanceAnalytics({
       </div>
 
       {/* Selected Metric Chart */}
-      {analysis.trends.find((trend) => trend.metric === selectedMetric) && (
+      {analysis.trends.find((trend: PerformanceTrend) => trend.metric === selectedMetric) && (
         <div className="mb-6">
           <TrendChart
             data={
-              analysis.trends.find((trend) => trend.metric === selectedMetric)
+              analysis.trends.find((trend: PerformanceTrend) => trend.metric === selectedMetric)
                 ?.dataPoints || []
             }
             title={`${selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)} Trend`}
@@ -194,7 +348,7 @@ export default function PerformanceAnalytics({
 
       {/* Performance Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {analysis.trends.map((trend, index) => (
+        {analysis.trends.map((trend: PerformanceTrend, index: number) => (
           <div key={index} className="p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-gray-700">
@@ -220,7 +374,7 @@ export default function PerformanceAnalytics({
             Performance Anomalies
           </h4>
           <div className="space-y-2">
-            {analysis.anomalies.map((anomaly, index) => (
+            {analysis.anomalies.map((anomaly: PerformanceAnomaly, index: number) => (
               <div
                 key={index}
                 className="flex items-start space-x-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
@@ -246,13 +400,13 @@ export default function PerformanceAnalytics({
       )}
 
       {/* Predictions */}
-      {prediction && (
+      {predictions.length > 0 && (
         <div className="border-t border-gray-200 pt-6">
           <h4 className="text-sm font-medium text-gray-900 mb-3">
             Performance Predictions
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {prediction.predictions.map((pred, index) => (
+            {predictions.map((pred: PerformancePrediction, index: number) => (
               <div key={index} className="p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm font-medium text-blue-900 mb-1">
                   {pred.metric.charAt(0).toUpperCase() + pred.metric.slice(1)}
@@ -279,7 +433,7 @@ export default function PerformanceAnalytics({
             AI Recommendations
           </h4>
           <div className="space-y-2">
-            {analysis.recommendations.map((recommendation, index) => (
+            {analysis.recommendations.map((recommendation: any, index: number) => (
               <div
                 key={index}
                 className="flex items-start space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg"

@@ -76,8 +76,8 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
         setPredictions(predictionsResponse.data);
       }
 
-      if (profileResponse.success) {
-        setPersonalizationProfile(profileResponse.data);
+      if (profileResponse) {
+        setPersonalizationProfile(profileResponse);
       }
     } catch (error) {
       console.error('Failed to load AI insights:', error);
