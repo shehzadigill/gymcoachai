@@ -392,7 +392,8 @@ export const api = {
   // Workout endpoints
   async getWorkoutSessions(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any[]>(`/api/workouts/sessions?userId=${id}`);
+    const res = await apiFetch<any[]>(`/api/workouts/sessions?userId=${id}`);
+    return res.json();
   },
 
   async getWorkoutSession(sessionId: string, userId?: string) {
@@ -402,17 +403,67 @@ export const api = {
 
   async createWorkoutSession(data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
+
+    // Transform exercises to match backend expectations
+    const transformedData = { ...data, userId: id };
+    if (data.exercises && Array.isArray(data.exercises)) {
+      transformedData.exercises = data.exercises.map(
+        (ex: any, index: number) => ({
+          exercise_id: ex.exerciseId || ex.exercise_id,
+          name: ex.name,
+          order: ex.order !== undefined ? ex.order : index,
+          notes: ex.notes || null,
+          sets: ex.sets.map((set: any, setIndex: number) => ({
+            set_number:
+              set.set_number !== undefined ? set.set_number : setIndex + 1,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            duration_seconds:
+              set.durationSeconds || set.duration_seconds || null,
+            rest_seconds: set.restSeconds || set.rest_seconds || null,
+            completed: set.completed || false,
+            notes: set.notes || null,
+          })),
+        })
+      );
+    }
+
     return apiFetch<any>(`/api/workouts/sessions`, {
       method: 'POST',
-      body: JSON.stringify({ ...data, userId: id }),
+      body: JSON.stringify(transformedData),
     });
   },
 
   async updateWorkoutSession(sessionId: string, data: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
+
+    // Transform exercises to match backend expectations
+    const transformedData = { ...data, id: sessionId, userId: id };
+    if (data.exercises && Array.isArray(data.exercises)) {
+      transformedData.exercises = data.exercises.map(
+        (ex: any, index: number) => ({
+          exercise_id: ex.exerciseId || ex.exercise_id,
+          name: ex.name,
+          order: ex.order !== undefined ? ex.order : index,
+          notes: ex.notes || null,
+          sets: ex.sets.map((set: any, setIndex: number) => ({
+            set_number:
+              set.set_number !== undefined ? set.set_number : setIndex + 1,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            duration_seconds:
+              set.durationSeconds || set.duration_seconds || null,
+            rest_seconds: set.restSeconds || set.rest_seconds || null,
+            completed: set.completed || false,
+            notes: set.notes || null,
+          })),
+        })
+      );
+    }
+
     return apiFetch<any>(`/api/workouts/sessions`, {
       method: 'PUT',
-      body: JSON.stringify({ ...data, id: sessionId, userId: id }),
+      body: JSON.stringify(transformedData),
     });
   },
 
@@ -669,14 +720,18 @@ export const api = {
     if (sessionIds && sessionIds.length > 0) {
       sessionIds.forEach((sessionId) => params.append('sessionIds', sessionId));
     }
-    return apiFetch<any>(`/api/workouts/history/detailed?${params}`);
+    const response = await apiFetch<any>(
+      `/api/workouts/history/detailed?${params}`
+    );
+    return response.json();
   },
 
   async getWorkoutInsights(userId?: string, timeRange?: string) {
     const id = userId || (await getCurrentUserId());
     const params = new URLSearchParams({ userId: id });
     if (timeRange) params.append('timeRange', timeRange);
-    return apiFetch<any>(`/api/workouts/insights?${params}`);
+    const response = await apiFetch<any>(`/api/workouts/insights?${params}`);
+    return response.json();
   },
 
   async compareWorkoutPeriods(

@@ -132,6 +132,7 @@ interface DashboardData {
   strengthProgress: number;
   enduranceProgress: number;
   nutritionScore: number;
+  nutritionStreak: number;
   macroBalance: {
     protein: number;
     carbs: number;
@@ -139,12 +140,29 @@ interface DashboardData {
   };
   weeklyCalorieAvg: number;
   mealsToday: number;
+  todaysProtein: number;
+  todaysCarbs: number;
+  todaysFat: number;
+
+  // Sleep tracking
+  sleepHours: number;
+  sleepQuality: number;
+  sleepGoal: number;
+
+  // AI Insights
+  aiInsights: any[];
+  weeklyReview: any;
+  performancePredictions: any[];
+  personalizationProfile: any;
+  performanceAnalysis: any;
+  nutritionIntelligence: any;
 
   // Activity data
   recentActivities: any[];
   workoutHistory: any[];
   nutritionHistory: any[];
   strengthData: any[];
+  progressPhotos: any[];
 
   // Goals and milestones
   dailyGoals: any[];
@@ -178,15 +196,35 @@ export default function DashboardScreen() {
         userProfileData,
         todaysMeals,
         waterIntake,
+        sleepData,
+        progressPhotos,
+        workoutAnalytics,
+        // AI Service calls (optional - won't break if they fail)
+        aiInsightsPromise,
+        weeklyReviewPromise,
+        performancePredictionsPromise,
+        personalizationPromise,
+        performanceAnalysisPromise,
+        nutritionIntelligencePromise,
       ] = await Promise.allSettled([
         apiClient.getWorkoutSessions(),
         apiClient.getNutritionStats(),
         apiClient.getStrengthProgress(),
         apiClient.getAchievements(),
-        apiClient.getWorkouts(), // Get workout plans instead of scheduled workouts
+        apiClient.getWorkouts(),
         apiClient.getUserProfile(user?.id || ''),
         apiClient.getMealsByDate(new Date().toISOString().split('T')[0]),
         apiClient.getWater(new Date().toISOString().split('T')[0]),
+        apiClient.getSleepData(),
+        apiClient.getProgressPhotos(),
+        apiClient.getWorkoutAnalytics(),
+        // AI Service calls
+        apiClient.getProactiveInsights().catch(() => []),
+        apiClient.getWeeklyReview().catch(() => null),
+        apiClient.predictPerformance(user?.id).catch(() => []),
+        apiClient.analyzeUserPreferences().catch(() => null),
+        apiClient.analyzePerformance({}).catch(() => null),
+        apiClient.analyzeNutritionAdherence({days: 14, includeHydration: true, includeTiming: true}).catch(() => null),
       ]);
 
       console.log('Dashboard data loaded:', {
@@ -285,7 +323,11 @@ export default function DashboardScreen() {
       const nutritionData =
         nutritionStats.status === 'fulfilled' ? nutritionStats.value : {};
       const todaysCalories = nutritionData.today_calories || 0;
+      const todaysProtein = nutritionData.today_protein || 0;
+      const todaysCarbs = nutritionData.today_carbs || 0;
+      const todaysFat = nutritionData.today_fat || 0;
       const nutritionScore = nutritionData.nutrition_score || 0;
+      const nutritionStreak = nutritionData.streak || nutritionData.nutrition_streak || 0;
       const macroBalance = nutritionData.macro_balance || {
         protein: 0,
         carbs: 0,
@@ -293,6 +335,25 @@ export default function DashboardScreen() {
       };
       const weeklyCalorieAvg = nutritionData.weekly_average || 0;
       const mealsToday = nutritionData.meals_today || 0;
+
+      // Process sleep data
+      const sleepDataResult = sleepData.status === 'fulfilled' ? sleepData.value : {};
+      const sleepHours = sleepDataResult?.hours || sleepDataResult?.body?.hours || 0;
+      const sleepQuality = sleepDataResult?.quality || sleepDataResult?.body?.quality || 0;
+      const sleepGoal = userProfileData.status === 'fulfilled' 
+        ? (userProfileData.value as any)?.sleepGoal || (userProfileData.value as any)?.body?.sleepGoal || 8
+        : 8;
+
+      // Process AI insights
+      const aiInsights = aiInsightsPromise.status === 'fulfilled' ? (aiInsightsPromise.value || []) : [];
+      const weeklyReview = weeklyReviewPromise.status === 'fulfilled' ? weeklyReviewPromise.value : null;
+      const performancePredictions = performancePredictionsPromise.status === 'fulfilled' ? (performancePredictionsPromise.value || []) : [];
+      const personalizationProfile = personalizationPromise.status === 'fulfilled' ? personalizationPromise.value : null;
+      const performanceAnalysis = performanceAnalysisPromise.status === 'fulfilled' ? performanceAnalysisPromise.value : null;
+      const nutritionIntelligence = nutritionIntelligencePromise.status === 'fulfilled' ? nutritionIntelligencePromise.value : null;
+
+      // Process progress photos
+      const photos = progressPhotos.status === 'fulfilled' ? (progressPhotos.value || []) : [];
 
       // Calculate workout streak
       const currentStreak = calculateWorkoutStreak(workoutData);
@@ -427,9 +488,26 @@ export default function DashboardScreen() {
         strengthProgress: 0, // Can be calculated from strength data
         enduranceProgress: 0, // Can be calculated from workout data
         nutritionScore,
+        nutritionStreak,
         macroBalance,
         weeklyCalorieAvg,
         mealsToday,
+        todaysProtein,
+        todaysCarbs,
+        todaysFat,
+
+        // Sleep tracking
+        sleepHours,
+        sleepQuality,
+        sleepGoal,
+
+        // AI Insights
+        aiInsights,
+        weeklyReview,
+        performancePredictions,
+        personalizationProfile,
+        performanceAnalysis,
+        nutritionIntelligence,
 
         // Activity data
         recentActivities,
@@ -437,6 +515,7 @@ export default function DashboardScreen() {
         nutritionHistory: [], // Can be implemented later
         strengthData:
           strengthProgress.status === 'fulfilled' ? strengthProgress.value : [],
+        progressPhotos: photos,
 
         // Goals and milestones
         dailyGoals,
@@ -948,40 +1027,255 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Macro Balance */}
-        {data?.macroBalance && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Today's Macros</Text>
+        {/* Enhanced Nutrition Metrics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {t('dashboard.nutrition_insights') || 'Nutrition Insights'}
+          </Text>
+          
+          {/* Nutrition Score & Streak */}
+          <View style={styles.nutritionMetricsRow}>
+            <Card style={[styles.statCard, {flex: 0.48}]}>
+              <Text style={styles.statNumber}>
+                {data?.nutritionScore || 0}/100
+              </Text>
+              <Text style={styles.statLabel}>
+                {t('dashboard.nutrition_score') || 'Nutrition Score'}
+              </Text>
+            </Card>
+            <Card style={[styles.statCard, {flex: 0.48}]}>
+              <Text style={styles.statNumber}>
+                {data?.nutritionStreak || 0} 🔥
+              </Text>
+              <Text style={styles.statLabel}>
+                {t('dashboard.nutrition_streak') || 'Day Streak'}
+              </Text>
+            </Card>
+          </View>
+
+          {/* Macro Balance */}
+          {data?.macroBalance && (
             <Card style={styles.nutritionCard}>
+              <Text style={styles.sectionSubtitle}>Today's Macros</Text>
               <View style={styles.nutritionRow}>
                 <View style={styles.nutritionItem}>
                   <Text style={styles.nutritionValue}>
-                    {data.caloriesToday || 0}
-                  </Text>
-                  <Text style={styles.nutritionLabel}>Calories</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionValue}>
-                    {data.macroBalance.protein || 0}%
+                    {data.todaysProtein || 0}g
                   </Text>
                   <Text style={styles.nutritionLabel}>Protein</Text>
+                  <Text style={styles.nutritionPercent}>
+                    {data.macroBalance.protein || 0}%
+                  </Text>
                 </View>
                 <View style={styles.nutritionItem}>
                   <Text style={styles.nutritionValue}>
-                    {data.macroBalance.carbs || 0}%
+                    {data.todaysCarbs || 0}g
                   </Text>
                   <Text style={styles.nutritionLabel}>Carbs</Text>
+                  <Text style={styles.nutritionPercent}>
+                    {data.macroBalance.carbs || 0}%
+                  </Text>
                 </View>
                 <View style={styles.nutritionItem}>
                   <Text style={styles.nutritionValue}>
-                    {data.macroBalance.fat || 0}%
+                    {data.todaysFat || 0}g
                   </Text>
                   <Text style={styles.nutritionLabel}>Fat</Text>
+                  <Text style={styles.nutritionPercent}>
+                    {data.macroBalance.fat || 0}%
+                  </Text>
                 </View>
               </View>
               <Text style={styles.macroNote}>
                 Weekly Average: {data.weeklyCalorieAvg || 0} calories
               </Text>
+            </Card>
+          )}
+        </View>
+
+        {/* Sleep Tracking */}
+        {data?.sleepHours !== undefined && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.sleep_tracking') || 'Sleep Tracking'}
+            </Text>
+            <Card style={styles.sleepCard}>
+              <View style={styles.sleepContent}>
+                <View>
+                  <Text style={styles.sleepHours}>
+                    {data.sleepHours || 0}h / {data.sleepGoal || 8}h
+                  </Text>
+                  <Text style={styles.sleepLabel}>Last Night</Text>
+                </View>
+                {data.sleepQuality > 0 && (
+                  <View style={styles.sleepQualityContainer}>
+                    <Text style={styles.sleepQualityLabel}>Quality:</Text>
+                    <View style={styles.sleepStars}>
+                      {Array.from({length: 5}).map((_, i) => (
+                        <Text
+                          key={i}
+                          style={[
+                            styles.sleepStar,
+                            i < (data.sleepQuality || 3)
+                              ? styles.sleepStarFilled
+                              : styles.sleepStarEmpty,
+                          ]}>
+                          ⭐
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    {
+                      width: `${Math.min(
+                        ((data.sleepHours || 0) / (data.sleepGoal || 8)) *
+                          100,
+                        100,
+                      )}%`,
+                      backgroundColor: '#8b5cf6',
+                    },
+                  ]}
+                />
+              </View>
+            </Card>
+          </View>
+        )}
+
+        {/* AI Insights Panel */}
+        {data?.aiInsights && data.aiInsights.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.ai_insights') || 'AI Coach Insights'}
+            </Text>
+            {data.aiInsights.slice(0, 3).map((insight: any, index: number) => (
+              <Card key={insight.id || index} style={styles.aiInsightCard}>
+                <View style={styles.aiInsightHeader}>
+                  <Text style={styles.aiInsightIcon}>🧠</Text>
+                  <Text style={styles.aiInsightTitle}>{insight.title}</Text>
+                </View>
+                <Text style={styles.aiInsightMessage}>{insight.message}</Text>
+                {insight.suggestedActions &&
+                  insight.suggestedActions.length > 0 && (
+                    <View style={styles.aiActionsContainer}>
+                      <Text style={styles.aiActionsLabel}>
+                        Suggested Actions:
+                      </Text>
+                      {insight.suggestedActions
+                        .slice(0, 2)
+                        .map((action: string, actionIndex: number) => (
+                          <Text key={actionIndex} style={styles.aiActionItem}>
+                            • {action}
+                          </Text>
+                        ))}
+                    </View>
+                  )}
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {/* Weekly Review */}
+        {data?.weeklyReview && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.weekly_review') || 'Weekly Review'}
+            </Text>
+            <Card style={styles.weeklyReviewCard}>
+              <Text style={styles.weeklyReviewTitle}>
+                Week of {data.weeklyReview.weekStart || 'This Week'}
+              </Text>
+              <Text style={styles.weeklyReviewSummary}>
+                {data.weeklyReview.summary || 'No summary available'}
+              </Text>
+              {data.weeklyReview.achievements &&
+                data.weeklyReview.achievements.length > 0 && (
+                  <View style={styles.achievementsContainer}>
+                    <Text style={styles.achievementsTitle}>
+                      Achievements:
+                    </Text>
+                    {data.weeklyReview.achievements
+                      .slice(0, 3)
+                      .map((achievement: any, index: number) => (
+                        <Text key={index} style={styles.achievementItem}>
+                          ⭐ {achievement.description || achievement}
+                        </Text>
+                      ))}
+                  </View>
+                )}
+            </Card>
+          </View>
+        )}
+
+        {/* Performance Predictions */}
+        {data?.performancePredictions &&
+          data.performancePredictions.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('dashboard.performance_predictions') ||
+                  'Performance Predictions'}
+              </Text>
+              {data.performancePredictions
+                .slice(0, 3)
+                .map((prediction: any, index: number) => (
+                  <Card key={index} style={styles.predictionCard}>
+                    <Text style={styles.predictionMetric}>
+                      {prediction.metric || 'Metric'}
+                    </Text>
+                    <View style={styles.predictionValues}>
+                      <Text style={styles.predictionCurrent}>
+                        Current: {prediction.currentValue || 'N/A'}
+                      </Text>
+                      <Text style={styles.predictionArrow}>→</Text>
+                      <Text style={styles.predictionPredicted}>
+                        Predicted: {prediction.predictedValue || 'N/A'}
+                      </Text>
+                    </View>
+                    <Text style={styles.predictionTimeframe}>
+                      In {prediction.timeframe || '30'} days
+                    </Text>
+                  </Card>
+                ))}
+            </View>
+          )}
+
+        {/* Nutrition Intelligence */}
+        {data?.nutritionIntelligence && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.nutrition_intelligence') || 'Nutrition Intelligence'}
+            </Text>
+            <Card style={styles.nutritionIntelligenceCard}>
+              {data.nutritionIntelligence.adherenceScore !== undefined && (
+                <View style={styles.adherenceContainer}>
+                  <Text style={styles.adherenceLabel}>Adherence Score</Text>
+                  <Text style={styles.adherenceValue}>
+                    {Math.round(
+                      data.nutritionIntelligence.adherenceScore || 0,
+                    )}
+                    %
+                  </Text>
+                </View>
+              )}
+              {data.nutritionIntelligence.recommendations &&
+                data.nutritionIntelligence.recommendations.length > 0 && (
+                  <View style={styles.recommendationsContainer}>
+                    <Text style={styles.recommendationsTitle}>
+                      AI Recommendations:
+                    </Text>
+                    {data.nutritionIntelligence.recommendations
+                      .slice(0, 3)
+                      .map((rec: any, index: number) => (
+                        <Text key={index} style={styles.recommendationItem}>
+                          • {rec.description || rec}
+                        </Text>
+                      ))}
+                  </View>
+                )}
             </Card>
           </View>
         )}
@@ -1250,5 +1544,216 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+  },
+  nutritionMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  nutritionPercent: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  sleepCard: {
+    marginBottom: 12,
+    paddingVertical: 16,
+  },
+  sleepContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sleepHours: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3b82f6',
+    marginBottom: 4,
+  },
+  sleepLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  sleepQualityContainer: {
+    alignItems: 'flex-end',
+  },
+  sleepQualityLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  sleepStars: {
+    flexDirection: 'row',
+  },
+  sleepStar: {
+    fontSize: 16,
+  },
+  sleepStarFilled: {
+    opacity: 1,
+  },
+  sleepStarEmpty: {
+    opacity: 0.3,
+  },
+  aiInsightCard: {
+    marginBottom: 12,
+    paddingVertical: 16,
+    backgroundColor: '#f0f9ff',
+    borderColor: '#bfdbfe',
+    borderWidth: 1,
+  },
+  aiInsightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  aiInsightIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  aiInsightTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  aiInsightMessage: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 8,
+  },
+  aiActionsContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  aiActionsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  aiActionItem: {
+    fontSize: 12,
+    color: '#374151',
+    marginTop: 4,
+  },
+  weeklyReviewCard: {
+    marginBottom: 12,
+    paddingVertical: 16,
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+    borderWidth: 1,
+  },
+  weeklyReviewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  weeklyReviewSummary: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  achievementsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  achievementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  achievementItem: {
+    fontSize: 13,
+    color: '#374151',
+    marginTop: 4,
+  },
+  predictionCard: {
+    marginBottom: 12,
+    paddingVertical: 16,
+    backgroundColor: '#eff6ff',
+    borderColor: '#93c5fd',
+    borderWidth: 1,
+  },
+  predictionMetric: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  predictionValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  predictionCurrent: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  predictionArrow: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginHorizontal: 8,
+  },
+  predictionPredicted: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  predictionTimeframe: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  nutritionIntelligenceCard: {
+    marginBottom: 12,
+    paddingVertical: 16,
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+    borderWidth: 1,
+  },
+  adherenceContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  adherenceLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  adherenceValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#10b981',
+  },
+  recommendationsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  recommendationsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  recommendationItem: {
+    fontSize: 13,
+    color: '#374151',
+    marginTop: 4,
+    lineHeight: 18,
   },
 });

@@ -286,12 +286,9 @@ export class AIServiceClient {
     return response.json();
   }
 
-  async predictPerformance(
-    userId?: string
-  ): Promise<AIResponse<PerformancePrediction[]>> {
+  async predictPerformance(userId?: string): Promise<PerformancePrediction[]> {
     const cacheKey = `performance:predict:${userId || 'current'}`;
-    const cached =
-      this.getCached<AIResponse<PerformancePrediction[]>>(cacheKey);
+    const cached = this.getCached<PerformancePrediction[]>(cacheKey);
     if (cached) return cached;
 
     const response = await apiFetch('/api/ai/performance/predict', {
@@ -299,8 +296,47 @@ export class AIServiceClient {
       body: JSON.stringify({ userId }),
     });
     const result = await response.json();
-    this.setCache(cacheKey, result);
-    return result;
+
+    // Normalize response to always return an array
+    let predictions: PerformancePrediction[] = [];
+    if (Array.isArray(result)) {
+      predictions = result;
+    } else if (Array.isArray(result?.predictions)) {
+      predictions = result.predictions;
+    } else if (Array.isArray(result?.data)) {
+      predictions = result.data;
+    } else if (result?.body && Array.isArray(result.body.predictions)) {
+      predictions = result.body.predictions;
+    } else if (result?.body && Array.isArray(result.body)) {
+      predictions = result.body;
+    }
+
+    // Normalize each prediction to ensure required properties exist
+    predictions = predictions.map((prediction: any) => ({
+      metric: prediction.metric || 'Unknown Metric',
+      currentValue:
+        typeof prediction.currentValue === 'number'
+          ? prediction.currentValue
+          : typeof prediction.current_value === 'number'
+            ? prediction.current_value
+            : parseFloat(
+                prediction.currentValue || prediction.current_value || '0'
+              ) || 0,
+      predictedValue:
+        typeof prediction.predictedValue === 'number'
+          ? prediction.predictedValue
+          : typeof prediction.predicted_value === 'number'
+            ? prediction.predicted_value
+            : parseFloat(
+                prediction.predictedValue || prediction.predicted_value || '0'
+              ) || 0,
+      confidence: prediction.confidence || 0.5,
+      timeframe: prediction.timeframe || '1 week',
+      factors: Array.isArray(prediction.factors) ? prediction.factors : [],
+    }));
+
+    this.setCache(cacheKey, predictions);
+    return predictions;
   }
 
   async generatePerformanceReport(): Promise<
@@ -479,9 +515,9 @@ export class AIServiceClient {
     return response.json();
   }
 
-  async generateWeeklyReview(): Promise<AIResponse<WeeklyReview>> {
+  async generateWeeklyReview(): Promise<WeeklyReview> {
     const cacheKey = 'weekly:review';
-    const cached = this.getCached<AIResponse<WeeklyReview>>(cacheKey);
+    const cached = this.getCached<WeeklyReview>(cacheKey);
     if (cached) return cached;
 
     const response = await apiFetch('/api/ai/progress/weekly-review', {
@@ -546,29 +582,62 @@ export class AIServiceClient {
   }
 
   // Proactive Coaching APIs
-  async getProactiveInsights(): Promise<AIResponse<ProactiveInsight[]>> {
+  async getProactiveInsights(): Promise<ProactiveInsight[]> {
     const cacheKey = 'proactive:insights';
-    const cached = this.getCached<AIResponse<ProactiveInsight[]>>(cacheKey);
+    const cached = this.getCached<ProactiveInsight[]>(cacheKey);
     if (cached) return cached;
 
     const response = await apiFetch('/api/ai/proactive/insights', {
       method: 'GET',
     });
     const result = await response.json();
-    this.setCache(cacheKey, result);
-    return result;
+
+    // Normalize response to always return an array
+    let insights: ProactiveInsight[] = [];
+    if (Array.isArray(result)) {
+      insights = result;
+    } else if (Array.isArray(result?.insights)) {
+      insights = result.insights;
+    } else if (Array.isArray(result?.data)) {
+      insights = result.data;
+    } else if (result?.body && Array.isArray(result.body.insights)) {
+      insights = result.body.insights;
+    } else if (result?.body && Array.isArray(result.body)) {
+      insights = result.body;
+    }
+
+    // Normalize each insight to ensure required properties exist
+    insights = insights.map((insight: any) => ({
+      id: insight.id || `insight-${Date.now()}-${Math.random()}`,
+      type: insight.type || 'motivation',
+      priority: insight.priority || 'low',
+      title: insight.title || 'Insight',
+      message: insight.message || '',
+      actionRequired: insight.actionRequired || false,
+      suggestedActions: Array.isArray(insight.suggestedActions)
+        ? insight.suggestedActions
+        : Array.isArray(insight.action)
+          ? insight.action
+          : [],
+      confidence: insight.confidence || 0.5,
+      createdAt: insight.createdAt || new Date().toISOString(),
+      expiresAt: insight.expiresAt,
+    }));
+
+    this.setCache(cacheKey, insights);
+    return insights;
   }
 
-  async getWeeklyReview(): Promise<AIResponse<WeeklyReview>> {
+  async getWeeklyReview(): Promise<WeeklyReview> {
     return this.generateWeeklyReview();
   }
 
-  async predictProgress(): Promise<AIResponse<PerformancePrediction[]>> {
+  async predictProgress(): Promise<PerformancePrediction[]> {
     return this.predictPerformance();
   }
 
   // Utility APIs
-  async getRateLimit(): Promise<AIResponse<RateLimitInfo>> {
+  async getRateLimit(): Promise<RateLimitInfo> {
     const response = await apiFetch('/api/ai/rate-limit', {
       method: 'GET',
     });

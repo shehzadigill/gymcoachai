@@ -126,7 +126,9 @@ export default function NutritionIntelligencePanel({
       const hydrationResponse = await aiService.analyzeHydration(7);
 
       // Transform data to match component expectations
-      setNutritionData(nutritionResponse.data);
+      // Safely handle the nutrition response - check if data exists
+      const nutritionDataPayload = nutritionResponse?.data || nutritionResponse || {};
+      setNutritionData(nutritionDataPayload);
 
       // Calculate adherence based on real data
       const dailyGoals = preferencesResponse?.dailyGoals || {
@@ -167,14 +169,15 @@ export default function NutritionIntelligencePanel({
       );
 
       // Create adherence data structure
+      // Safely access adherenceScore with proper fallback
       setAdherenceData({
-        score: nutritionResponse.data.adherenceScore || overallScore,
+        score: nutritionDataPayload?.adherenceScore || overallScore,
         caloriesOnTarget: Math.round(calorieAdherence),
         proteinGoalsMet: Math.round(proteinAdherence),
         mealConsistency:
           currentStats.mealsLogged >= 3 ? 85 : currentStats.mealsLogged * 30,
-        recommendations: nutritionResponse.data.recommendations?.map(
-          (r) => r.description
+        recommendations: nutritionDataPayload?.recommendations?.map(
+          (r: any) => r.description || r
         ) || [
           `Target ${dailyGoals.calories} calories daily (currently ${currentStats.totalCalories})`,
           `Aim for ${dailyGoals.protein}g protein daily (currently ${currentStats.totalProtein}g)`,
@@ -183,10 +186,12 @@ export default function NutritionIntelligencePanel({
       });
 
       // Transform macro data using user goals and current intake
+      // Safely handle macro response - check if data exists
+      const macroDataPayload = macroResponse?.data || macroResponse || {};
       const targetProtein =
-        macroResponse.data.macros?.protein || dailyGoals.protein;
-      const targetCarbs = macroResponse.data.macros?.carbs || dailyGoals.carbs;
-      const targetFats = macroResponse.data.macros?.fats || dailyGoals.fat;
+        macroDataPayload?.macros?.protein || dailyGoals.protein;
+      const targetCarbs = macroDataPayload?.macros?.carbs || dailyGoals.carbs;
+      const targetFats = macroDataPayload?.macros?.fats || dailyGoals.fat;
 
       const totalMacroCalories =
         targetProtein * 4 + targetCarbs * 4 + targetFats * 9;
@@ -213,6 +218,8 @@ export default function NutritionIntelligencePanel({
       });
 
       // Transform hydration data using user goals and current intake
+      // Safely handle hydration response - check if data exists
+      const hydrationDataPayload = hydrationResponse?.data || hydrationResponse || {};
       const waterGoalLiters = dailyGoals.water * 0.25 || 2.0; // Convert glasses to liters (assuming 250ml per glass)
       const currentWaterLiters = currentStats.waterIntake * 0.25 || 0;
       const achievementRate =
@@ -220,10 +227,10 @@ export default function NutritionIntelligencePanel({
 
       setHydrationData({
         averageIntake:
-          hydrationResponse.data.analysis?.averageIntake || currentWaterLiters,
+          hydrationDataPayload?.analysis?.averageIntake || currentWaterLiters,
         dailyGoal: waterGoalLiters,
         daysGoalAchieved: Math.round(achievementRate * 7), // Estimate based on current performance
-        tips: hydrationResponse.data.recommendations || [
+        tips: hydrationDataPayload?.recommendations || [
           `Target ${dailyGoals.water} glasses (${waterGoalLiters}L) of water daily`,
           'Drink a glass of water before each meal',
           'Increase intake by 2-3 glasses on workout days',

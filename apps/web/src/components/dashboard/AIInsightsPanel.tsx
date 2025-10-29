@@ -60,20 +60,33 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
         aiService.analyzeUserPreferences(),
       ]);
 
-      if (insightsResponse.success) {
-        setInsights(insightsResponse.data);
+      if (insightsResponse) {
+        const insightsArray = Array.isArray(insightsResponse)
+          ? insightsResponse
+          : [];
+        setInsights(insightsArray as ProactiveInsight[]);
+      } else {
+        setInsights([]);
       }
       console.log('AI Insights:', {
         weeklyReviewResponse,
         predictionsResponse,
         profileResponse,
       });
-      if (weeklyReviewResponse.success) {
-        setWeeklyReview(weeklyReviewResponse.data);
+      if (weeklyReviewResponse) {
+        setWeeklyReview(weeklyReviewResponse);
       }
 
-      if (predictionsResponse.success) {
-        setPredictions(predictionsResponse.data);
+      if (predictionsResponse) {
+        // Ensure predictions is always an array
+        const predictionsArray = Array.isArray(predictionsResponse)
+          ? predictionsResponse
+          : Array.isArray(predictionsResponse)
+            ? predictionsResponse
+            : [];
+        setPredictions(predictionsArray as PerformancePrediction[]);
+      } else {
+        setPredictions([]);
       }
 
       if (profileResponse) {
@@ -81,6 +94,9 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
       }
     } catch (error) {
       console.error('Failed to load AI insights:', error);
+      // Ensure arrays are set to empty on error
+      setInsights([]);
+      setPredictions([]);
     } finally {
       setLoading(false);
     }
@@ -147,8 +163,12 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
     );
   }
 
-  const displayInsights = showAllInsights ? insights : insights.slice(0, 3);
-  const hasMoreInsights = insights.length > 3;
+  // Ensure insights is always an array
+  const safeInsights = Array.isArray(insights) ? insights : [];
+  const displayInsights = showAllInsights
+    ? safeInsights
+    : safeInsights.slice(0, 3);
+  const hasMoreInsights = safeInsights.length > 3;
 
   return (
     <div
@@ -178,10 +198,10 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
               Proactive Coaching
             </h4>
             <div className="space-y-2">
-              {displayInsights.map((insight) => (
+              {displayInsights.map((insight, index) => (
                 <div
-                  key={insight.id}
-                  className={`p-3 rounded-lg border ${getInsightColor(insight.priority)}`}
+                  key={insight.id || `insight-${index}`}
+                  className={`p-3 rounded-lg border ${getInsightColor(insight.priority || 'low')}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-2 flex-1">
@@ -202,59 +222,63 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                           {insight.message}
                         </p>
 
-                        {insight.suggestedActions.length > 0 && (
-                          <div className="space-y-1">
-                            <button
-                              onClick={() =>
-                                setExpandedInsight(
-                                  expandedInsight === insight.id
-                                    ? null
-                                    : insight.id
-                                )
-                              }
-                              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                            >
-                              {expandedInsight === insight.id ? (
-                                <>
-                                  <ChevronUp className="h-3 w-3" />
-                                  Hide actions
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown className="h-3 w-3" />
-                                  Show actions (
-                                  {insight.suggestedActions.length})
-                                </>
-                              )}
-                            </button>
-
-                            {expandedInsight === insight.id && (
-                              <div className="space-y-1">
-                                {insight.suggestedActions.map(
-                                  (action, index) => (
-                                    <div
-                                      key={index}
-                                      className="text-xs bg-white/50 p-2 rounded"
-                                    >
-                                      {action}
-                                    </div>
+                        {insight.suggestedActions &&
+                          Array.isArray(insight.suggestedActions) &&
+                          insight.suggestedActions.length > 0 && (
+                            <div className="space-y-1">
+                              <button
+                                onClick={() =>
+                                  setExpandedInsight(
+                                    expandedInsight === insight.id
+                                      ? null
+                                      : insight.id
                                   )
+                                }
+                                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                              >
+                                {expandedInsight === insight.id ? (
+                                  <>
+                                    <ChevronUp className="h-3 w-3" />
+                                    Hide actions
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-3 w-3" />
+                                    Show actions (
+                                    {insight.suggestedActions.length})
+                                  </>
                                 )}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                              </button>
+
+                              {expandedInsight === insight.id && (
+                                <div className="space-y-1">
+                                  {insight.suggestedActions.map(
+                                    (action, index) => (
+                                      <div
+                                        key={index}
+                                        className="text-xs bg-white/50 p-2 rounded"
+                                      >
+                                        {action}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 ml-2">
                       <ConfidenceIndicator
-                        score={insight.confidence}
+                        score={insight.confidence || 0.5}
                         size="sm"
                         showLabel={false}
                       />
                       <span className="text-xs text-gray-500">
-                        {new Date(insight.createdAt).toLocaleDateString()}
+                        {insight.createdAt
+                          ? new Date(insight.createdAt).toLocaleDateString()
+                          : 'Recently'}
                       </span>
                     </div>
                   </div>
@@ -290,59 +314,66 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
               <div className="flex items-center gap-2 mb-2">
                 <BarChart3 className="h-4 w-4 text-green-600" />
                 <h5 className="font-medium text-green-900">
-                  Week of {weeklyReview.weekStart}
+                  Week of {weeklyReview.weekStart || 'This Week'}
                 </h5>
                 <ConfidenceIndicator
-                  score={weeklyReview.confidence}
+                  score={weeklyReview.confidence || 0.5}
                   size="sm"
                   showLabel={false}
                 />
               </div>
               <p className="text-sm text-green-800 mb-3">
-                {weeklyReview.summary}
+                {weeklyReview.summary || 'Weekly review summary'}
               </p>
 
-              {weeklyReview.achievements.length > 0 && (
-                <div className="mb-3">
-                  <h6 className="text-xs font-medium text-green-900 mb-1">
-                    Achievements:
-                  </h6>
-                  <div className="space-y-1">
-                    {weeklyReview.achievements
-                      .slice(0, 2)
-                      .map((achievement, index) => (
-                        <div
-                          key={index}
-                          className="text-xs text-green-700 flex items-center gap-1"
-                        >
-                          <Star className="h-3 w-3" />
-                          {achievement.description}
-                        </div>
-                      ))}
+              {weeklyReview.achievements &&
+                Array.isArray(weeklyReview.achievements) &&
+                weeklyReview.achievements.length > 0 && (
+                  <div className="mb-3">
+                    <h6 className="text-xs font-medium text-green-900 mb-1">
+                      Achievements:
+                    </h6>
+                    <div className="space-y-1">
+                      {weeklyReview.achievements
+                        .slice(0, 2)
+                        .map((achievement, index) => (
+                          <div
+                            key={index}
+                            className="text-xs text-green-700 flex items-center gap-1"
+                          >
+                            <Star className="h-3 w-3" />
+                            {typeof achievement === 'string'
+                              ? achievement
+                              : (achievement as any)?.description ||
+                                'Achievement'}
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {weeklyReview.nextWeekGoals.length > 0 && (
-                <div>
-                  <h6 className="text-xs font-medium text-green-900 mb-1">
-                    Next Week Goals:
-                  </h6>
-                  <div className="space-y-1">
-                    {weeklyReview.nextWeekGoals
-                      .slice(0, 2)
-                      .map((goal, index) => (
-                        <div
-                          key={index}
-                          className="text-xs text-green-700 flex items-center gap-1"
-                        >
-                          <Target className="h-3 w-3" />
-                          {goal}
-                        </div>
-                      ))}
+              {weeklyReview.nextWeekGoals &&
+                Array.isArray(weeklyReview.nextWeekGoals) &&
+                weeklyReview.nextWeekGoals.length > 0 && (
+                  <div>
+                    <h6 className="text-xs font-medium text-green-900 mb-1">
+                      Next Week Goals:
+                    </h6>
+                    <div className="space-y-1">
+                      {weeklyReview.nextWeekGoals
+                        .slice(0, 2)
+                        .map((goal, index) => (
+                          <div
+                            key={index}
+                            className="text-xs text-green-700 flex items-center gap-1"
+                          >
+                            <Target className="h-3 w-3" />
+                            {goal || 'Goal'}
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
         )}

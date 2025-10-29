@@ -148,54 +148,262 @@ Guidelines:
 - Keep responses concise but comprehensive
 - Use motivational language when appropriate
 
+CRITICAL: You will receive detailed user context below including their profile, goals, preferences, equipment, workout history, and measurements. ALWAYS use this information to personalize your responses. DO NOT ask the user for information that is already provided in their context. Reference their specific goals, experience level, and available equipment in your recommendations.
+
 Respond in a helpful, friendly tone as a personal trainer would."""
         
         if context:
+            # Log the context to debug
+            logger.info(f"Building prompt with context keys: {context.keys()}")
+            logger.info(f"Context user_profile: {context.get('user_profile', 'NOT FOUND')}")
+            logger.info(f"Context ai_preferences: {context.get('ai_preferences', 'NOT FOUND')}")
+            
             # Try enhanced context formatting first, fallback to basic formatting
             if any(key in context for key in ['user_profile', 'fitness_analysis', 'nutrition_analysis', 'progress_summary']):
-                context_str = self._format_enhanced_context(context)
+                if 'fitness_analysis' in context or 'nutrition_analysis' in context or 'progress_summary' in context:
+                    context_str = self._format_enhanced_context(context)
+                else:
+                    # Use regular formatting for user_profile
+                    context_str = self._format_context(context)
             else:
+                logger.warning(f"Context missing expected keys. Available keys: {context.keys()}")
                 context_str = self._format_context(context)
-            return f"{system_prompt}\n\nUser Context:\n{context_str}\n\nUser Question/Request:\n{prompt}"
+            
+            logger.info(f"Formatted context length: {len(context_str)} characters")
+            
+            # Add context with explicit reminder to use it
+            return f"""{system_prompt}
+
+=== USER CONTEXT ===
+{context_str}
+
+=== IMPORTANT ===
+Use the above user context to provide PERSONALIZED advice. The user has already shared their profile, goals, equipment, and preferences. Do not ask them to repeat this information.
+
+User Question/Request:
+{prompt}"""
         else:
+            logger.warning("No context provided to _build_prompt")
             return f"{system_prompt}\n\nUser Question/Request:\n{prompt}"
     
     def _format_context(self, context: Dict) -> str:
         """Format context data into a readable string"""
+        logger.info(f"_format_context called with keys: {context.keys()}")
+        
         context_parts = []
         
+        # USER PROFILE - Enhanced with more details
         if 'user_profile' in context:
             profile = context['user_profile']
-            context_parts.append(f"User Profile:")
-            context_parts.append(f"- Name: {profile.get('firstName', '')} {profile.get('lastName', '')}")
-            context_parts.append(f"- Experience Level: {profile.get('experienceLevel', 'beginner')}")
-            context_parts.append(f"- Fitness Goals: {', '.join(profile.get('fitnessGoals', []))}")
+            logger.info(f"Formatting user_profile: {profile}")
+            context_parts.append("=== USER PROFILE ===")
+            
+            # Basic Information
+            name = f"{profile.get('firstName', '')} {profile.get('lastName', '')}".strip()
+            if name:
+                context_parts.append(f"Name: {name}")
+            
+            if profile.get('age'):
+                context_parts.append(f"Age: {profile['age']} years")
+            
+            if profile.get('gender'):
+                context_parts.append(f"Gender: {profile['gender']}")
+            
+            if profile.get('experienceLevel'):
+                context_parts.append(f"Experience Level: {profile['experienceLevel']}")
+            
+            # Physical Stats
             if profile.get('height') and profile.get('weight'):
-                context_parts.append(f"- Height: {profile['height']}cm, Weight: {profile['weight']}kg")
+                bmi = None
+                try:
+                    height_m = float(profile['height']) / 100
+                    weight_kg = float(profile['weight'])
+                    bmi = weight_kg / (height_m * height_m)
+                    context_parts.append(f"Physical Stats: {profile['height']}cm, {profile['weight']}kg (BMI: {bmi:.1f})")
+                except:
+                    context_parts.append(f"Physical Stats: {profile['height']}cm, {profile['weight']}kg")
+            
+            # Fitness Goals - Primary motivation
+            if profile.get('fitnessGoals') and len(profile.get('fitnessGoals', [])) > 0:
+                goals = profile['fitnessGoals']
+                context_parts.append(f"Primary Fitness Goals: {', '.join(goals)}")
+                context_parts.append(f"  → This user wants to focus on: {goals[0]}")
+            
+            # Target metrics
+            if profile.get('targetWeight'):
+                context_parts.append(f"Target Weight Goal: {profile['targetWeight']}kg")
+            
+            if profile.get('targetBodyFat'):
+                context_parts.append(f"Target Body Fat Goal: {profile['targetBodyFat']}%")
         
+        # USER PREFERENCES - Enhanced AI Trainer specific settings
+        if 'user_preferences' in context:
+            prefs = context['user_preferences']
+            context_parts.append("\n=== USER PREFERENCES ===")
+            
+            # Language preference
+            if prefs.get('language'):
+                context_parts.append(f"Preferred Language: {prefs['language']}")
+            
+            # Units preference
+            if prefs.get('units'):
+                context_parts.append(f"Unit System: {prefs['units']}")
+        
+        # AI TRAINER PREFERENCES - Coaching style and personalization
         if 'ai_preferences' in context:
             prefs = context['ai_preferences']
-            context_parts.append(f"AI Trainer Preferences:")
-            context_parts.append(f"- Coaching Style: {prefs.get('coachingStyle', 'balanced')}")
-            context_parts.append(f"- Focus Areas: {', '.join(prefs.get('focusAreas', []))}")
-            context_parts.append(f"- Equipment Available: {', '.join(prefs.get('equipmentAvailable', []))}")
-            context_parts.append(f"- Workout Duration: {prefs.get('workoutDurationPreference', 60)} minutes")
-            context_parts.append(f"- Days per Week: {prefs.get('workoutDaysPerWeek', 3)}")
-            if prefs.get('injuryHistory'):
-                context_parts.append(f"- Injury History: {', '.join(prefs['injuryHistory'])}")
+            # Handle case where ai_preferences might be a JSON string
+            if isinstance(prefs, str):
+                import json
+                try:
+                    prefs = json.loads(prefs)
+                except:
+                    logger.error(f"Failed to parse ai_preferences JSON string: {prefs}")
+                    prefs = {}
+            
+            context_parts.append("\n=== AI TRAINER PREFERENCES ===")
+            
+            # Coaching style - CRITICAL for personalization
+            coaching_style = prefs.get('coachingStyle', 'balanced') if isinstance(prefs, dict) else 'balanced'
+            context_parts.append(f"Preferred Coaching Style: {coaching_style}")
+            
+            coaching_style_guide = {
+                'motivational': '→ Use highly encouraging, energetic language with lots of positive reinforcement',
+                'analytical': '→ Focus on data, metrics, and scientific explanations',
+                'balanced': '→ Mix motivation with practical advice and data insights',
+                'gentle': '→ Use supportive, non-judgmental tone with gradual progression',
+                'direct': '→ Be straightforward and efficient with clear instructions'
+            }
+            if coaching_style in coaching_style_guide:
+                context_parts.append(f"  {coaching_style_guide[coaching_style]}")
+            
+            # Only process if prefs is a dict
+            if isinstance(prefs, dict):
+                # Focus areas
+                if prefs.get('focusAreas') and len(prefs.get('focusAreas', [])) > 0:
+                    context_parts.append(f"Primary Focus Areas: {', '.join(prefs['focusAreas'])}")
+                
+                # Equipment and constraints
+                if prefs.get('equipmentAvailable') and len(prefs.get('equipmentAvailable', [])) > 0:
+                    context_parts.append(f"Available Equipment: {', '.join(prefs['equipmentAvailable'])}")
+                else:
+                    context_parts.append(f"Available Equipment: Bodyweight only (no equipment)")
+                
+                # Workout preferences
+                if prefs.get('workoutDurationPreference'):
+                    context_parts.append(f"Preferred Workout Duration: {prefs['workoutDurationPreference']} minutes")
+                
+                if prefs.get('workoutDaysPerWeek'):
+                    context_parts.append(f"Workout Frequency: {prefs['workoutDaysPerWeek']} days per week")
+                
+                if prefs.get('preferredWorkoutTime'):
+                    context_parts.append(f"Preferred Workout Time: {prefs['preferredWorkoutTime']}")
+                
+                # Injury history and limitations - IMPORTANT for safety
+                if prefs.get('injuryHistory') and len(prefs.get('injuryHistory', [])) > 0:
+                    context_parts.append(f"⚠️ Injury History: {', '.join(prefs['injuryHistory'])}")
+                    context_parts.append(f"  → IMPORTANT: Provide modifications and avoid exercises that stress these areas")
+                
+                if prefs.get('physicalLimitations') and len(prefs.get('physicalLimitations', [])) > 0:
+                    context_parts.append(f"⚠️ Physical Limitations: {', '.join(prefs['physicalLimitations'])}")
         
+        # DAILY GOALS - Current targets
+        if 'daily_goals' in context:
+            goals = context['daily_goals']
+            context_parts.append("\n=== DAILY GOALS ===")
+            
+            if goals.get('calories'):
+                context_parts.append(f"Calorie Target: {goals['calories']} cal/day")
+            
+            if goals.get('protein'):
+                context_parts.append(f"Protein Target: {goals['protein']}g/day")
+            
+            if goals.get('carbs'):
+                context_parts.append(f"Carbohydrates Target: {goals['carbs']}g/day")
+            
+            if goals.get('fat'):
+                context_parts.append(f"Fat Target: {goals['fat']}g/day")
+            
+            if goals.get('water'):
+                context_parts.append(f"Water Target: {goals['water']}L/day")
+            
+            if goals.get('steps'):
+                context_parts.append(f"Steps Target: {goals['steps']:,} steps/day")
+            
+            if goals.get('workouts'):
+                context_parts.append(f"Workout Sessions Target: {goals['workouts']} per week")
+        
+        # RECENT WORKOUTS - Activity history
         if 'recent_workouts' in context:
             workouts = context['recent_workouts']
-            context_parts.append(f"Recent Workouts ({len(workouts)} workouts):")
-            for workout in workouts[-3:]:  # Last 3 workouts
-                context_parts.append(f"- {workout.get('date', 'Unknown date')}: {workout.get('name', 'Workout')}")
+            if len(workouts) > 0:
+                context_parts.append(f"\n=== RECENT WORKOUT ACTIVITY ({len(workouts)} sessions) ===")
+                for workout in workouts[:5]:  # Last 5 workouts
+                    workout_name = workout.get('name', 'Workout')
+                    workout_date = workout.get('date', 'Unknown date')
+                    workout_duration = workout.get('duration', 0)
+                    exercise_count = len(workout.get('exercises', []))
+                    
+                    context_parts.append(f"• {workout_date}: {workout_name}")
+                    if workout_duration:
+                        context_parts.append(f"  Duration: {workout_duration} min, {exercise_count} exercises")
+            else:
+                context_parts.append(f"\n=== RECENT WORKOUT ACTIVITY ===")
+                context_parts.append("No recent workout sessions recorded")
+                context_parts.append("  → This user may be just starting out or returning after a break")
         
+        # BODY MEASUREMENTS - Progress tracking
+        if 'body_measurements' in context:
+            measurements = context['body_measurements']
+            if len(measurements) > 0:
+                context_parts.append(f"\n=== BODY MEASUREMENTS ===")
+                latest = measurements[0]
+                context_parts.append(f"Latest Measurement ({latest.get('date', 'Recent')}):")
+                if latest.get('weight'):
+                    context_parts.append(f"  Weight: {latest['weight']}kg")
+                if latest.get('bodyFat'):
+                    context_parts.append(f"  Body Fat: {latest['bodyFat']}%")
+                if latest.get('muscleMass'):
+                    context_parts.append(f"  Muscle Mass: {latest['muscleMass']}kg")
+                
+                # Show trend if multiple measurements
+                if len(measurements) > 1:
+                    older = measurements[-1]
+                    if latest.get('weight') and older.get('weight'):
+                        weight_change = latest['weight'] - older['weight']
+                        context_parts.append(f"  Weight Trend: {'+' if weight_change > 0 else ''}{weight_change:.1f}kg")
+        
+        # NUTRITION DATA - Eating patterns
         if 'nutrition_data' in context:
             nutrition = context['nutrition_data']
-            context_parts.append(f"Recent Nutrition:")
+            
             if nutrition.get('dailyGoals'):
-                goals = nutrition['dailyGoals']
-                context_parts.append(f"- Daily Goals: {goals.get('calories', 0)} cal, {goals.get('protein', 0)}g protein")
+                daily_goals = nutrition['dailyGoals']
+                # Only add nutrition section if we have valid goals
+                if daily_goals.get('calories') or daily_goals.get('protein'):
+                    context_parts.append(f"\n=== NUTRITION TARGETS ===")
+                    if daily_goals.get('calories'):
+                        context_parts.append(f"Daily Calorie Goal: {daily_goals['calories']} cal")
+                    if daily_goals.get('protein'):
+                        context_parts.append(f"Daily Protein Goal: {daily_goals['protein']}g")
+                    if daily_goals.get('carbs'):
+                        context_parts.append(f"Daily Carbs Goal: {daily_goals['carbs']}g")
+                    if daily_goals.get('fat'):
+                        context_parts.append(f"Daily Fat Goal: {daily_goals['fat']}g")
+            
+            # Recent meals summary
+            if nutrition.get('meals') and len(nutrition.get('meals', [])) > 0:
+                meals = nutrition['meals']
+                context_parts.append(f"Recent Meals: {len(meals)} meals logged")
+        
+        # Add a summary line to guide the AI
+        context_parts.append("\n=== COACHING INSTRUCTIONS ===")
+        context_parts.append("Based on the above context, personalize your response to match:")
+        context_parts.append("1. The user's experience level and current fitness state")
+        context_parts.append("2. Their specific goals and preferences")
+        context_parts.append("3. Their preferred coaching style and communication approach")
+        context_parts.append("4. Any limitations, injuries, or equipment constraints")
+        context_parts.append("5. Their current progress and recent activity patterns")
         
         return '\n'.join(context_parts)
     

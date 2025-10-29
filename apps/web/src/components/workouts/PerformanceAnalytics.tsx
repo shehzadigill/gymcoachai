@@ -11,10 +11,7 @@ import {
 import { aiService } from '../../lib/ai-service-client';
 import { api } from '../../lib/api-client';
 import { TrendChart, ConfidenceIndicator } from '../ai/visualizations';
-import type {
-  PerformancePrediction,
-  AIResponse,
-} from '../../types/ai-service';
+import type { PerformancePrediction, AIResponse } from '../../types/ai-service';
 
 // Types for component
 interface UserProfile {
@@ -82,10 +79,11 @@ export default function PerformanceAnalytics({
   const [analysis, setAnalysis] = useState<PerformanceAnalysis | null>(null);
   const [predictions, setPredictions] = useState<PerformancePrediction[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string>('strength');
-  
+
   // User data state
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [userPreferences, setUserPreferences] =
+    useState<UserPreferences | null>(null);
 
   useEffect(() => {
     fetchPerformanceData();
@@ -98,20 +96,35 @@ export default function PerformanceAnalytics({
 
       // Fetch user data first
       const [profileResponse, preferencesResponse] = await Promise.all([
-        api.getUserProfile().then(res => res?.json()).catch(() => null),
-        api.getUserPreferences().then(res => res?.json()).catch(() => null)
+        api
+          .getUserProfile()
+          .then((res) => res?.json())
+          .catch(() => null),
+        api
+          .getUserPreferences()
+          .then((res) => res?.json())
+          .catch(() => null),
       ]);
 
-      console.log('User data fetched:', { profileResponse, preferencesResponse });
+      console.log('User data fetched:', {
+        profileResponse,
+        preferencesResponse,
+      });
 
       setUserProfile(profileResponse);
       setUserPreferences(preferencesResponse);
 
       // Get workout sessions for performance analysis
-      const workoutSessions = await api.getWorkoutSessions().then(res => res?.json()).catch(() => []);
-      
+      const workoutSessions = await api
+        .getWorkoutSessions()
+        .then((res) => res?.json())
+        .catch(() => []);
+
       // Get enhanced workout analytics (if available)
-      const workoutAnalytics = await api.getWorkoutSessions(userId).then((res: any) => res?.json()).catch(() => null);
+      const workoutAnalytics = await api
+        .getWorkoutSessions(userId)
+        .then((res: any) => res?.json())
+        .catch(() => null);
 
       // Use user's fitness goals to determine relevant metrics
       const userGoals = profileResponse?.fitnessGoals || ['general_fitness'];
@@ -135,14 +148,19 @@ export default function PerformanceAnalytics({
       // Transform and set the analysis data
       const transformedAnalysis: PerformanceAnalysis = {
         confidence: analysisResponse.data?.analysis?.confidence || 0.8,
-        trends: transformAnalyticsTrends(workoutAnalytics, relevantMetrics, preferencesResponse),
+        trends: transformAnalyticsTrends(
+          workoutAnalytics,
+          relevantMetrics,
+          preferencesResponse
+        ),
         anomalies: anomaliesResponse.data?.anomalies || [],
-        recommendations: analysisResponse.data?.recommendations || getDefaultRecommendations(userGoals)
+        recommendations:
+          analysisResponse.data?.recommendations ||
+          getDefaultRecommendations(userGoals),
       };
 
       setAnalysis(transformedAnalysis);
       setPredictions(predictionResponse.data || []);
-
     } catch (err: any) {
       console.error('Failed to fetch performance data:', err);
       setError(err.message || 'Failed to fetch performance data');
@@ -158,35 +176,40 @@ export default function PerformanceAnalytics({
     if (goals.includes('muscle_gain')) baseMetrics.push('strength', 'volume');
     if (goals.includes('endurance')) baseMetrics.push('endurance', 'stamina');
     if (goals.includes('strength')) baseMetrics.push('strength', 'power');
-    
+
     return [...new Set(baseMetrics)]; // Remove duplicates
   };
 
   // Helper function to transform analytics data into trends
-  const transformAnalyticsTrends = (analytics: any, metrics: string[], preferences: UserPreferences | null): PerformanceTrend[] => {
+  const transformAnalyticsTrends = (
+    analytics: any,
+    metrics: string[],
+    preferences: UserPreferences | null
+  ): PerformanceTrend[] => {
     if (!analytics) {
-      return metrics.map(metric => ({
+      return metrics.map((metric) => ({
         metric,
         currentValue: 0,
         direction: 'stable' as const,
         changePercentage: 0,
-        dataPoints: [
-          { date: new Date().toISOString(), value: 0 }
-        ]
+        dataPoints: [{ date: new Date().toISOString(), value: 0 }],
       }));
     }
 
-    return metrics.map(metric => {
+    return metrics.map((metric) => {
       const data = analytics[metric] || { current: 0, change: 0, history: [] };
       return {
         metric,
         currentValue: data.current || 0,
-        direction: data.change > 5 ? 'up' : data.change < -5 ? 'down' : 'stable',
+        direction:
+          data.change > 5 ? 'up' : data.change < -5 ? 'down' : 'stable',
         changePercentage: data.change || 0,
         dataPoints: (data.history || []).map((point: any, index: number) => ({
-          date: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString(),
-          value: point.value || 0
-        }))
+          date: new Date(
+            Date.now() - index * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          value: point.value || 0,
+        })),
       };
     });
   };
@@ -194,29 +217,30 @@ export default function PerformanceAnalytics({
   // Helper function to get default recommendations based on goals
   const getDefaultRecommendations = (goals: string[]) => {
     const recommendations = [];
-    
+
     if (goals.includes('weight_loss')) {
       recommendations.push({
         title: 'Increase Cardio Volume',
         description: 'Add 2-3 cardio sessions per week to boost calorie burn',
-        priority: 'high'
+        priority: 'high',
       });
     }
-    
+
     if (goals.includes('muscle_gain')) {
       recommendations.push({
         title: 'Progressive Overload',
-        description: 'Gradually increase weights by 5-10% when you can complete all sets',
-        priority: 'high'
+        description:
+          'Gradually increase weights by 5-10% when you can complete all sets',
+        priority: 'high',
       });
     }
-    
+
     recommendations.push({
       title: 'Consistency Focus',
       description: 'Maintain regular workout schedule for optimal results',
-      priority: 'medium'
+      priority: 'medium',
     });
-    
+
     return recommendations;
   };
 
@@ -244,11 +268,13 @@ export default function PerformanceAnalytics({
 
   const formatMetricValue = (value: number, metric: string) => {
     const isImperial = userPreferences?.units === 'imperial';
-    
+
     switch (metric) {
       case 'strength':
       case 'power':
-        return isImperial ? `${value.toFixed(1)} lbs` : `${(value * 0.453592).toFixed(1)} kg`;
+        return isImperial
+          ? `${value.toFixed(1)} lbs`
+          : `${(value * 0.453592).toFixed(1)} kg`;
       case 'endurance':
       case 'stamina':
         return `${value.toFixed(0)} min`;
@@ -332,12 +358,15 @@ export default function PerformanceAnalytics({
       </div>
 
       {/* Selected Metric Chart */}
-      {analysis.trends.find((trend: PerformanceTrend) => trend.metric === selectedMetric) && (
+      {analysis.trends.find(
+        (trend: PerformanceTrend) => trend.metric === selectedMetric
+      ) && (
         <div className="mb-6">
           <TrendChart
             data={
-              analysis.trends.find((trend: PerformanceTrend) => trend.metric === selectedMetric)
-                ?.dataPoints || []
+              analysis.trends.find(
+                (trend: PerformanceTrend) => trend.metric === selectedMetric
+              )?.dataPoints || []
             }
             title={`${selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)} Trend`}
             yAxisLabel={selectedMetric}
@@ -374,27 +403,30 @@ export default function PerformanceAnalytics({
             Performance Anomalies
           </h4>
           <div className="space-y-2">
-            {analysis.anomalies.map((anomaly: PerformanceAnomaly, index: number) => (
-              <div
-                key={index}
-                className="flex items-start space-x-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
-              >
-                <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <div className="text-sm font-medium text-yellow-800">
-                    {anomaly.type}
-                  </div>
-                  <div className="text-sm text-yellow-700 mt-1">
-                    {anomaly.description}
-                  </div>
-                  {anomaly.recommendation && (
-                    <div className="text-sm text-yellow-600 mt-1">
-                      <strong>Recommendation:</strong> {anomaly.recommendation}
+            {analysis.anomalies.map(
+              (anomaly: PerformanceAnomaly, index: number) => (
+                <div
+                  key={index}
+                  className="flex items-start space-x-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
+                >
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-sm font-medium text-yellow-800">
+                      {anomaly.type}
                     </div>
-                  )}
+                    <div className="text-sm text-yellow-700 mt-1">
+                      {anomaly.description}
+                    </div>
+                    {anomaly.recommendation && (
+                      <div className="text-sm text-yellow-600 mt-1">
+                        <strong>Recommendation:</strong>{' '}
+                        {anomaly.recommendation}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       )}
@@ -433,27 +465,29 @@ export default function PerformanceAnalytics({
             AI Recommendations
           </h4>
           <div className="space-y-2">
-            {analysis.recommendations.map((recommendation: any, index: number) => (
-              <div
-                key={index}
-                className="flex items-start space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg"
-              >
-                <Target className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <div className="text-sm font-medium text-green-800">
-                    {recommendation.title}
-                  </div>
-                  <div className="text-sm text-green-700 mt-1">
-                    {recommendation.description}
-                  </div>
-                  {recommendation.priority && (
-                    <div className="text-xs text-green-600 mt-1">
-                      Priority: {recommendation.priority}
+            {analysis.recommendations.map(
+              (recommendation: any, index: number) => (
+                <div
+                  key={index}
+                  className="flex items-start space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg"
+                >
+                  <Target className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-sm font-medium text-green-800">
+                      {recommendation.title}
                     </div>
-                  )}
+                    <div className="text-sm text-green-700 mt-1">
+                      {recommendation.description}
+                    </div>
+                    {recommendation.priority && (
+                      <div className="text-xs text-green-600 mt-1">
+                        Priority: {recommendation.priority}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       )}

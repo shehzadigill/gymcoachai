@@ -179,7 +179,12 @@ export default function DashboardPage() {
               console.warn('Failed to fetch meals:', e);
               return [];
             }),
-          api.getWater(new Date().toISOString().split('T')[0]).catch((e) => {
+          api.getWater(new Date().toISOString().split('T')[0]).then(async res => {
+            if (res && typeof res.json === 'function') {
+              return await res.json();
+            }
+            return res;
+          }).catch((e) => {
             console.warn('Failed to fetch water intake:', e);
             return { body: { glasses: 0 } };
           }),
@@ -281,14 +286,16 @@ export default function DashboardPage() {
             : 0;
 
         // Process nutrition data from comprehensive stats
-        const nutritionData = nutritionStats || {};
-        const todaysCalories = nutritionData.today_calories || 0;
-        const todaysProtein = nutritionData.today_protein || 0;
-        const todaysCarbs = nutritionData.today_carbs || 0;
-        const todaysFat = nutritionData.today_fat || 0;
+        // Handle both direct objects and wrapped responses
+        const nutritionDataRaw = nutritionStats?.body || nutritionStats || {};
+        const nutritionData = nutritionDataRaw;
+        const todaysCalories = nutritionData.today_calories || nutritionData.todayCalories || 0;
+        const todaysProtein = nutritionData.today_protein || nutritionData.todayProtein || 0;
+        const todaysCarbs = nutritionData.today_carbs || nutritionData.todayCarbs || 0;
+        const todaysFat = nutritionData.today_fat || nutritionData.todayFat || 0;
         const nutritionStreak = nutritionData.streak || 0;
-        const nutritionScore = nutritionData.nutrition_score || 0;
-        const macroBalance = nutritionData.macro_balance || {
+        const nutritionScore = nutritionData.nutrition_score || nutritionData.nutritionScore || 0;
+        const macroBalance = nutritionData.macro_balance || nutritionData.macroBalance || {
           protein: 0,
           carbs: 0,
           fat: 0,
@@ -450,9 +457,10 @@ export default function DashboardPage() {
             name: 'Water',
             current:
               nutritionData.water_intake ||
+              nutritionData.waterIntake ||
               waterIntake?.body?.glasses ||
               waterIntake?.glasses ||
-              0,
+              (typeof waterIntake === 'number' ? waterIntake : 0),
             target: dailyGoalsFromPrefs?.water || 8,
             unit: 'glasses',
           },
@@ -500,7 +508,7 @@ export default function DashboardPage() {
           monthlyCalorieAvg: nutritionData.monthly_average || 0,
           mealsToday: nutritionData.meals_today || 0,
           calorieGoal: dailyGoalsFromPrefs?.calories || 2000,
-          waterIntake: nutritionData.water_intake || waterIntake?.glasses || 0,
+          waterIntake: nutritionData.water_intake || nutritionData.waterIntake || waterIntake?.body?.glasses || waterIntake?.glasses || (typeof waterIntake === 'number' ? waterIntake : 0),
           waterGoal: dailyGoalsFromPrefs?.water || 8,
           aiRecommendations: Array.isArray(achievements?.body)
             ? Math.min(achievements.body.length, 5)

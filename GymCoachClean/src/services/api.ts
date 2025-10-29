@@ -882,10 +882,9 @@ class ApiClient {
   // Sleep tracking methods
   async getSleepData(date?: string, userId?: string): Promise<any> {
     const id = userId || (await this.getCurrentUserId());
-    const endpoint = date
-      ? `/api/user-profiles/${id}/sleep/date/${date}`
-      : `/api/user-profiles/${id}/sleep`;
-    return this.apiFetch<any>(endpoint);
+    const params = new URLSearchParams({userId: id});
+    if (date) params.append('date', date);
+    return this.apiFetch<any>(`/api/user-profiles/sleep?${params}`);
   }
 
   async setSleepData(date: string, data: any, userId?: string): Promise<any> {
@@ -987,6 +986,75 @@ class ApiClient {
     });
   }
 
+  // AI Service methods for dashboard features
+  async getProactiveInsights(): Promise<any[]> {
+    return this.aiFetch<any[]>('/api/ai/proactive/insights');
+  }
+
+  async getWeeklyReview(): Promise<any> {
+    return this.aiFetch<any>('/api/ai/progress/weekly-review', {
+      method: 'POST',
+    });
+  }
+
+  async predictPerformance(userId?: string): Promise<any[]> {
+    return this.aiFetch<any[]>('/api/ai/performance/predict', {
+      method: 'POST',
+      body: JSON.stringify({userId}),
+    });
+  }
+
+  async analyzeUserPreferences(): Promise<any> {
+    return this.aiFetch<any>('/api/ai/personalization/analyze', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationHistory: true,
+        userBehavior: true,
+        feedbackHistory: true,
+        preferences: true,
+      }),
+    });
+  }
+
+  async analyzePerformance(workoutData?: any): Promise<any> {
+    return this.aiFetch<any>('/api/ai/performance/analyze', {
+      method: 'POST',
+      body: JSON.stringify(workoutData || {}),
+    });
+  }
+
+  async detectPerformanceAnomalies(): Promise<any> {
+    return this.aiFetch<any>('/api/ai/performance/anomalies', {
+      method: 'POST',
+    });
+  }
+
+  async analyzeNutritionAdherence(request: {
+    days?: number;
+    includeHydration?: boolean;
+    includeTiming?: boolean;
+    goals?: string[];
+  }): Promise<any> {
+    return this.aiFetch<any>('/api/ai/nutrition/analyze', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async calculateOptimalMacros(goals?: string[]): Promise<any> {
+    return this.aiFetch<any>('/api/ai/nutrition/macros', {
+      method: 'POST',
+      body: JSON.stringify({goals}),
+    });
+  }
+
+  async analyzeHydration(days: number = 7): Promise<any> {
+    return this.aiFetch<any>('/api/ai/nutrition/hydration', {
+      method: 'POST',
+      body: JSON.stringify({days}),
+    });
+  }
+
   // AI-specific fetch method with Lambda URL fallback
   private async aiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     console.log('API Client: aiFetch called with path:', path, 'init:', init);
@@ -1050,20 +1118,25 @@ class ApiClient {
 
   // Device token management
   async saveDeviceToken(token: string, platform: string = 'mobile') {
-    const response = await this.fetch('/api/user-profiles/device-token', {
-      method: 'POST',
-      body: JSON.stringify({token, platform}),
-    });
+    const response: any = await this.aiFetch(
+      '/api/user-profiles/device-token',
+      {
+        method: 'POST',
+        body: JSON.stringify({token, platform}),
+      },
+    );
     return response.json();
   }
 
   async getDeviceTokens() {
-    const response = await this.fetch('/api/user-profiles/device-tokens');
+    const response: any = await this.aiFetch(
+      '/api/user-profiles/device-tokens',
+    );
     return response.json();
   }
 
   async deleteDeviceToken(deviceId: string) {
-    const response = await this.fetch(
+    const response: any = await this.aiFetch(
       `/api/user-profiles/device-token/${deviceId}`,
       {
         method: 'DELETE',

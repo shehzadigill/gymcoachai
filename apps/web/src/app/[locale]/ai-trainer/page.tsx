@@ -112,6 +112,10 @@ export default function AITrainerPage() {
     namespaces: string[];
   } | null>(null);
 
+  // User context state for enhanced personalization
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userPreferences, setUserPreferences] = useState<any>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations and rate limit on mount
@@ -162,6 +166,23 @@ export default function AITrainerPage() {
     try {
       console.log('Loading enhanced AI features...');
 
+      // Load user profile and preferences for context
+      try {
+        const profile = await api.getUserProfile();
+        console.log('User profile loaded:', profile);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error('Failed to load user profile:', error);
+      }
+
+      try {
+        const preferences = await api.getUserPreferences();
+        console.log('User preferences loaded:', preferences);
+        setUserPreferences(preferences);
+      } catch (error) {
+        console.error('Failed to load user preferences:', error);
+      }
+
       // Load personalization profile
       const profileResponse = await aiService.getPersonalizationProfile();
       console.log('Personalization profile response:', profileResponse);
@@ -183,8 +204,8 @@ export default function AITrainerPage() {
 
       // Load proactive insights
       const insightsResponse = await aiService.getProactiveInsights();
-      if (insightsResponse.success) {
-        setProactiveInsights(insightsResponse.data);
+      if (insightsResponse) {
+        setProactiveInsights(insightsResponse);
       }
 
       // Load RAG stats
@@ -350,6 +371,8 @@ export default function AITrainerPage() {
         personalizationLevel: 'high',
         context: {
           coachingStyle,
+          userProfile, // Include user profile data
+          userPreferences, // Include user preferences data
           userMemories: userMemories.slice(0, 5), // Include recent memories
           personalizationProfile: personalizationProfile || {
             coachingStyle: coachingStyle,
