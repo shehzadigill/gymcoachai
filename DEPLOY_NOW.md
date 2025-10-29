@@ -20,11 +20,13 @@ cd /Users/babar/projects/gymcoach-ai
 ```
 
 **What this does**:
+
 - Installs Python dependencies
 - Creates deployment package
 - Uploads to AWS Lambda function
 
 **Expected output**:
+
 ```
 Deploying Python AI Service...
 Creating deployment package...
@@ -50,6 +52,7 @@ If AI still asks for information, check CloudWatch logs:
 4. Search for: `"Building prompt with context keys"`
 
 **What to look for**:
+
 ```
 Building prompt with context keys: dict_keys(['user_profile', 'user_preferences', 'ai_preferences', ...])
 Formatting user_profile: {'firstName': 'YourName', 'fitnessGoals': ['muscle_building'], ...}
@@ -57,12 +60,14 @@ Formatted context length: 847 characters
 ```
 
 **Good signs** ✅:
+
 - user_profile exists
 - firstName is there
 - fitnessGoals has values
 - Context length > 500 characters
 
 **Bad signs** ❌:
+
 - user_profile says "NOT FOUND"
 - Profile is empty {}
 - Context length is 0-50 characters
@@ -84,20 +89,22 @@ If logs show empty profile:
 ## Expected Results
 
 ### Before Fix:
+
 ```
 User: "What workout should I do today?"
 
-AI: "To give you the best possible advice, I need a little more detail 
-about your recent workouts. Please share some specifics about your 
+AI: "To give you the best possible advice, I need a little more detail
+about your recent workouts. Please share some specifics about your
 last few sessions:"
 ```
 
 ### After Fix:
+
 ```
 User: "What workout should I do today?"
 
-AI: "Hey [YourName]! Based on your muscle building goals and 
-intermediate experience level, let's hit an UPPER BODY session today! 
+AI: "Hey [YourName]! Based on your muscle building goals and
+intermediate experience level, let's hit an UPPER BODY session today!
 Since you have dumbbells and barbell available, here's your workout:
 1. Barbell Bench Press - 4x8
 2. Dumbbell Rows - 4x10
@@ -107,14 +114,18 @@ Since you have dumbbells and barbell available, here's your workout:
 ## Troubleshooting
 
 ### Problem: Deployment script not found
+
 **Solution**: Make sure you're in the project root:
+
 ```bash
 cd /Users/babar/projects/gymcoach-ai
 ls scripts/deploy-ai-service.sh  # Should exist
 ```
 
 ### Problem: AWS credentials not configured
+
 **Solution**: Configure AWS CLI:
+
 ```bash
 aws configure
 # Enter your AWS Access Key ID
@@ -123,13 +134,17 @@ aws configure
 ```
 
 ### Problem: AI still asks for information
+
 **Check**: CloudWatch logs (see Step 3 above)
+
 - If profile is empty → Fill profile in app
 - If context length is 0 → Contact for help
 - If context looks good → Share logs for analysis
 
 ### Problem: Changes not appearing
+
 **Check**: Did deployment succeed?
+
 - Look for "✅ AI Service deployed to AWS Lambda!"
 - If error, share error message
 
@@ -155,13 +170,14 @@ aws dynamodb get-item \
 
 ✅ **Code changes**: Complete  
 ⏳ **Deployment**: Needs to be done (Step 1)  
-⏳ **Testing**: After deployment (Step 2)  
+⏳ **Testing**: After deployment (Step 2)
 
 **Estimated time**: 7 minutes total (5 min deploy + 2 min test)
 
 ---
 
 **Need Help?**
+
 - Share CloudWatch logs if AI still asks for info
 - Share deployment errors if deployment fails
 - Share AI response after deployment to verify fix

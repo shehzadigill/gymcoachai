@@ -2,37 +2,38 @@
 const https = require('https');
 
 // Your API endpoint - update this with your actual API endpoint
-const API_ENDPOINT = 'https://your-api-endpoint.execute-api.region.amazonaws.com/prod';
+const API_ENDPOINT =
+  'https://your-api-endpoint.execute-api.region.amazonaws.com/prod';
 
 // Test with a simple chat message
 async function testAIChat() {
   const payload = JSON.stringify({
-    message: "What workout should I do today based on my goals?",
-    conversationId: "test-conversation-" + Date.now(),
+    message: 'What workout should I do today based on my goals?',
+    conversationId: 'test-conversation-' + Date.now(),
     includeRAG: true,
-    personalizationLevel: "high",
+    personalizationLevel: 'high',
     context: {
-      coachingStyle: "motivational",
+      coachingStyle: 'motivational',
       userProfile: {
-        firstName: "Test",
-        lastName: "User",
+        firstName: 'Test',
+        lastName: 'User',
         age: 30,
-        gender: "male",
-        experienceLevel: "intermediate",
-        fitnessGoals: ["muscle_building", "strength"],
+        gender: 'male',
+        experienceLevel: 'intermediate',
+        fitnessGoals: ['muscle_building', 'strength'],
         height: 175,
-        weight: 75
+        weight: 75,
       },
       userPreferences: {
-        language: "en",
-        units: "metric",
+        language: 'en',
+        units: 'metric',
         aiTrainer: {
-          coachingStyle: "motivational",
-          focusAreas: ["upper_body", "core"],
-          equipmentAvailable: ["dumbbells", "barbell", "bench"]
-        }
-      }
-    }
+          coachingStyle: 'motivational',
+          focusAreas: ['upper_body', 'core'],
+          equipmentAvailable: ['dumbbells', 'barbell', 'bench'],
+        },
+      },
+    },
   });
 
   console.log('Sending request to AI service...');
@@ -44,8 +45,8 @@ async function testAIChat() {
       'Content-Type': 'application/json',
       'Content-Length': payload.length,
       // Add your auth token here
-      'Authorization': 'Bearer YOUR_AUTH_TOKEN'
-    }
+      Authorization: 'Bearer YOUR_AUTH_TOKEN',
+    },
   };
 
   return new Promise((resolve, reject) => {
@@ -76,4 +77,4 @@ async function testAIChat() {
 // Run the test
 testAIChat()
   .then(() => console.log('\nTest completed'))
-  .catch(err => console.error('\nTest failed:', err));
+  .catch((err) => console.error('\nTest failed:', err));

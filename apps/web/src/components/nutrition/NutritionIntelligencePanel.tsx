@@ -127,7 +127,8 @@ export default function NutritionIntelligencePanel({
 
       // Transform data to match component expectations
       // Safely handle the nutrition response - check if data exists
-      const nutritionDataPayload = nutritionResponse?.data || nutritionResponse || {};
+      const nutritionDataPayload =
+        nutritionResponse?.data || nutritionResponse || {};
       setNutritionData(nutritionDataPayload);
 
       // Calculate adherence based on real data
@@ -219,7 +220,8 @@ export default function NutritionIntelligencePanel({
 
       // Transform hydration data using user goals and current intake
       // Safely handle hydration response - check if data exists
-      const hydrationDataPayload = hydrationResponse?.data || hydrationResponse || {};
+      const hydrationDataPayload =
+        hydrationResponse?.data || hydrationResponse || {};
       const waterGoalLiters = dailyGoals.water * 0.25 || 2.0; // Convert glasses to liters (assuming 250ml per glass)
       const currentWaterLiters = currentStats.waterIntake * 0.25 || 0;
       const achievementRate =
