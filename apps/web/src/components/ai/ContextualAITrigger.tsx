@@ -18,6 +18,7 @@ interface ContextualAITriggerProps {
     description: string;
     suggestedQuestions?: string[];
   };
+  askButtonText?: string;
   className?: string;
 }
 
@@ -62,6 +63,7 @@ const contextualQuestions = {
 
 export default function ContextualAITrigger({
   context,
+  askButtonText,
   className = '',
 }: ContextualAITriggerProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -138,7 +140,7 @@ export default function ContextualAITrigger({
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
             >
               <Bot className="w-4 h-4" />
-              <span>Ask AI</span>
+              <span>{askButtonText || 'Ask AI'}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

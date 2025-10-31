@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-} from 'react-native';
+import {View, Text, Pressable, ScrollView, StyleSheet} from 'react-native';
 import {Icon} from './Icon';
 
 interface Tab {
@@ -33,10 +27,15 @@ export const TabBar: React.FC<TabBarProps> = ({
         contentContainerStyle={styles.scrollContainer}
         style={styles.scrollView}>
         {tabs.map(tab => (
-          <TouchableOpacity
+          <Pressable
             key={tab.id}
             style={[styles.tab, activeTab === tab.id && styles.activeTab]}
-            onPress={() => onTabPress(tab.id)}>
+            onPress={() => onTabPress(tab.id)}
+            accessible={true}
+            accessibilityRole="tab"
+            accessibilityLabel={`${tab.title} tab`}
+            accessibilityState={{selected: activeTab === tab.id}}
+            accessibilityHint={`Switches to ${tab.title} section`}>
             <Icon
               name={tab.icon}
               size={16}
@@ -50,7 +49,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               numberOfLines={1}>
               {tab.title}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </ScrollView>
     </View>

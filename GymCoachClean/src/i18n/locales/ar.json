@@ -1,11 +1,49 @@
 {
   "common": {
-    "ok": "حسنًا",
+    "ok": "موافق",
     "cancel": "إلغاء",
+    "delete": "حذف",
     "back": "رجوع",
     "save": "حفظ",
-    "loading": "جارٍ التحميل...",
-    "saving": "جارٍ الحفظ..."
+    "error": "خطأ",
+    "loading": "جاري التحميل...",
+    "saving": "جاري الحفظ...",
+    "errors": {
+      "failed_to_start_quick_workout": "فشل في بدء التمرين السريع. يرجى المحاولة مرة أخرى.",
+      "failed_to_delete_workout_plan": "فشل في حذف خطة التمرين",
+      "failed_to_load_session_data": "فشل في تحميل بيانات الجلسة",
+      "failed_to_start_workout_session": "فشل في بدء جلسة التمرين",
+      "no_active_session_to_complete": "لا توجد جلسة نشطة لإكمالها",
+      "failed_to_complete_session": "فشل في إكمال الجلسة",
+      "failed_to_load_conversation": "فشل في تحميل المحادثة",
+      "title_too_long": "العنوان طويل جداً (الحد الأقصى 100 حرف)",
+      "failed_to_update_conversation_title": "فشل في تحديث عنوان المحادثة",
+      "failed_to_delete_conversation": "فشل في حذف المحادثة",
+      "failed_to_update_profile": "فشل في تحديث الملف الشخصي",
+      "failed_to_save_fitness_goal": "فشل في حفظ هدف اللياقة البدنية. يرجى المحاولة مرة أخرى.",
+      "failed_to_remove_fitness_goal": "فشل في إزالة هدف اللياقة البدنية. يرجى المحاولة مرة أخرى.",
+      "failed_to_save_daily_goals": "فشل في حفظ الأهداف اليومية. يرجى المحاولة مرة أخرى.",
+      "failed_to_save_ai_preferences": "فشل في حفظ تفضيلات الذكاء الاصطناعي. يرجى المحاولة مرة أخرى.",
+      "failed_to_update_notification_settings": "فشل في تحديث إعدادات الإشعارات",
+      "failed_to_upload_profile_image": "فشل في رفع صورة الملف الشخصي. يرجى المحاولة مرة أخرى.",
+      "please_enter_plan_name": "يرجى إدخال اسم الخطة",
+      "please_enter_exercise_name": "يرجى إدخال اسم التمرين",
+      "please_enter_meal_name": "يرجى إدخال اسم الوجبة",
+      "please_enter_calories": "يرجى إدخال السعرات الحرارية",
+      "failed_to_save_custom_meal": "فشل في حفظ الوجبة المخصصة. يرجى المحاولة مرة أخرى.",
+      "failed_to_delete_meal": "فشل في حذف الوجبة. يرجى المحاولة مرة أخرى.",
+      "failed_to_update_water_intake": "فشل في تحديث استهلاك الماء",
+      "failed_to_load_meal_data": "فشل في تحميل بيانات الوجبة.",
+      "failed_to_search_foods": "فشل في البحث عن الأطعمة. يرجى المحاولة مرة أخرى.",
+      "failed_to_load_progress_photos": "فشل في تحميل صور التقدم",
+      "failed_to_upload_photo": "فشل في رفع الصورة. يرجى المحاولة مرة أخرى.",
+      "failed_to_delete_photo": "فشل في حذف الصورة",
+      "failed_to_update_photo": "فشل في تحديث الصورة",
+      "failed_to_pick_image": "فشل في اختيار الصورة. يرجى المحاولة مرة أخرى.",
+      "failed_to_upload_image": "فشل في رفع الصورة. يرجى المحاولة مرة أخرى.",
+      "workout_not_found": "لم يتم العثور على التمرين",
+      "failed_to_load_workout_details": "فشل في تحميل تفاصيل التمرين"
+    }
   },
   "nutrition": {
     "title": "التغذية",
@@ -57,7 +95,16 @@
       "select_food_and_name": "يرجى اختيار طعام وإدخال اسم الوجبة.",
       "calculate_nutrition": "لا يمكن حساب معلومات التغذية.",
       "failed_to_add": "فشل في إضافة الوجبة. يرجى المحاولة مرة أخرى."
-    }
+    },
+    "delete_meal_title": "حذف الوجبة",
+    "delete_meal_message": "هل أنت متأكد أنك تريد حذف هذه الوجبة؟ هذا لا يمكن التراجع عنه."
+  },
+  "notifications": {
+    "hydration_goal_title": "وقت الشرب!",
+    "hydration_goal_message": "تذكير لطيف: احصل على كوب ماء للحفاظ على أهدافك اليومية.",
+    "nutrition_reminders_title": "تذكيرات الوجبات",
+    "nutrition_reminders_message": "تذكير بتسجيل وجبتك للحفاظ على تتبع التغذية.",
+    "reminders_enabled": "تم تمكين تذكيرات التغذية"
   },
   "analytics": {
     "total_workouts": "إجمالي التمارين",
@@ -96,7 +143,8 @@
     "ai_trainer": "المدرب الذكي",
     "nutrition": "التغذية",
     "analytics": "التحليلات",
-    "profile": "الملف الشخصي"
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات"
   },
   "auth": {
     "app_name": "جيم كوتش الذكي",
@@ -158,6 +206,7 @@
     "personal_information": "المعلومات الشخصية",
     "first_name": "الاسم الأول",
     "last_name": "اسم العائلة",
+    "email": "البريد الإلكتروني",
     "bio": "نبذة",
     "dob": "تاريخ الميلاد",
     "gender": "الجنس",
@@ -175,6 +224,9 @@
     "not_set": "غير محدد",
     "account": "الحساب",
     "sign_out": "تسجيل الخروج",
+    "sign_out_title": "تسجيل الخروج",
+    "sign_out_message": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
+    "sign_out_error": "فشل تسجيل الخروج",
     "daily_goals": "الأهداف اليومية",
     "daily_calories": "السعرات اليومية",
     "water_intake": "شرب الماء",
@@ -307,6 +359,8 @@
     "no_meals_logged": "لا توجد وجبات مسجلة"
   },
   "workouts_screen": {
+    "title": "التمارين",
+    "subtitle": "إدارة التمارين والخطط والتدريبات",
     "tabs": {
       "sessions": "الجلسات",
       "plans": "الخطط",
@@ -410,6 +464,39 @@
       "great_job": "أنت تقوم بعمل رائع!",
       "empty": "لا توجد بيانات تحليلية بعد",
       "empty_hint": "أكمل بعض التمارين لرؤية تقدمك!"
+    }
+  },
+  "analytics_screen": {
+    "title": "التحليلات",
+    "subtitle": "تتبع تقدمك الرياضي"
+  },
+  "formatting": {
+    "date": {
+      "short": "dd/MM/yyyy",
+      "medium": "dd MMM yyyy",
+      "long": "dd MMMM yyyy",
+      "weekday_short": "EEE"
+    },
+    "time": {
+      "short": "h:mm a",
+      "medium": "h:mm:ss a",
+      "long": "h:mm:ss a z"
+    },
+    "datetime": {
+      "short": "dd/MM/yyyy h:mm a",
+      "medium": "dd MMM yyyy h:mm a",
+      "long": "dd MMMM yyyy 'في' h:mm a"
+    },
+    "relative_time": {
+      "just_now": "الآن",
+      "minutes_ago": "منذ {{count}} دقيقة",
+      "minutes_ago_plural": "منذ {{count}} دقائق",
+      "hours_ago": "منذ {{count}} ساعة",
+      "hours_ago_plural": "منذ {{count}} ساعات",
+      "days_ago": "منذ {{count}} يوم",
+      "days_ago_plural": "منذ {{count}} أيام",
+      "weeks_ago": "منذ {{count}} أسبوع",
+      "weeks_ago_plural": "منذ {{count}} أسابيع"
     }
   }
 }

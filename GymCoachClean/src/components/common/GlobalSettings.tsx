@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   Modal,
   StyleSheet,
   ScrollView,
@@ -70,9 +70,15 @@ export default function GlobalSettings({
               {flexDirection: getRTLFlexDirection('row')},
             ]}>
             <Text style={styles.title}>{t('settings.title')}</Text>
-            <TouchableOpacity onPress={handleCancel} style={styles.closeButton}>
+            <Pressable
+              onPress={handleCancel}
+              style={styles.closeButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Close settings"
+              accessibilityHint="Closes the settings modal without saving">
               <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <ScrollView
@@ -88,7 +94,7 @@ export default function GlobalSettings({
               </Text>
               <View style={styles.optionsContainer}>
                 {themeOptions.map(option => (
-                  <TouchableOpacity
+                  <Pressable
                     key={option.key}
                     style={[
                       styles.optionItem,
@@ -107,7 +113,7 @@ export default function GlobalSettings({
                     {selectedTheme === option.key && (
                       <Text style={styles.checkIcon}>✓</Text>
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
             </View>
@@ -122,7 +128,7 @@ export default function GlobalSettings({
               </Text>
               <View style={styles.optionsContainer}>
                 {languageOptions.map(option => (
-                  <TouchableOpacity
+                  <Pressable
                     key={option.key}
                     style={[
                       styles.optionItem,
@@ -142,7 +148,7 @@ export default function GlobalSettings({
                     {selectedLanguage === option.key && (
                       <Text style={styles.checkIcon}>✓</Text>
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
             </View>
@@ -154,14 +160,24 @@ export default function GlobalSettings({
               styles.footer,
               {flexDirection: getRTLFlexDirection('row')},
             ]}>
-            <TouchableOpacity
+            <Pressable
               style={styles.cancelButton}
-              onPress={handleCancel}>
+              onPress={handleCancel}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              accessibilityHint="Discards changes and closes settings">
               <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            </Pressable>
+            <Pressable
+              style={styles.saveButton}
+              onPress={handleSave}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Save settings"
+              accessibilityHint="Saves your settings and closes the modal">
               <Text style={styles.saveButtonText}>{t('common.save')}</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </View>

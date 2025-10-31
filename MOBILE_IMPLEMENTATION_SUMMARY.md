@@ -11,6 +11,7 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 ### Web App Features (Missing in Mobile)
 
 #### 1. **AI Trainer Screen** - HIGHEST IMPACT
+
 - ❌ RAG (Retrieval-Augmented Generation) sources visualization
 - ❌ AI confidence indicators for responses
 - ❌ Memory viewer showing what AI remembers about user
@@ -20,12 +21,14 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 - ❌ Conversation analytics
 
 #### 2. **Dashboard Screen**
+
 - ❌ Macro balance visualization (protein/carbs/fat circles)
 - ❌ Strength progress donut chart
 - ❌ Weekly nutrition bar chart
 - ❌ Enhanced quick action cards
 
 #### 3. **Workouts Screen**
+
 - ❌ Performance analytics modal
 - ❌ AI-powered workout suggestions
 - ❌ Injury risk assessment
@@ -33,6 +36,7 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 - ❌ Volume trends visualization
 
 #### 4. **Analytics Screen**
+
 - ❌ Body measurements tracking display
 - ❌ Detailed strength progress visualization
 - ❌ Performance insights panel
@@ -47,11 +51,13 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 ### New Components Created (3 Files)
 
 #### 1. **ConfidenceIndicator.tsx** ✓
+
 **Location**: `/GymCoachClean/src/components/ai/ConfidenceIndicator.tsx`
 
 **Purpose**: Shows how confident the AI is about its responses
 
 **Features**:
+
 - Visual confidence bar with percentage
 - Color-coded levels:
   - 🟢 Green (80%+) = High confidence
@@ -61,16 +67,19 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 - Can show/hide label
 
 **Usage Example**:
+
 ```typescript
 <ConfidenceIndicator score={0.85} size="md" showLabel={true} />
 ```
 
 #### 2. **RAGSourcesDisplay.tsx** ✓
+
 **Location**: `/GymCoachClean/src/components/ai/RAGSourcesDisplay.tsx`
 
 **Purpose**: Shows what knowledge sources the AI used to answer questions
 
 **Features**:
+
 - Displays relevant documents/sources with relevance scores
 - Type-specific icons (workout 🏋️, nutrition 🍎, profile 👤)
 - Expandable list (shows 3 by default, expandable to all)
@@ -78,19 +87,22 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 - Clean, compact design
 
 **Usage Example**:
+
 ```typescript
-<RAGSourcesDisplay 
-  ragContext={message.ragContext} 
-  maxSources={3} 
+<RAGSourcesDisplay
+  ragContext={message.ragContext}
+  maxSources={3}
 />
 ```
 
 #### 3. **MemoryViewer.tsx** ✓
+
 **Location**: `/GymCoachClean/src/components/ai/MemoryViewer.tsx`
 
 **Purpose**: Displays what the AI remembers about the user
 
 **Features**:
+
 - Memory cards showing:
   - Memory type (goal, preference, achievement, habit)
   - Importance level (color-coded)
@@ -101,6 +113,7 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 - Icons for different memory types
 
 **Usage Example**:
+
 ```typescript
 <MemoryViewer memories={userMemories} maxItems={5} />
 ```
@@ -114,6 +127,7 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 **Status**: Components created, integration pending
 
 **What's Next**:
+
 1. Update `AITrainerScreen.tsx` to use new components
 2. Add state management for:
    - Personalization profile
@@ -137,11 +151,13 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 ### Phase 2: Dashboard Enhancements (MEDIUM PRIORITY) ⏳
 
 **Components Needed**:
+
 1. **MacroBalanceChart.tsx** - Circular progress for macros
 2. **StrengthProgressChart.tsx** - Donut chart for muscle groups
 3. **WeeklyNutritionChart.tsx** - 7-day bar chart
 
 **Updates to DashboardScreen**:
+
 - Add macro balance visualization section
 - Integrate strength progress donut
 - Add weekly nutrition trends
@@ -154,10 +170,12 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 ### Phase 3: Workout Analytics Enhancement (MEDIUM PRIORITY) ⏳
 
 **Components Needed**:
+
 1. **PerformanceAnalytics.tsx** - Comprehensive workout insights
 2. **WorkoutAnalyticsModal.tsx** - Full-screen analytics view
 
 **Updates to WorkoutsScreen**:
+
 - Add "View Analytics" button
 - Performance modal with charts
 - AI workout suggestions integration
@@ -170,11 +188,13 @@ I've analyzed your web and mobile applications to identify feature gaps and have
 ### Phase 4: Enhanced Analytics Screen (MEDIUM PRIORITY) ⏳
 
 **Components Needed**:
+
 1. **BodyMeasurements.tsx** - Weight, body fat, muscle tracking
 2. **MuscleGroupDistribution.tsx** - Training focus visualization
 3. **PerformanceInsights.tsx** - AI-generated insights
 
 **Updates to AnalyticsScreen**:
+
 - Body measurements section
 - Muscle group distribution chart
 - Performance insights panel
@@ -192,18 +212,18 @@ All these endpoints are already implemented in your backend and `apiClient`:
 
 ```typescript
 // AI Service
-GET  /api/ai/personalization-profile      // User AI preferences
-POST /api/ai/memories/relevant            // Retrieve user memories
-GET  /api/ai/insights/proactive           // AI insights
-GET  /api/ai/rag/stats                    // RAG statistics
-POST /api/ai/chat                         // Enhanced chat with context
+GET / api / ai / personalization - profile; // User AI preferences
+POST / api / ai / memories / relevant; // Retrieve user memories
+GET / api / ai / insights / proactive; // AI insights
+GET / api / ai / rag / stats; // RAG statistics
+POST / api / ai / chat; // Enhanced chat with context
 
 // Analytics
-GET /api/workouts/analytics               // Workout stats
-GET /api/workouts/insights                // Performance insights
-GET /api/workouts/strength-progress       // Strength tracking
-GET /api/workouts/history                 // Workout history
-GET /api/analytics/body-measurements      // Body metrics
+GET / api / workouts / analytics; // Workout stats
+GET / api / workouts / insights; // Performance insights
+GET / api / workouts / strength - progress; // Strength tracking
+GET / api / workouts / history; // Workout history
+GET / api / analytics / body - measurements; // Body metrics
 ```
 
 ### Dependencies to Install
@@ -219,25 +239,25 @@ npm install react-native-chart-kit react-native-circular-progress
 
 ### AI Trainer Comparison
 
-| Feature | Web | Mobile Now | Mobile After |
-|---------|-----|------------|--------------|
-| Chat Interface | ✅ | ✅ | ✅ |
-| Conversation History | ✅ | ✅ | ✅ |
-| RAG Sources | ✅ | ❌ | ✅ |
-| Confidence Scores | ✅ | ❌ | ✅ |
-| Memory Viewer | ✅ | ❌ | ✅ |
-| Personalization | ✅ | ❌ | ✅ |
-| Proactive Insights | ✅ | ❌ | ✅ |
+| Feature              | Web | Mobile Now | Mobile After |
+| -------------------- | --- | ---------- | ------------ |
+| Chat Interface       | ✅  | ✅         | ✅           |
+| Conversation History | ✅  | ✅         | ✅           |
+| RAG Sources          | ✅  | ❌         | ✅           |
+| Confidence Scores    | ✅  | ❌         | ✅           |
+| Memory Viewer        | ✅  | ❌         | ✅           |
+| Personalization      | ✅  | ❌         | ✅           |
+| Proactive Insights   | ✅  | ❌         | ✅           |
 
 ### Dashboard Comparison
 
-| Feature | Web | Mobile Now | Mobile After |
-|---------|-----|------------|--------------|
-| Metrics Cards | ✅ | ✅ | ✅ |
-| Workout Chart | ✅ | ✅ | ✅ |
-| Macro Balance | ✅ | ❌ | ✅ |
-| Strength Donut | ✅ | ❌ | ✅ |
-| Nutrition Chart | ✅ | ❌ | ✅ |
+| Feature         | Web | Mobile Now | Mobile After |
+| --------------- | --- | ---------- | ------------ |
+| Metrics Cards   | ✅  | ✅         | ✅           |
+| Workout Chart   | ✅  | ✅         | ✅           |
+| Macro Balance   | ✅  | ❌         | ✅           |
+| Strength Donut  | ✅  | ❌         | ✅           |
+| Nutrition Chart | ✅  | ❌         | ✅           |
 
 ---
 
@@ -246,6 +266,7 @@ npm install react-native-chart-kit react-native-circular-progress
 ### Immediate Actions (Next 1-2 Hours)
 
 1. **Install Dependencies**:
+
    ```bash
    cd /Users/babar/projects/gymcoach-ai/GymCoachClean
    npm install react-native-chart-kit react-native-circular-progress
@@ -321,7 +342,7 @@ I've created three comprehensive documentation files:
 import ConfidenceIndicator from './components/ai/ConfidenceIndicator';
 
 // In your component
-<ConfidenceIndicator 
+<ConfidenceIndicator
   score={0.87}          // 0-1 confidence score
   size="md"             // 'sm' | 'md' | 'lg'
   showLabel={true}      // Show text label
@@ -334,7 +355,7 @@ import ConfidenceIndicator from './components/ai/ConfidenceIndicator';
 import RAGSourcesDisplay from './components/ai/RAGSourcesDisplay';
 
 // In your message component
-<RAGSourcesDisplay 
+<RAGSourcesDisplay
   ragContext={{
     sources: [
       { document: "workout_plan", score: 0.95, metadata: { type: "workout" }},
@@ -351,7 +372,7 @@ import RAGSourcesDisplay from './components/ai/RAGSourcesDisplay';
 import MemoryViewer from './components/ai/MemoryViewer';
 
 // In your AI panel
-<MemoryViewer 
+<MemoryViewer
   memories={[
     {
       id: "1",
@@ -371,6 +392,7 @@ import MemoryViewer from './components/ai/MemoryViewer';
 ## 🎯 Expected Benefits
 
 ### For Users:
+
 - ✨ **Transparency**: See how AI makes decisions
 - 📊 **Better Insights**: Comprehensive analytics and visualizations
 - 🎯 **Personalization**: AI that remembers and adapts
@@ -378,6 +400,7 @@ import MemoryViewer from './components/ai/MemoryViewer';
 - 💡 **Actionable Advice**: Proactive insights and recommendations
 
 ### For Development:
+
 - ✅ **Feature Parity**: Mobile matches web capabilities
 - 🔄 **Code Reusability**: Shared component patterns
 - 📱 **Enhanced UX**: Modern, data-driven interface
@@ -388,6 +411,7 @@ import MemoryViewer from './components/ai/MemoryViewer';
 ## ⚠️ Known Limitations & Workarounds
 
 ### MCP Server Issues Encountered:
+
 1. **Playwright MCP**: Browser already in use error
    - **Workaround**: Manual code analysis of web implementation
 
@@ -395,6 +419,7 @@ import MemoryViewer from './components/ai/MemoryViewer';
    - **Workaround**: Created components based on web patterns
 
 ### Testing Approach:
+
 - Manual testing with real app required
 - Component isolation for unit testing
 - Visual comparison with web version
@@ -416,6 +441,7 @@ import MemoryViewer from './components/ai/MemoryViewer';
    - `MOBILE_ENHANCEMENT_PROGRESS.md`
 
 3. **Install dependencies and test**:
+
    ```bash
    cd GymCoachClean
    npm install
@@ -425,6 +451,7 @@ import MemoryViewer from './components/ai/MemoryViewer';
 4. **Integrate components** into AITrainerScreen
 
 ### Questions to Consider:
+
 - Which phase should we prioritize first?
 - Do you want to test the AI components before proceeding?
 - Should we add any custom styling/branding?

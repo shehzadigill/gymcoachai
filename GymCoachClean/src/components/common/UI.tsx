@@ -2,7 +2,7 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
@@ -16,6 +16,8 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   style?: any;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export function Button({
@@ -26,6 +28,8 @@ export function Button({
   disabled = false,
   loading = false,
   style,
+  accessibilityLabel,
+  accessibilityHint,
 }: ButtonProps) {
   const {colors} = useTheme();
   const buttonStyle = [
@@ -44,11 +48,15 @@ export function Button({
   ];
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={buttonStyle}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}>
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{disabled: disabled || loading}}>
       {loading ? (
         <ActivityIndicator
           color={variant === 'primary' ? colors.primaryText : colors.primary}
@@ -57,7 +65,7 @@ export function Button({
       ) : (
         <Text style={textStyle}>{title}</Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

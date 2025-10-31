@@ -5,7 +5,7 @@ import {
   StyleSheet,
   SafeAreaView,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   FlatList,
   Alert,
   ActivityIndicator,
@@ -131,7 +131,10 @@ export default function NutritionEntryScreen({route, navigation}: any) {
       }
     } catch (error) {
       console.error('Error loading meal data:', error);
-      Alert.alert('Error', 'Failed to load meal data.');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_load_meal_data'),
+      );
     } finally {
       setLoading(false);
       console.log('loadMealData completed, loading set to false');
@@ -153,7 +156,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
       setSearchResults(foods);
     } catch (error) {
       console.error('Error searching foods:', error);
-      Alert.alert('Error', 'Failed to search foods. Please try again.');
+      Alert.alert(t('common.error'), t('common.errors.failed_to_search_foods'));
     } finally {
       setSearching(false);
     }
@@ -367,7 +370,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
                   data={searchResults}
                   keyExtractor={item => item.id}
                   renderItem={({item}) => (
-                    <TouchableOpacity
+                    <Pressable
                       style={styles.foodItem}
                       onPress={() => selectFood(item)}>
                       <Text style={styles.foodName}>{item.name}</Text>
@@ -378,7 +381,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
                         {item.calories || item.nutritionFacts?.calories || 0}{' '}
                         cal
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
                   style={styles.foodList}
                 />
@@ -399,7 +402,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
               )}
 
               {!editMode && (
-                <TouchableOpacity
+                <Pressable
                   style={styles.changeButton}
                   onPress={() => {
                     setSelectedFood(null);
@@ -408,7 +411,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
                   <Text style={styles.changeButtonText}>
                     {t('nutrition.change_food')}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
             </Card>
 
@@ -421,7 +424,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
               selectedFood.commonServings.length > 0 ? (
                 <View style={styles.servingOptions}>
                   {selectedFood.commonServings.map(serving => (
-                    <TouchableOpacity
+                    <Pressable
                       key={serving.name}
                       style={[
                         styles.servingOption,
@@ -440,7 +443,7 @@ export default function NutritionEntryScreen({route, navigation}: any) {
                         ]}>
                         {serving.name}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               ) : null}

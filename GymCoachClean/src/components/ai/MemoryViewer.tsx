@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import {Icon} from '../common/Icon';
 
@@ -101,7 +101,9 @@ const MemoryViewer: React.FC<MemoryViewerProps> = ({
                 style={[
                   styles.importanceBadge,
                   {
-                    backgroundColor: `${getImportanceColor(memory.importance)}20`,
+                    backgroundColor: `${getImportanceColor(
+                      memory.importance,
+                    )}20`,
                   },
                 ]}>
                 <Text
@@ -124,20 +126,18 @@ const MemoryViewer: React.FC<MemoryViewerProps> = ({
       </ScrollView>
 
       {memories.length > maxItems && (
-        <TouchableOpacity
+        <Pressable
           style={styles.expandButton}
           onPress={() => setExpanded(!expanded)}>
           <Text style={styles.expandText}>
-            {expanded
-              ? 'Show Less'
-              : `Show ${memories.length - maxItems} More`}
+            {expanded ? 'Show Less' : `Show ${memories.length - maxItems} More`}
           </Text>
           <Icon
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={14}
             color="#3b82f6"
           />
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

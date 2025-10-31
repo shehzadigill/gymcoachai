@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { api } from '../../../lib/api-client';
 import { aiService } from '../../../lib/ai-service-client';
 import { useCurrentUser } from '@packages/auth';
@@ -78,6 +79,7 @@ export default function AITrainerPage() {
   const user = useCurrentUser();
   const t = useTranslations('ai_trainer');
   const tCommon = useTranslations('common');
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -117,6 +119,54 @@ export default function AITrainerPage() {
   const [userPreferences, setUserPreferences] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Handle URL parameters for contextual AI queries
+  useEffect(() => {
+    const context = searchParams.get('context');
+    const question = searchParams.get('question');
+    const dataParam = searchParams.get('data');
+
+    if (context && question && user && !user.isLoading) {
+      console.log('URL parameters detected:', {
+        context,
+        question,
+        data: dataParam,
+      });
+
+      // Parse the data if provided
+      let parsedData = null;
+      if (dataParam) {
+        try {
+          parsedData = JSON.parse(decodeURIComponent(dataParam));
+          console.log('Parsed data:', parsedData);
+        } catch (error) {
+          console.error('Failed to parse data parameter:', error);
+        }
+      }
+
+      // Build contextual message
+      const decodedQuestion = decodeURIComponent(question);
+      const contextualMessage = parsedData
+        ? `Context: ${context}\n\nQuestion: ${decodedQuestion}\n\nRelevant Data:\n${JSON.stringify(parsedData, null, 2)}`
+        : `Context: ${context}\n\nQuestion: ${decodedQuestion}`;
+
+      // Set the input message
+      setInputMessage(contextualMessage);
+
+      // Close the conversations sidebar to show the chat
+      setShowConversations(false);
+
+      // Clear URL parameters after processing (optional - keeps URL clean)
+      // You can comment this out if you want to keep params in URL
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('context');
+        url.searchParams.delete('question');
+        url.searchParams.delete('data');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [searchParams, user]);
 
   // Load conversations and rate limit on mount
   useEffect(() => {
@@ -585,17 +635,15 @@ export default function AITrainerPage() {
               </span>
             </div>
           )}
-
           {/* RAG Stats */}
           {ragStats && (
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
               <Brain className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-xs font-medium text-green-700 dark:text-green-300">
+              <span className="text-xs font-medium text-green-700 dark:text-green-200">
                 {ragStats.totalVectors.toLocaleString()} sources
               </span>
             </div>
-          )}
-
+          )}{' '}
           {/* Rate Limit Indicator */}
           {rateLimit && (
             <div className="hidden sm:flex items-center gap-3">
@@ -613,37 +661,33 @@ export default function AITrainerPage() {
               </div>
             </div>
           )}
-
           {/* AI Features Toggle */}
           <button
             onClick={() => setShowAnalytics(!showAnalytics)}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             title="Toggle AI Analytics"
           >
             <TrendingUp className="h-5 w-5" />
           </button>
-
           {/* Personalization Toggle */}
           <button
             onClick={() => setShowPersonalization(!showPersonalization)}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             title="Toggle Personalization"
           >
             <Settings className="h-5 w-5" />
           </button>
-
           {/* Conversations Button */}
           <button
             onClick={() => setShowConversations(!showConversations)}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <MessageCircle className="h-5 w-5" />
           </button>
-
           {/* New Conversation Button */}
           <button
             onClick={startNewConversation}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <RefreshCw className="h-5 w-5" />
           </button>
@@ -667,14 +711,14 @@ export default function AITrainerPage() {
                   onClick={() =>
                     setConversationsCollapsed(!conversationsCollapsed)
                   }
-                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
                   title={
                     conversationsCollapsed
                       ? 'Expand conversations'
                       : 'Collapse conversations'
                   }
                 >
-                  <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <Menu className="h-4 w-4" />
                 </button>
               </div>
               {!conversationsCollapsed && (
@@ -711,7 +755,7 @@ export default function AITrainerPage() {
                         key={conversation.conversationId}
                         className={`${conversationsCollapsed ? 'p-2' : 'p-3'} rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 group ${
                           currentConversationId === conversation.conversationId
-                            ? 'bg-blue-100 dark:bg-blue-900'
+                            ? 'bg-blue-100 dark:bg-blue-900/50'
                             : ''
                         }`}
                         onClick={() =>
@@ -725,7 +769,7 @@ export default function AITrainerPage() {
                       >
                         {conversationsCollapsed ? (
                           <div className="flex justify-center">
-                            <MessageCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                            <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                           </div>
                         ) : (
                           <div className="flex items-center justify-between">
@@ -836,18 +880,18 @@ export default function AITrainerPage() {
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600 dark:text-gray-300">
                         Messages:
                       </span>
-                      <span className="font-medium">
+                      <span className="font-medium text-gray-900 dark:text-white">
                         {conversationAnalytics.engagementMetrics.messageCount}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600 dark:text-gray-300">
                         Satisfaction:
                       </span>
-                      <span className="font-medium">
+                      <span className="font-medium text-gray-900 dark:text-white">
                         {
                           conversationAnalytics.engagementMetrics
                             .userSatisfaction
@@ -856,18 +900,18 @@ export default function AITrainerPage() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600 dark:text-gray-300">
                         Sentiment:
                       </span>
                       <span
                         className={`font-medium ${
                           conversationAnalytics.sentimentAnalysis.overall ===
                           'positive'
-                            ? 'text-green-600'
+                            ? 'text-green-600 dark:text-green-400'
                             : conversationAnalytics.sentimentAnalysis
                                   .overall === 'negative'
-                              ? 'text-red-600'
-                              : 'text-gray-600'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-gray-600 dark:text-gray-400'
                         }`}
                       >
                         {conversationAnalytics.sentimentAnalysis.overall}
@@ -912,7 +956,7 @@ export default function AITrainerPage() {
                       <span className="text-gray-600 dark:text-gray-400">
                         Total Sources:
                       </span>
-                      <span className="font-medium">
+                      <span className="font-medium text-gray-900 dark:text-white">
                         {ragStats.totalVectors.toLocaleString()}
                       </span>
                     </div>
@@ -922,7 +966,7 @@ export default function AITrainerPage() {
                         {ragStats.namespaces.map((ns) => (
                           <span
                             key={ns}
-                            className="px-2 py-1 bg-gray-100 dark:bg-gray-600 rounded text-xs"
+                            className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-xs"
                           >
                             {ns}
                           </span>
@@ -963,10 +1007,10 @@ export default function AITrainerPage() {
                     <button
                       key={style}
                       onClick={() => handleCoachingStyleChange(style)}
-                      className={`w-full text-left p-2 rounded text-sm flex items-center gap-2 ${
+                      className={`w-full text-left p-2 rounded text-sm flex items-center gap-2 transition-colors ${
                         coachingStyle === style
-                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-300'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-600'
+                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-200'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                       }`}
                     >
                       <span>{getCoachingStyleIcon(style)}</span>
@@ -976,24 +1020,35 @@ export default function AITrainerPage() {
                 </div>
               </div>
 
-              {/* User Memories */}
+              {/* User Memories - Full List */}
               {userMemories.length > 0 && (
                 <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    AI Memories
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <Brain className="h-4 w-4" />
+                    All AI Memories ({userMemories.length})
                   </h4>
-                  <div className="space-y-2">
-                    {userMemories.slice(0, 5).map((memory) => (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {userMemories.map((memory) => (
                       <div
                         key={memory.id}
-                        className="text-sm p-2 bg-gray-50 dark:bg-gray-600 rounded"
+                        className="text-sm p-2 bg-gray-50 dark:bg-gray-600 rounded border border-gray-200 dark:border-gray-500"
                       >
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {memory.type}
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-gray-900 dark:text-white capitalize text-xs">
+                            {memory.type}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {Math.round(memory.importance * 100)}%
+                          </span>
                         </div>
-                        <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                        <div className="text-gray-600 dark:text-gray-300 text-xs">
                           {memory.content}
                         </div>
+                        {memory.metadata?.category && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {memory.metadata.category}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1011,7 +1066,7 @@ export default function AITrainerPage() {
                       <span className="text-gray-600 dark:text-gray-400">
                         Communication:
                       </span>
-                      <span className="font-medium capitalize">
+                      <span className="font-medium capitalize text-gray-900 dark:text-white">
                         {personalizationProfile.communicationStyle}
                       </span>
                     </div>
@@ -1019,7 +1074,7 @@ export default function AITrainerPage() {
                       <span className="text-gray-600 dark:text-gray-400">
                         Motivation:
                       </span>
-                      <span className="font-medium capitalize">
+                      <span className="font-medium capitalize text-gray-900 dark:text-white">
                         {personalizationProfile.motivationType}
                       </span>
                     </div>
@@ -1061,7 +1116,7 @@ export default function AITrainerPage() {
                         'Create a personalized 4-day workout split for me'
                       )
                     }
-                    className="p-4 text-left bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-200 dark:border-blue-800 transition-colors"
+                    className="p-4 text-left bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <Dumbbell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -1069,7 +1124,7 @@ export default function AITrainerPage() {
                         Smart Workout Plan
                       </div>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       AI-powered personalized routines
                     </div>
                   </button>
@@ -1080,7 +1135,7 @@ export default function AITrainerPage() {
                         'Create a weekly meal plan optimized for my goals'
                       )
                     }
-                    className="p-4 text-left bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 border border-green-200 dark:border-green-800 transition-colors"
+                    className="p-4 text-left bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200 dark:border-green-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <Apple className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -1088,7 +1143,7 @@ export default function AITrainerPage() {
                         Nutrition Intelligence
                       </div>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       AI-optimized meal planning
                     </div>
                   </button>
@@ -1099,7 +1154,7 @@ export default function AITrainerPage() {
                         'Analyze my recent workout performance and suggest improvements'
                       )
                     }
-                    className="p-4 text-left bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-800 transition-colors"
+                    className="p-4 text-left bg-purple-50 dark:bg-purple-900/30 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -1107,7 +1162,7 @@ export default function AITrainerPage() {
                         Performance Analysis
                       </div>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       AI-powered progress insights
                     </div>
                   </button>
@@ -1118,7 +1173,7 @@ export default function AITrainerPage() {
                         'Give me personalized motivation based on my current goals'
                       )
                     }
-                    className="p-4 text-left bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800 transition-colors"
+                    className="p-4 text-left bg-orange-50 dark:bg-orange-900/30 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 border border-orange-200 dark:border-orange-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <Target className="h-6 w-6 text-orange-600 dark:text-orange-400" />
@@ -1126,7 +1181,7 @@ export default function AITrainerPage() {
                         Personalized Coaching
                       </div>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       Adaptive motivation & guidance
                     </div>
                   </button>
@@ -1142,38 +1197,38 @@ export default function AITrainerPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                       {personalizationProfile && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                           <div className="text-2xl mb-1">
                             {getCoachingStyleIcon(coachingStyle)}
                           </div>
-                          <div className="text-xs font-medium text-blue-900 dark:text-blue-300 capitalize">
+                          <div className="text-xs font-medium text-blue-900 dark:text-blue-200 capitalize">
                             {coachingStyle} Style
                           </div>
-                          <div className="text-xs text-blue-700 dark:text-blue-400">
+                          <div className="text-xs text-blue-700 dark:text-blue-300">
                             Personalized coaching
                           </div>
                         </div>
                       )}
 
                       {ragStats && (
-                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
                           <div className="text-2xl mb-1">🧠</div>
-                          <div className="text-xs font-medium text-green-900 dark:text-green-300">
+                          <div className="text-xs font-medium text-green-900 dark:text-green-200">
                             {ragStats.totalVectors.toLocaleString()}+ Sources
                           </div>
-                          <div className="text-xs text-green-700 dark:text-green-400">
+                          <div className="text-xs text-green-700 dark:text-green-300">
                             Knowledge base
                           </div>
                         </div>
                       )}
 
                       {userMemories.length > 0 && (
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
                           <div className="text-2xl mb-1">💭</div>
-                          <div className="text-xs font-medium text-purple-900 dark:text-purple-300">
+                          <div className="text-xs font-medium text-purple-900 dark:text-purple-200">
                             {userMemories.length} Memories
                           </div>
-                          <div className="text-xs text-purple-700 dark:text-purple-400">
+                          <div className="text-xs text-purple-700 dark:text-purple-300">
                             Long-term context
                           </div>
                         </div>
@@ -1227,17 +1282,17 @@ export default function AITrainerPage() {
                                 <em className="italic">{children}</em>
                               ),
                               code: ({ children }) => (
-                                <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-sm">
+                                <code className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-1 py-0.5 rounded text-sm">
                                   {children}
                                 </code>
                               ),
                               pre: ({ children }) => (
-                                <pre className="bg-gray-200 dark:bg-gray-600 p-2 rounded overflow-x-auto">
+                                <pre className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded overflow-x-auto">
                                   {children}
                                 </pre>
                               ),
                               blockquote: ({ children }) => (
-                                <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                                <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-700 dark:text-gray-300">
                                   {children}
                                 </blockquote>
                               ),
@@ -1350,6 +1405,49 @@ export default function AITrainerPage() {
 
           {/* Input Area */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+            {/* Memory Section - Collapsible */}
+            {userMemories.length > 0 && (
+              <div className="mx-auto w-full max-w-3xl mb-3">
+                <details className="group bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <summary className="cursor-pointer p-3 flex items-center justify-between hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors">
+                    <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
+                      <Brain className="h-4 w-4" />
+                      <span>AI Memories ({userMemories.length})</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="p-3 pt-0 space-y-2 max-h-48 overflow-y-auto">
+                    {userMemories.slice(0, 5).map((memory) => (
+                      <div
+                        key={memory.id}
+                        className="text-sm p-2 bg-white dark:bg-gray-800 rounded border border-blue-100 dark:border-gray-700"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-blue-900 dark:text-blue-200 capitalize text-xs">
+                            {memory.type}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {Math.round(memory.importance * 100)}% importance
+                          </span>
+                        </div>
+                        <div className="text-gray-700 dark:text-gray-300 text-xs">
+                          {memory.content}
+                        </div>
+                      </div>
+                    ))}
+                    {userMemories.length > 5 && (
+                      <button
+                        onClick={() => setShowPersonalization(true)}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline w-full text-center py-1"
+                      >
+                        View all {userMemories.length} memories →
+                      </button>
+                    )}
+                  </div>
+                </details>
+              </div>
+            )}
+
             <div className="mx-auto w-full max-w-3xl flex space-x-2">
               <input
                 type="text"
@@ -1380,7 +1478,7 @@ export default function AITrainerPage() {
                   <button
                     key={s}
                     onClick={() => setInputMessage(s)}
-                    className="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                    className="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
                   >
                     {s}
                   </button>
@@ -1388,7 +1486,7 @@ export default function AITrainerPage() {
               </div>
 
               {/* AI Features Status */}
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-4">
                   {personalizationProfile && (
                     <div className="flex items-center gap-1">
@@ -1419,7 +1517,7 @@ export default function AITrainerPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={summarizeConversation}
-                      className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
+                      className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       title="Summarize conversation"
                     >
                       <Lightbulb className="h-3 w-3" />

@@ -287,8 +287,37 @@ h6 {
   color: #0f172a !important;
 }
 
-p,
-span {
+/* Only apply text color to paragraph text, not interactive elements */
+p:not(button p):not(a p),
+span:not(button span):not(a span):not(.text-gray-500):not(.text-gray-600):not(
+    .text-gray-700
+  ):not([class*='text-']) {
+  color: #334155 !important;
+}
+
+/* Ensure icon-only buttons maintain proper colors */
+button svg,
+button path,
+button circle,
+button line,
+button polyline,
+button polygon {
+  color: inherit !important;
+}
+
+/* Button text color classes should override global styles */
+button .text-gray-500,
+a .text-gray-500 {
+  color: #64748b !important;
+}
+
+button .text-gray-600,
+a .text-gray-600 {
+  color: #475569 !important;
+}
+
+button .text-gray-700,
+a .text-gray-700 {
   color: #334155 !important;
 }
 
@@ -399,6 +428,23 @@ span {
 
 .dark .text-blue-400 {
   color: #93c5fd !important;
+}
+
+/* Hover text color improvements for icon buttons */
+.hover\:text-gray-700:hover {
+  color: #334155 !important;
+}
+
+.dark .hover\:text-gray-700:hover {
+  color: #d1d5db !important;
+}
+
+.hover\:text-gray-200:hover {
+  color: #e5e7eb !important;
+}
+
+.dark .hover\:text-gray-200:hover {
+  color: #f3f4f6 !important;
 }
 
 /* Theme toggle button improvements */

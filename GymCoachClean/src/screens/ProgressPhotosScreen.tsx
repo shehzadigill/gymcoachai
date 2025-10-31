@@ -5,7 +5,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Image,
   Alert,
   Modal,
@@ -18,12 +18,14 @@ import {Card, Button, LoadingSpinner} from '../components/common/UI';
 import apiClient from '../services/api';
 import {pickImage, uploadImageToS3, getFileInfo} from '../services/imageUpload';
 import {ProgressPhoto} from '../types';
+import {useTranslation} from 'react-i18next';
 
 const {width} = Dimensions.get('window');
 const IMAGE_SIZE = (width - 48) / 3; // 3 columns with spacing
 
 export default function ProgressPhotosScreen() {
   const {colors, isDark} = useTheme();
+  const {t} = useTranslation();
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -47,7 +49,10 @@ export default function ProgressPhotosScreen() {
       setPhotos(data || []);
     } catch (error) {
       console.error('Error loading progress photos:', error);
-      Alert.alert('Error', 'Failed to load progress photos');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_load_progress_photos'),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -98,7 +103,7 @@ export default function ProgressPhotosScreen() {
       Alert.alert('Success', 'Progress photo uploaded successfully!');
     } catch (error) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Error', 'Failed to upload photo. Please try again.');
+      Alert.alert(t('common.error'), t('common.errors.failed_to_upload_photo'));
     } finally {
       setUploading(false);
     }
@@ -126,7 +131,10 @@ export default function ProgressPhotosScreen() {
               Alert.alert('Success', 'Photo deleted successfully');
             } catch (error) {
               console.error('Error deleting photo:', error);
-              Alert.alert('Error', 'Failed to delete photo');
+              Alert.alert(
+                t('common.error'),
+                t('common.errors.failed_to_delete_photo'),
+              );
             }
           },
         },
@@ -149,7 +157,7 @@ export default function ProgressPhotosScreen() {
       Alert.alert('Success', 'Photo updated successfully');
     } catch (error) {
       console.error('Error updating photo:', error);
-      Alert.alert('Error', 'Failed to update photo');
+      Alert.alert(t('common.error'), t('common.errors.failed_to_update_photo'));
     }
   };
 
@@ -186,7 +194,7 @@ export default function ProgressPhotosScreen() {
         ) : (
           <View style={styles.grid}>
             {photos.map(photo => (
-              <TouchableOpacity
+              <Pressable
                 key={photo.id}
                 style={styles.photoContainer}
                 onPress={() => handlePhotoPress(photo)}>
@@ -200,7 +208,7 @@ export default function ProgressPhotosScreen() {
                     {new Date(photo.date).toLocaleDateString()}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         )}

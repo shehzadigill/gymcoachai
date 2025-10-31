@@ -9,8 +9,10 @@ import {
   Alert,
 } from 'react-native';
 import {Button, Card} from '../../components/common/UI';
+import {useTranslation} from 'react-i18next';
 
 export default function CreateExerciseScreen({navigation}: any) {
+  const {t} = useTranslation();
   const [exerciseName, setExerciseName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -23,7 +25,10 @@ export default function CreateExerciseScreen({navigation}: any) {
 
   const handleSave = () => {
     if (!exerciseName.trim()) {
-      Alert.alert('Error', 'Please enter an exercise name');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.please_enter_exercise_name'),
+      );
       return;
     }
 

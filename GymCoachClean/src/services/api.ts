@@ -284,9 +284,17 @@ class ApiClient {
 
       if (!response.ok) {
         // Check if it's an authentication error
-        if (response.status === 401 && !isRetry) {
+        // Handle both 401 and 500 errors that contain auth error messages
+        const errorText = await response.text().catch(() => '');
+        const isAuthError =
+          response.status === 401 ||
+          (response.status === 500 &&
+            (errorText.includes('Token has expired') ||
+              errorText.includes('Auth error')));
+
+        if (isAuthError && !isRetry) {
           console.log(
-            'API Client: Authentication error, attempting token refresh...',
+            'API Client: Authentication error detected, attempting token refresh...',
           );
 
           // Attempt to refresh tokens
@@ -306,7 +314,6 @@ class ApiClient {
           }
         }
 
-        const errorText = await response.text().catch(() => '');
         console.log(`API Client: Error response for ${path}:`, errorText);
         throw new Error(errorText || `Request failed: ${response.status}`);
       }
@@ -384,6 +391,17 @@ class ApiClient {
     return this.apiFetch<UserProfile>('/api/user-profiles/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  async generateUploadUrl(fileType: string): Promise<{
+    upload_url: string;
+    key: string;
+    bucket_name: string;
+  }> {
+    return this.apiFetch('/api/storage/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({fileType}),
     });
   }
 
@@ -1029,6 +1047,12 @@ class ApiClient {
     });
   }
 
+  async getWorkoutInsights(): Promise<any> {
+    return this.aiFetch<any>('/api/ai/performance/insights', {
+      method: 'GET',
+    });
+  }
+
   async analyzeNutritionAdherence(request: {
     days?: number;
     includeHydration?: boolean;
@@ -1053,6 +1077,38 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({days}),
     });
+  }
+
+  // Enhanced AI methods for personalization and memory
+  async getPersonalizationProfile(): Promise<any> {
+    const userId = await this.getCurrentUserId();
+    return this.aiFetch<any>(`/api/ai/personalization-profile/${userId}`);
+  }
+
+  async retrieveRelevantMemories(query: string, context?: any): Promise<any> {
+    return this.aiFetch<any>('/api/ai/memories/relevant', {
+      method: 'POST',
+      body: JSON.stringify({query, context}),
+    });
+  }
+
+  async getRAGStats(): Promise<any> {
+    return this.aiFetch<any>('/api/ai/rag/stats');
+  }
+
+  async getConversationAnalytics(conversationId: string): Promise<any> {
+    return this.aiFetch<any>(
+      `/api/ai/conversations/${conversationId}/analytics`,
+    );
+  }
+
+  async summarizeConversation(conversationId: string): Promise<any> {
+    return this.aiFetch<any>(
+      `/api/ai/conversations/${conversationId}/summarize`,
+      {
+        method: 'POST',
+      },
+    );
   }
 
   // AI-specific fetch method with Lambda URL fallback

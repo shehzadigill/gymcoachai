@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
   Alert,
@@ -12,18 +12,42 @@ import {
   FlatList,
   Animated,
   Dimensions,
+  Modal,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Icon} from '../components/common/Icon';
 import Markdown from 'react-native-markdown-display';
 import apiClient from '../services/api';
 import {useTranslation} from 'react-i18next';
+import ConfidenceIndicator from '../components/ai/ConfidenceIndicator';
+import RAGSourcesDisplay from '../components/ai/RAGSourcesDisplay';
+import MemoryViewer from '../components/ai/MemoryViewer';
+import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import {useTheme} from '../theme';
+
+interface RAGSource {
+  document: string;
+  score: number;
+  metadata?: {
+    type?: string;
+    timestamp?: string;
+  };
+}
+
+interface RAGContext {
+  sources: RAGSource[];
+  queryType?: string;
+  relevanceScores?: number[];
+}
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  ragContext?: RAGContext;
+  confidence?: number;
+  personalizationStyle?: string;
 }
 
 interface Conversation {
@@ -43,8 +67,38 @@ interface RateLimit {
   tier: string;
 }
 
+interface MemoryItem {
+  id: string;
+  content: string;
+  type: string;
+  importance: number;
+  timestamp: string;
+  metadata?: {
+    category?: string;
+    confidence?: number;
+  };
+}
+
+interface PersonalizationProfile {
+  coachingStyle: string;
+  communicationStyle: string;
+  motivationType: string;
+  confidence: number;
+}
+
+interface ProactiveInsight {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  priority: string;
+  actionable: boolean;
+  metadata?: any;
+}
+
 const AITrainerScreen: React.FC = () => {
   const {t} = useTranslation();
+  const {colors, isDark} = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,12 +107,30 @@ const AITrainerScreen: React.FC = () => {
     string | null
   >(null);
   const [rateLimit, setRateLimit] = useState<RateLimit | null>(null);
-  const [showConversations, setShowConversations] = useState(false); // Closed by default for drawer behavior
+  const [showConversations, setShowConversations] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [editingConversationId, setEditingConversationId] = useState<
     string | null
   >(null);
   const [editingTitle, setEditingTitle] = useState('');
+
+  // Enhanced AI features state
+  const [userMemories, setUserMemories] = useState<MemoryItem[]>([]);
+  const [personalizationProfile, setPersonalizationProfile] =
+    useState<PersonalizationProfile | null>(null);
+  const [proactiveInsights, setProactiveInsights] = useState<
+    ProactiveInsight[]
+  >([]);
+  const [coachingStyle, setCoachingStyle] = useState<string>('balanced');
+  const [showMemoryPanel, setShowMemoryPanel] = useState(false);
+  const [showInsightsPanel, setShowInsightsPanel] = useState(false);
+  const [showPersonalizationPanel, setShowPersonalizationPanel] =
+    useState(false);
+  const [ragStats, setRagStats] = useState<{
+    totalVectors: number;
+    namespaces: string[];
+  } | null>(null);
+
   const scrollViewRef = useRef<FlatList<Message>>(null);
   const drawerAnimation = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
@@ -66,6 +138,7 @@ const AITrainerScreen: React.FC = () => {
   useEffect(() => {
     loadConversations();
     loadRateLimit();
+    loadEnhancedAIFeatures();
   }, []);
 
   useEffect(() => {
@@ -75,6 +148,69 @@ const AITrainerScreen: React.FC = () => {
       useNativeDriver: false,
     }).start();
   }, [showConversations]);
+
+  const loadEnhancedAIFeatures = async () => {
+    try {
+      console.log('Loading enhanced AI features...');
+
+      // Load personalization profile
+      try {
+        const profileResponse = await apiClient.getPersonalizationProfile();
+        if (profileResponse && profileResponse.coachingStyle) {
+          setPersonalizationProfile(profileResponse);
+          setCoachingStyle(profileResponse.coachingStyle || 'balanced');
+        }
+      } catch (error) {
+        console.warn('Personalization profile not available:', error);
+        // Set default profile
+        setPersonalizationProfile({
+          coachingStyle: 'balanced',
+          communicationStyle: 'friendly',
+          motivationType: 'encouraging',
+          confidence: 0.5,
+        });
+      }
+
+      // Load user memories
+      try {
+        const memoriesResponse = await apiClient.retrieveRelevantMemories(
+          'user preferences and goals',
+        );
+        if (memoriesResponse && memoriesResponse.success) {
+          setUserMemories(memoriesResponse.data || []);
+        }
+      } catch (error) {
+        console.warn('Memories not available:', error);
+        setUserMemories([]);
+      }
+
+      // Load proactive insights
+      try {
+        const insightsResponse = await apiClient.getProactiveInsights();
+        if (insightsResponse) {
+          setProactiveInsights(insightsResponse);
+        }
+      } catch (error) {
+        console.warn('Proactive insights not available:', error);
+        setProactiveInsights([]);
+      }
+
+      // Load RAG stats
+      try {
+        const ragStatsResponse = await apiClient.getRAGStats();
+        if (ragStatsResponse && ragStatsResponse.success) {
+          setRagStats(ragStatsResponse.data);
+        }
+      } catch (error) {
+        console.warn('RAG stats not available:', error);
+        setRagStats(null);
+      }
+
+      console.log('Enhanced AI features loaded successfully');
+    } catch (error) {
+      console.error('Failed to load enhanced AI features:', error);
+    }
+  };
 
   const loadConversations = async () => {
     try {
@@ -132,7 +268,10 @@ const AITrainerScreen: React.FC = () => {
       setShowConversations(false); // Close drawer after selection
     } catch (error) {
       console.error('Failed to load conversation:', error);
-      Alert.alert('Error', 'Failed to load conversation');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_load_conversation'),
+      );
     }
   };
 
@@ -158,7 +297,7 @@ const AITrainerScreen: React.FC = () => {
 
     const trimmedTitle = editingTitle.trim();
     if (trimmedTitle.length > 100) {
-      Alert.alert('Error', 'Title too long (max 100 characters)');
+      Alert.alert(t('common.error'), t('common.errors.title_too_long'));
       return;
     }
 
@@ -191,7 +330,10 @@ const AITrainerScreen: React.FC = () => {
       console.log('Conversation title updated successfully');
     } catch (error) {
       console.error('Failed to update conversation title:', error);
-      Alert.alert('Error', 'Failed to update conversation title');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_update_conversation_title'),
+      );
     }
   };
 
@@ -235,7 +377,10 @@ const AITrainerScreen: React.FC = () => {
               }
             } catch (error) {
               console.error('Failed to delete conversation:', error);
-              Alert.alert('Error', 'Failed to delete conversation');
+              Alert.alert(
+                t('common.error'),
+                t('common.errors.failed_to_delete_conversation'),
+              );
             }
           },
         },
@@ -258,6 +403,7 @@ const AITrainerScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Enhanced chat message with personalization context
       const response = await apiClient.sendChatMessage(
         inputMessage.trim(),
         currentConversationId || undefined,
@@ -268,9 +414,15 @@ const AITrainerScreen: React.FC = () => {
         role: 'assistant',
         content:
           (response as any).reply ||
+          (response as any).response ||
           (response as any).message ||
           'No response received',
         timestamp: new Date(),
+        ragContext: (response as any).ragContext,
+        confidence:
+          (response as any).metadata?.confidence ||
+          (response as any).confidence,
+        personalizationStyle: personalizationProfile?.coachingStyle,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -289,6 +441,18 @@ const AITrainerScreen: React.FC = () => {
               }
             : null,
         );
+      }
+
+      // Refresh memories after conversation to get any new memories stored
+      try {
+        const memoriesResponse = await apiClient.retrieveRelevantMemories(
+          'user preferences and goals',
+        );
+        if (memoriesResponse && memoriesResponse.success) {
+          setUserMemories(memoriesResponse.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to refresh memories:', error);
       }
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -394,7 +558,25 @@ const AITrainerScreen: React.FC = () => {
         item.role === 'user' ? styles.userMessage : styles.assistantMessage,
       ]}>
       {item.role === 'assistant' ? (
-        <Markdown style={markdownStyles}>{item.content}</Markdown>
+        <>
+          <Markdown style={markdownStyles}>{item.content}</Markdown>
+
+          {/* Confidence Indicator */}
+          {item.confidence !== undefined && (
+            <View style={styles.messageMetadata}>
+              <ConfidenceIndicator
+                score={item.confidence}
+                size="sm"
+                showLabel={true}
+              />
+            </View>
+          )}
+
+          {/* RAG Sources */}
+          {item.ragContext && (
+            <RAGSourcesDisplay ragContext={item.ragContext} maxSources={3} />
+          )}
+        </>
       ) : (
         <Text style={[styles.messageText, styles.userMessageText]}>
           {item.content}
@@ -417,7 +599,7 @@ const AITrainerScreen: React.FC = () => {
     const isEditing = editingConversationId === conversationId;
 
     return (
-      <TouchableOpacity
+      <Pressable
         style={[
           styles.conversationItem,
           currentConversationId === conversationId && styles.activeConversation,
@@ -443,19 +625,19 @@ const AITrainerScreen: React.FC = () => {
                 {editingTitle.length}/100 characters
               </Text>
               <View style={styles.editingButtons}>
-                <TouchableOpacity
+                <Pressable
                   onPress={() => {
                     console.log('Save button pressed');
                     saveConversationTitle();
                   }}
                   style={styles.saveButton}>
                   <Icon name="check" size={16} color="#10b981" />
-                </TouchableOpacity>
-                <TouchableOpacity
+                </Pressable>
+                <Pressable
                   onPress={cancelEditingConversation}
                   style={styles.cancelButton}>
                   <Icon name="close" size={16} color="#ef4444" />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
           ) : (
@@ -473,7 +655,7 @@ const AITrainerScreen: React.FC = () => {
         </View>
         {!isEditing && (
           <View style={styles.conversationActions}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => {
                 console.log(
                   'Edit button pressed for conversation:',
@@ -488,31 +670,38 @@ const AITrainerScreen: React.FC = () => {
               }}
               style={styles.editButton}>
               <Icon name="edit" size={16} color="#6b7280" />
-            </TouchableOpacity>
-            <TouchableOpacity
+            </Pressable>
+            <Pressable
               onPress={() =>
                 conversationId && deleteConversation(conversationId)
               }
               style={styles.deleteButton}>
               <Icon name="delete" size={16} color="#ef4444" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {backgroundColor: colors.card, borderBottomColor: colors.border},
+        ]}>
         <View style={styles.headerLeft}>
           <View style={styles.iconContainer}>
             <Icon name="smart-toy" size={24} color="#3b82f6" />
           </View>
           <View>
-            <Text style={styles.headerTitle}>{t('ai_trainer.title')}</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, {color: colors.text}]}>
+              {t('ai_trainer.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, {color: colors.subtext}]}>
               {t('ai_trainer.subtitle')}
             </Text>
           </View>
@@ -529,17 +718,29 @@ const AITrainerScreen: React.FC = () => {
             </View>
           )}
 
-          <TouchableOpacity
+          <Pressable
+            onPress={() => setShowMemoryPanel(true)}
+            style={styles.headerButton}>
+            <Icon name="memory" size={20} color="#6b7280" />
+            {userMemories.length > 0 && <View style={styles.badgeDot} />}
+          </Pressable>
+
+          <Pressable
+            onPress={() => setShowInsightsPanel(true)}
+            style={styles.headerButton}>
+            <Icon name="lightbulb" size={20} color="#6b7280" />
+            {proactiveInsights.length > 0 && <View style={styles.badgeDot} />}
+          </Pressable>
+
+          <Pressable
             onPress={() => setShowConversations(!showConversations)}
             style={styles.headerButton}>
             <Icon name="chat" size={20} color="#6b7280" />
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
-            onPress={startNewConversation}
-            style={styles.headerButton}>
+          <Pressable onPress={startNewConversation} style={styles.headerButton}>
             <Icon name="refresh" size={20} color="#6b7280" />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
@@ -549,6 +750,8 @@ const AITrainerScreen: React.FC = () => {
           style={[
             styles.drawer,
             {
+              backgroundColor: colors.card,
+              borderRightColor: colors.border,
               transform: [
                 {
                   translateX: drawerAnimation.interpolate({
@@ -559,15 +762,16 @@ const AITrainerScreen: React.FC = () => {
               ],
             },
           ]}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>
+          <View
+            style={[styles.sidebarHeader, {borderBottomColor: colors.border}]}>
+            <Text style={[styles.sidebarTitle, {color: colors.text}]}>
               {t('ai_trainer.conversations')}
             </Text>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowConversations(false)}
               style={styles.closeButton}>
-              <Icon name="close" size={20} color="#6b7280" />
-            </TouchableOpacity>
+              <Icon name="close" size={20} color={colors.subtext} />
+            </Pressable>
           </View>
           <FlatList
             data={conversations}
@@ -586,10 +790,9 @@ const AITrainerScreen: React.FC = () => {
 
         {/* Overlay */}
         {showConversations && (
-          <TouchableOpacity
+          <Pressable
             style={styles.overlay}
             onPress={() => setShowConversations(false)}
-            activeOpacity={1}
           />
         )}
 
@@ -597,14 +800,18 @@ const AITrainerScreen: React.FC = () => {
         <View style={styles.chatContainer}>
           {messages.length === 0 ? (
             <View style={styles.welcomeContainer}>
-              <Icon name="smart-toy" size={64} color="#d1d5db" />
-              <Text style={styles.welcomeTitle}>
+              <Icon
+                name="smart-toy"
+                size={64}
+                color={isDark ? '#4b5563' : '#d1d5db'}
+              />
+              <Text style={[styles.welcomeTitle, {color: colors.text}]}>
                 {t('ai_trainer.welcome_title')}
               </Text>
-              <Text style={styles.welcomeSubtitle}>
+              <Text style={[styles.welcomeSubtitle, {color: colors.subtext}]}>
                 {t('ai_trainer.welcome_subtitle')}
               </Text>
-              <Text style={styles.welcomeQuestion}>
+              <Text style={[styles.welcomeQuestion, {color: colors.text}]}>
                 {t('ai_trainer.welcome_question')}
               </Text>
             </View>
@@ -631,26 +838,233 @@ const AITrainerScreen: React.FC = () => {
       </View>
 
       {/* Input Area */}
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          {backgroundColor: colors.card, borderTopColor: colors.border},
+        ]}>
         <TextInput
-          style={styles.textInput}
+          style={[
+            styles.textInput,
+            {
+              color: colors.text,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            },
+          ]}
           value={inputMessage}
           onChangeText={setInputMessage}
           placeholder={t('ai_trainer.ask_anything')}
+          placeholderTextColor={colors.subtext}
           multiline
           maxLength={500}
           editable={!isLoading}
+          accessible={true}
+          accessibilityLabel="AI Trainer message input"
+          accessibilityHint="Type your question or message for the AI trainer"
         />
-        <TouchableOpacity
+        <Pressable
           onPress={sendMessage}
           disabled={!inputMessage.trim() || isLoading}
           style={[
             styles.sendButton,
             (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled,
-          ]}>
+          ]}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
+          accessibilityHint="Send your message to the AI trainer"
+          accessibilityState={{disabled: !inputMessage.trim() || isLoading}}>
           <Icon name="send" size={20} color="white" />
-        </TouchableOpacity>
+        </Pressable>
       </View>
+
+      {/* Memory Panel Modal */}
+      <Modal
+        visible={showMemoryPanel}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowMemoryPanel(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {t('ai_trainer.your_memory')}
+              </Text>
+              <Pressable onPress={() => setShowMemoryPanel(false)}>
+                <Icon name="close" size={24} color="#6b7280" />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              <MemoryViewer memories={userMemories} maxItems={10} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Proactive Insights Panel Modal */}
+      <Modal
+        visible={showInsightsPanel}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowInsightsPanel(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('ai_trainer.insights')}</Text>
+              <Pressable onPress={() => setShowInsightsPanel(false)}>
+                <Icon name="close" size={24} color="#6b7280" />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {proactiveInsights.length > 0 ? (
+                proactiveInsights.map((insight, index) => (
+                  <View key={insight.id || index} style={styles.insightCard}>
+                    <View style={styles.insightHeader}>
+                      <Icon
+                        name={
+                          insight.type === 'workout'
+                            ? 'fitness-center'
+                            : 'restaurant'
+                        }
+                        size={16}
+                        color="#3b82f6"
+                      />
+                      <Text style={styles.insightType}>{insight.type}</Text>
+                      <View
+                        style={[
+                          styles.priorityBadge,
+                          {
+                            backgroundColor:
+                              insight.priority === 'high'
+                                ? '#fef2f2'
+                                : '#f0f9ff',
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.priorityText,
+                            {
+                              color:
+                                insight.priority === 'high'
+                                  ? '#ef4444'
+                                  : '#3b82f6',
+                            },
+                          ]}>
+                          {insight.priority}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.insightTitle}>{insight.title}</Text>
+                    <Text style={styles.insightContent}>{insight.content}</Text>
+                    {insight.actionable && (
+                      <Pressable style={styles.actionButton}>
+                        <Text style={styles.actionButtonText}>Take Action</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyInsights}>
+                  <Icon name="lightbulb-outline" size={48} color="#d1d5db" />
+                  <Text style={styles.emptyText}>No insights yet</Text>
+                  <Text style={styles.emptySubtext}>
+                    Keep tracking your workouts and nutrition to get
+                    personalized insights
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Personalization Panel Modal */}
+      <Modal
+        visible={showPersonalizationPanel}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPersonalizationPanel(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {t('ai_trainer.personalization')}
+              </Text>
+              <Pressable onPress={() => setShowPersonalizationPanel(false)}>
+                <Icon name="close" size={24} color="#6b7280" />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {personalizationProfile ? (
+                <View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.sectionTitle}>
+                      Your AI Coach Profile
+                    </Text>
+                    <View style={styles.profileItem}>
+                      <Text style={styles.profileLabel}>Coaching Style:</Text>
+                      <Text style={styles.profileValue}>
+                        {personalizationProfile.coachingStyle}
+                      </Text>
+                    </View>
+                    <View style={styles.profileItem}>
+                      <Text style={styles.profileLabel}>Communication:</Text>
+                      <Text style={styles.profileValue}>
+                        {personalizationProfile.communicationStyle}
+                      </Text>
+                    </View>
+                    <View style={styles.profileItem}>
+                      <Text style={styles.profileLabel}>Motivation Type:</Text>
+                      <Text style={styles.profileValue}>
+                        {personalizationProfile.motivationType}
+                      </Text>
+                    </View>
+                    <View style={styles.profileItem}>
+                      <Text style={styles.profileLabel}>Confidence:</Text>
+                      <ConfidenceIndicator
+                        score={personalizationProfile.confidence}
+                        size="md"
+                      />
+                    </View>
+                  </View>
+
+                  {ragStats && (
+                    <View style={styles.profileSection}>
+                      <Text style={styles.sectionTitle}>Knowledge Base</Text>
+                      <View style={styles.profileItem}>
+                        <Text style={styles.profileLabel}>
+                          Total Data Points:
+                        </Text>
+                        <Text style={styles.profileValue}>
+                          {ragStats.totalVectors}
+                        </Text>
+                      </View>
+                      <View style={styles.profileItem}>
+                        <Text style={styles.profileLabel}>Categories:</Text>
+                        <Text style={styles.profileValue}>
+                          {ragStats.namespaces?.join(', ') || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.emptyProfile}>
+                  <Icon name="person-outline" size={48} color="#d1d5db" />
+                  <Text style={styles.emptyText}>Profile not available</Text>
+                  <Text style={styles.emptySubtext}>
+                    Chat with your AI trainer to build your personalization
+                    profile
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <FloatingSettingsButton />
     </SafeAreaView>
   );
 };
@@ -954,6 +1368,156 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#9ca3af',
+  },
+  // New styles for enhanced features
+  badgeDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+  },
+  messageMetadata: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  modalBody: {
+    flex: 1,
+    padding: 16,
+  },
+  insightCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#3b82f6',
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  insightType: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
+    textTransform: 'capitalize',
+    flex: 1,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  insightTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  insightContent: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  actionButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyInsights: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  profileSection: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  profileItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  profileLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  profileValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    textTransform: 'capitalize',
+  },
+  emptyProfile: {
+    alignItems: 'center',
+    padding: 32,
   },
 });
 

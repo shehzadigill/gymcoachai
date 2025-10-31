@@ -231,7 +231,8 @@ export const api = {
 
   async getAchievements(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any>(`/api/analytics/achievements/${id}`);
+    const res = await apiFetch<any>(`/api/analytics/achievements/${id}`);
+    return res.json();
   },
 
   async getPerformanceTrends(
@@ -478,7 +479,8 @@ export const api = {
   // Workout Plans
   async getWorkoutPlans(userId?: string) {
     const id = userId || (await getCurrentUserId());
-    return apiFetch<any[]>(`/api/workouts/plans?userId=${id}`);
+    const res = await apiFetch<any[]>(`/api/workouts/plans?userId=${id}`);
+    return res.json();
   },
 
   async createWorkoutPlan(data: any, userId?: string) {
@@ -682,7 +684,8 @@ export const api = {
     const params = new URLSearchParams({ userId: id });
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    return apiFetch<any>(`/api/workouts/analytics?${params}`);
+    const res = await apiFetch<any>(`/api/workouts/analytics?${params}`);
+    return res.json();
   },
 
   // Workout History
@@ -823,7 +826,8 @@ export const api = {
         `/api/nutrition/users/${userId}/meals/date/${date}`
       );
     }
-    return apiFetch<any[]>(`/api/nutrition/me/meals/date/${date}`);
+    const res = await apiFetch<any[]>(`/api/nutrition/me/meals/date/${date}`);
+    return res.json();
   },
 
   async createMeal(data: any, userId?: string) {
@@ -1080,9 +1084,7 @@ export const api = {
     const params = new URLSearchParams({ userId: id });
     if (date) params.append('date', date);
     const res = await apiFetch<any>(`/api/user-profiles/sleep?${params}`);
-
-    // Handle Lambda proxy integration response format
-    return res.body || res;
+    return res.json() || [];
   },
 
   async logSleep(

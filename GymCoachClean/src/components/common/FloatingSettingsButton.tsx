@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {View, TouchableOpacity, StyleSheet, Dimensions} from 'react-native';
+import {View, Pressable, StyleSheet, Dimensions} from 'react-native';
 import Icon from './Icon';
 import GlobalSettings from './GlobalSettings';
 import {useRTL} from '../../hooks/useRTL';
@@ -24,12 +24,15 @@ export default function FloatingSettingsButton({
 
   return (
     <>
-      <TouchableOpacity
+      <Pressable
         style={buttonStyle}
         onPress={() => setShowSettings(true)}
-        activeOpacity={0.8}>
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        accessibilityHint="Opens the global settings menu">
         <Icon name="settings" size={24} color="#ffffff" />
-      </TouchableOpacity>
+      </Pressable>
 
       <GlobalSettings
         visible={showSettings}

@@ -163,7 +163,7 @@ export default function DashboardPage() {
           }),
           api.getAchievements().catch((e) => {
             console.warn('Failed to fetch achievements:', e);
-            return { body: [] };
+            return [];
           }),
           api.getMilestones().catch((e) => {
             console.warn('Failed to fetch milestones:', e);
@@ -171,7 +171,7 @@ export default function DashboardPage() {
           }),
           api.getWorkoutAnalytics().catch((e) => {
             console.warn('Failed to fetch workout analytics:', e);
-            return { body: {} };
+            return {};
           }),
           api
             .getMealsByDate(new Date().toISOString().split('T')[0])
@@ -179,22 +179,24 @@ export default function DashboardPage() {
               console.warn('Failed to fetch meals:', e);
               return [];
             }),
-          api.getWater(new Date().toISOString().split('T')[0]).then(async res => {
-            if (res && typeof res.json === 'function') {
-              return await res.json();
-            }
-            return res;
-          }).catch((e) => {
-            console.warn('Failed to fetch water intake:', e);
-            return { body: { glasses: 0 } };
-          }),
+          api
+            .getWater(new Date().toISOString().split('T')[0])
+            .then(async (res) => {
+              if (res && typeof res.json === 'function') {
+                return await res.json();
+              }
+              return res;
+            })
+            .catch((e) => {
+              console.warn('Failed to fetch water intake:', e);
+              return { body: { glasses: 0 } };
+            }),
           api.getProgressPhotos().catch((e) => {
             console.warn('Failed to fetch progress photos:', e);
             return { body: [] };
           }),
           api.getSleepData().catch((e) => {
-            console.warn('Failed to fetch sleep data:', e);
-            return { body: { hours: 7, quality: 3 } };
+            return [{ hours: 7, quality: 3 }];
           }),
         ]);
         console.log('Fetched dashboard data:', {
@@ -289,24 +291,30 @@ export default function DashboardPage() {
         // Handle both direct objects and wrapped responses
         const nutritionDataRaw = nutritionStats?.body || nutritionStats || {};
         const nutritionData = nutritionDataRaw;
-        const todaysCalories = nutritionData.today_calories || nutritionData.todayCalories || 0;
-        const todaysProtein = nutritionData.today_protein || nutritionData.todayProtein || 0;
-        const todaysCarbs = nutritionData.today_carbs || nutritionData.todayCarbs || 0;
-        const todaysFat = nutritionData.today_fat || nutritionData.todayFat || 0;
+        const todaysCalories =
+          nutritionData.today_calories || nutritionData.todayCalories || 0;
+        const todaysProtein =
+          nutritionData.today_protein || nutritionData.todayProtein || 0;
+        const todaysCarbs =
+          nutritionData.today_carbs || nutritionData.todayCarbs || 0;
+        const todaysFat =
+          nutritionData.today_fat || nutritionData.todayFat || 0;
         const nutritionStreak = nutritionData.streak || 0;
-        const nutritionScore = nutritionData.nutrition_score || nutritionData.nutritionScore || 0;
-        const macroBalance = nutritionData.macro_balance || nutritionData.macroBalance || {
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-        };
+        const nutritionScore =
+          nutritionData.nutrition_score || nutritionData.nutritionScore || 0;
+        const macroBalance = nutritionData.macro_balance ||
+          nutritionData.macroBalance || {
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          };
 
         // Calculate streaks
         const currentStreak = calculateWorkoutStreak(workoutSessions);
 
         // Process body measurements for progress
-        const latestMeasurements = Array.isArray(bodyMeasurements?.body)
-          ? bodyMeasurements.body[0]
+        const latestMeasurements = Array.isArray(bodyMeasurements)
+          ? bodyMeasurements?.[0]
           : Array.isArray(bodyMeasurements)
             ? bodyMeasurements[0]
             : {};
@@ -508,7 +516,12 @@ export default function DashboardPage() {
           monthlyCalorieAvg: nutritionData.monthly_average || 0,
           mealsToday: nutritionData.meals_today || 0,
           calorieGoal: dailyGoalsFromPrefs?.calories || 2000,
-          waterIntake: nutritionData.water_intake || nutritionData.waterIntake || waterIntake?.body?.glasses || waterIntake?.glasses || (typeof waterIntake === 'number' ? waterIntake : 0),
+          waterIntake:
+            nutritionData.water_intake ||
+            nutritionData.waterIntake ||
+            waterIntake?.body?.glasses ||
+            waterIntake?.glasses ||
+            (typeof waterIntake === 'number' ? waterIntake : 0),
           waterGoal: dailyGoalsFromPrefs?.water || 8,
           aiRecommendations: Array.isArray(achievements?.body)
             ? Math.min(achievements.body.length, 5)
@@ -1075,7 +1088,7 @@ export default function DashboardPage() {
   };
 
   const formatTimeAgo = (dateString: string) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return t('unknown');
 
     try {
       const date = new Date(dateString);
@@ -1083,7 +1096,7 @@ export default function DashboardPage() {
       // Check if date is valid
       if (isNaN(date.getTime())) {
         console.warn('Invalid date string:', dateString);
-        return 'Unknown';
+        return t('unknown');
       }
 
       const now = new Date();
@@ -1093,15 +1106,15 @@ export default function DashboardPage() {
       const diffInDays = Math.floor(diffInHours / 24);
 
       if (diffInMinutes < 60) {
-        return `${Math.max(0, diffInMinutes)}m ago`;
+        return t('minutes_ago', { count: Math.max(0, diffInMinutes) });
       } else if (diffInHours < 24) {
-        return `${Math.max(0, diffInHours)}h ago`;
+        return t('hours_ago', { count: Math.max(0, diffInHours) });
       } else {
-        return `${Math.max(0, diffInDays)}d ago`;
+        return t('days_ago', { count: Math.max(0, diffInDays) });
       }
     } catch (error) {
       console.error('Error formatting date:', dateString, error);
-      return 'Unknown';
+      return t('unknown');
     }
   };
 
@@ -1220,7 +1233,7 @@ export default function DashboardPage() {
                   {isLive && (
                     <span className="inline-flex items-center gap-1 text-xs bg-white/20 px-2 py-1 rounded-full">
                       <span className="h-2 w-2 bg-green-300 rounded-full animate-pulse" />
-                      Live
+                      {t('live')}
                     </span>
                   )}
                 </p>
@@ -1268,7 +1281,7 @@ export default function DashboardPage() {
           <MetricCard
             title={t('stats.day_streak')}
             value={`${data?.currentStreak || 0} days`}
-            change={{ value: 3, period: 'vs last week', positive: true }}
+            change={{ value: 3, period: t('vs_last_week'), positive: true }}
             icon={Flame}
             iconColor="text-orange-600"
             description="Keep the momentum going!"
@@ -1294,7 +1307,7 @@ export default function DashboardPage() {
             value={`${data?.waterIntake || 0}/${data?.waterGoal || 8}`}
             icon={Droplets}
             iconColor="text-cyan-600"
-            description="glasses today"
+            description={t('glasses_today')}
           >
             <div className="flex space-x-1 mt-2">
               {Array.from({ length: data?.waterGoal || 8 }).map((_, i) => (
@@ -1331,7 +1344,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           <MetricCard
-            title="Nutrition Streak"
+            title={t('nutrition_streak')}
             value={`${data?.nutritionStreak || 0} days`}
             icon={Flame}
             iconColor="text-red-600"
@@ -1339,7 +1352,7 @@ export default function DashboardPage() {
           />
 
           <MetricCard
-            title="Meals Today"
+            title={t('meals_today')}
             value={`${data?.mealsToday || 0}`}
             icon={Utensils}
             iconColor="text-green-600"
@@ -1347,7 +1360,7 @@ export default function DashboardPage() {
           />
 
           <MetricCard
-            title="Protein Today"
+            title={t('protein_today')}
             value={`${Math.round(data?.todaysProtein || 0)}g`}
             icon={Apple}
             iconColor="text-purple-600"
@@ -1373,14 +1386,14 @@ export default function DashboardPage() {
         {/* Macro Balance Visualization */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Today's Macro Balance
+            {t('todays_macro_balance')}
           </h3>
           <div className="grid gap-4 grid-cols-3">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
                 {Math.round(data?.macroBalance?.protein || 0)}%
               </div>
-              <div className="text-sm text-gray-500">Protein</div>
+              <div className="text-sm text-gray-500">{t('protein')}</div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
                 <div
                   className="bg-purple-600 h-2 rounded-full transition-all duration-300"
@@ -1394,7 +1407,7 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold text-blue-600">
                 {Math.round(data?.macroBalance?.carbs || 0)}%
               </div>
-              <div className="text-sm text-gray-500">Carbs</div>
+              <div className="text-sm text-gray-500">{t('carbs')}</div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -1408,7 +1421,7 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold text-green-600">
                 {Math.round(data?.macroBalance?.fat || 0)}%
               </div>
-              <div className="text-sm text-gray-500">Fat</div>
+              <div className="text-sm text-gray-500">{t('fat')}</div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
                 <div
                   className="bg-green-600 h-2 rounded-full transition-all duration-300"
@@ -1427,14 +1440,14 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 space-y-8">
             {/* Workout Progress Chart */}
             <DashboardSection
-              title="Workout Progress"
-              subtitle="Your training consistency over the last 7 days"
+              title={t('workout_progress')}
+              subtitle={t('training_consistency')}
               action={
                 <button
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   onClick={() => (window.location.href = '/workouts/history')}
                 >
-                  View Details
+                  {t('view_details')}
                 </button>
               }
             >
@@ -1452,8 +1465,8 @@ export default function DashboardPage() {
             {/* Nutrition & Performance */}
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
               <DashboardSection
-                title="Weekly Nutrition"
-                subtitle="Calorie intake trends"
+                title={t('weekly_nutrition')}
+                subtitle={t('calorie_intake_trends')}
               >
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                   <BarChart
@@ -1465,8 +1478,8 @@ export default function DashboardPage() {
               </DashboardSection>
 
               <DashboardSection
-                title="Strength Progress"
-                subtitle="Muscle group development"
+                title={t('strength_progress')}
+                subtitle={t('muscle_group_development')}
               >
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                   {data?.strengthData && data.strengthData.length > 0 ? (
@@ -1480,16 +1493,14 @@ export default function DashboardPage() {
                     <div className="flex flex-col items-center justify-center h-[200px] text-gray-500 dark:text-gray-400">
                       <Dumbbell size={48} className="mb-2 opacity-50" />
                       <p className="text-sm font-medium">
-                        No strength data available
+                        {t('no_strength_data')}
                       </p>
-                      <p className="text-xs">
-                        Start tracking your workouts to see progress
-                      </p>
+                      <p className="text-xs">{t('start_tracking_workouts')}</p>
                       <button
                         onClick={() => (window.location.href = '/workouts')}
                         className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
                       >
-                        Start Workout
+                        {t('start_workout')}
                       </button>
                     </div>
                   )}
@@ -1499,8 +1510,8 @@ export default function DashboardPage() {
 
             {/* Daily Goals Progress */}
             <DashboardSection
-              title="Today's Goals"
-              subtitle="Track your daily nutrition and hydration"
+              title={t('todays_goals')}
+              subtitle={t('track_daily_nutrition')}
             >
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
@@ -1528,8 +1539,8 @@ export default function DashboardPage() {
 
             {/* Weekly Goals Progress */}
             <DashboardSection
-              title="Weekly Goals"
-              subtitle="Track your progress towards weekly targets"
+              title={t('weekly_goals')}
+              subtitle={t('track_weekly_targets')}
             >
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
@@ -1561,7 +1572,7 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <DashboardSection
               title="Quick Actions"
-              subtitle="Jump into your routine"
+              subtitle={t('jump_into_routine')}
             >
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <QuickActions actions={quickActions} columns={1} />
@@ -1572,7 +1583,7 @@ export default function DashboardPage() {
             <AIInsightsPanel />
 
             {/* Key Metrics Summary */}
-            <DashboardSection title="Today's Summary">
+            <DashboardSection title={t('todays_summary')}>
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -1581,7 +1592,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Avg Workout
+                        {t('avg_workout')}
                       </p>
                       <p className="font-semibold text-gray-900 dark:text-white">
                         {data?.avgWorkoutDuration || 0} min
@@ -1592,7 +1603,9 @@ export default function DashboardPage() {
                     <div className="text-2xl font-bold text-blue-600">
                       {data?.totalCaloriesBurned || 0}
                     </div>
-                    <div className="text-xs text-gray-500">calories burned</div>
+                    <div className="text-xs text-gray-500">
+                      {t('calories_burned')}
+                    </div>
                   </div>
                 </div>
 
@@ -1603,7 +1616,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Sleep
+                        {t('sleep')}
                       </p>
                       <p className="font-semibold text-gray-900 dark:text-white">
                         {data?.sleepHours || 0}h / {data?.sleepGoal || 8}h
@@ -1641,15 +1654,15 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        AI Insights
+                        {t('ai_insights')}
                       </p>
                       <p className="font-semibold text-gray-900 dark:text-white">
-                        {data?.aiRecommendations || 0} available
+                        {data?.aiRecommendations || 0} {t('available')}
                       </p>
                     </div>
                   </div>
                   <button className="text-purple-600 hover:text-purple-700 text-sm font-medium">
-                    View All
+                    {t('view_all')}
                   </button>
                 </div>
               </div>
@@ -1657,8 +1670,8 @@ export default function DashboardPage() {
 
             {/* Recent Activity */}
             <DashboardSection
-              title="Recent Activity"
-              subtitle="Your latest achievements"
+              title={t('recent_activity')}
+              subtitle={t('latest_achievements')}
             >
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <ActivityFeed
@@ -1671,8 +1684,8 @@ export default function DashboardPage() {
 
             {/* Upcoming Workouts */}
             <DashboardSection
-              title="Scheduled Workouts"
-              subtitle="Next sessions"
+              title={t('scheduled_workouts')}
+              subtitle={t('next_sessions')}
             >
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 {data?.upcomingWorkouts?.length ? (
@@ -1706,9 +1719,9 @@ export default function DashboardPage() {
                 ) : (
                   <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                     <Calendar size={48} className="mx-auto mb-2 opacity-50" />
-                    <p>No scheduled workouts</p>
+                    <p>{t('no_scheduled_workouts')}</p>
                     <button className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                      Schedule a workout
+                      {t('schedule_workout')}
                     </button>
                   </div>
                 )}
@@ -1720,11 +1733,11 @@ export default function DashboardPage() {
         {/* Achievements Section */}
         {data?.achievements && data.achievements.length > 0 && (
           <DashboardSection
-            title="Recent Achievements"
-            subtitle="Celebrate your progress!"
+            title={t('recent_achievements')}
+            subtitle={t('celebrate_progress')}
             action={
               <button className="text-sm text-yellow-600 hover:text-yellow-700 font-medium">
-                View All
+                {t('view_all')}
               </button>
             }
             className="mt-8"
@@ -1745,11 +1758,10 @@ export default function DashboardPage() {
                         <p className="font-medium text-gray-900 dark:text-white">
                           {achievement.name ||
                             achievement.title ||
-                            'Achievement Unlocked'}
+                            t('achievement_unlocked')}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {achievement.description ||
-                            'Great job on your progress!'}
+                          {achievement.description || t('great_job_progress')}
                         </p>
                       </div>
                     </div>

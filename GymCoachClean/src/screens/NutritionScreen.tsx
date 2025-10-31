@@ -5,7 +5,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   RefreshControl,
   Alert,
   TextInput,
@@ -16,6 +16,8 @@ import {Card, LoadingSpinner, Button} from '../components/common/UI';
 import {useAuth} from '../contexts/AuthContext';
 import apiClient from '../services/api';
 import {useTranslation} from 'react-i18next';
+import {formatDate} from '../utils/dateFormatting';
+import * as notificationService from '../services/notifications';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 import {useTheme} from '../theme';
 
@@ -209,12 +211,12 @@ export default function NutritionScreen({navigation}: any) {
 
   const saveCustomMeal = async () => {
     if (!customMealName.trim()) {
-      Alert.alert('Error', 'Please enter a meal name');
+      Alert.alert(t('common.error'), t('common.errors.please_enter_meal_name'));
       return;
     }
 
     if (!customMealCalories.trim()) {
-      Alert.alert('Error', 'Please enter calories');
+      Alert.alert(t('common.error'), t('common.errors.please_enter_calories'));
       return;
     }
 
@@ -257,9 +259,9 @@ export default function NutritionScreen({navigation}: any) {
 
       await apiClient.createMeal(mealData);
 
-      Alert.alert('Success', 'Custom meal added successfully!', [
+      Alert.alert(t('nutrition.success'), t('nutrition.meal_added'), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () => {
             setShowCustomMealModal(false);
             loadNutritionData(); // Refresh the data
@@ -268,7 +270,10 @@ export default function NutritionScreen({navigation}: any) {
       ]);
     } catch (error) {
       console.error('Error saving custom meal:', error);
-      Alert.alert('Error', 'Failed to save custom meal. Please try again.');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_save_custom_meal'),
+      );
     } finally {
       setSavingCustomMeal(false);
     }
@@ -285,26 +290,33 @@ export default function NutritionScreen({navigation}: any) {
   };
 
   const deleteMeal = async (mealId: string) => {
-    Alert.alert('Delete Meal', 'Are you sure you want to delete this meal?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiClient.deleteMeal(mealId);
-            // Reload the nutrition data to reflect the changes
-            loadNutritionData();
-          } catch (error) {
-            console.error('Error deleting meal:', error);
-            Alert.alert('Error', 'Failed to delete meal. Please try again.');
-          }
+    Alert.alert(
+      t('nutrition.delete_meal_title'),
+      t('nutrition.delete_meal_message'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.deleteMeal(mealId);
+              // Reload the nutrition data to reflect the changes
+              loadNutritionData();
+            } catch (error) {
+              console.error('Error deleting meal:', error);
+              Alert.alert(
+                t('common.error'),
+                t('common.errors.failed_to_delete_meal'),
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   const addWater = async () => {
@@ -317,31 +329,36 @@ export default function NutritionScreen({navigation}: any) {
 
       // Send progress notification
       if (newGlasses >= getWaterGoal()) {
-        notificationService.sendProgressNotification(
-          '💧 Hydration Goal Achieved!',
-          "Great job! You've reached your daily water intake goal.",
+        (notificationService as any).sendProgressNotification(
+          t('notifications.hydration_goal_title'),
+          t('notifications.hydration_goal_message'),
         );
       }
     } catch (error) {
       console.error('Error updating water intake:', error);
-      Alert.alert('Error', 'Failed to update water intake');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_update_water_intake'),
+      );
     }
   };
 
   const configureNotifications = async () => {
     try {
-      const settings = await notificationService.getNotificationSettings();
+      const settings = await (
+        notificationService as any
+      ).getNotificationSettings();
 
       Alert.alert(
-        'Nutrition Reminders',
-        'Would you like to receive reminders to log your meals?',
+        t('notifications.nutrition_reminders_title'),
+        t('notifications.nutrition_reminders_message'),
         [
           {
-            text: 'No',
+            text: t('common.no'),
             style: 'cancel',
           },
           {
-            text: 'Yes',
+            text: t('common.yes'),
             onPress: async () => {
               const newSettings = {
                 ...settings,
@@ -349,8 +366,13 @@ export default function NutritionScreen({navigation}: any) {
                 nutritionTimes: ['08:00', '13:00', '19:00'], // Default meal times
               };
 
-              await notificationService.saveNotificationSettings(newSettings);
-              Alert.alert('Success', 'Nutrition reminders have been enabled!');
+              await (notificationService as any).saveNotificationSettings(
+                newSettings,
+              );
+              Alert.alert(
+                t('nutrition.success'),
+                t('notifications.reminders_enabled'),
+              );
             },
           },
         ],
@@ -394,7 +416,7 @@ export default function NutritionScreen({navigation}: any) {
             {t('nutrition.title')}
           </Text>
           <Text style={[styles.subtitle, {color: colors.subtext}]}>
-            {new Date().toLocaleDateString()}
+            {formatDate(new Date(), 'medium')}
           </Text>
         </View>
 
@@ -598,11 +620,11 @@ export default function NutritionScreen({navigation}: any) {
             <Text style={[styles.cardTitle, {color: colors.text}]}>
               💧 {t('nutrition.water_intake')}
             </Text>
-            <TouchableOpacity onPress={addWater} style={styles.addWaterButton}>
+            <Pressable onPress={addWater} style={styles.addWaterButton}>
               <Text style={styles.addWaterText}>
                 {t('nutrition.add_glass')}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
           <View style={styles.waterProgress}>
             <Text style={[styles.waterText, {color: colors.subtext}]}>
@@ -665,27 +687,27 @@ export default function NutritionScreen({navigation}: any) {
                     )}
                   </View>
                   <View style={styles.mealActions}>
-                    <TouchableOpacity
+                    <Pressable
                       onPress={() => openCustomMealModal(mealType)}
                       style={styles.addCustomMealButton}>
                       <Text style={styles.addCustomMealText}>
                         {t('nutrition.custom')}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                    </Pressable>
+                    <Pressable
                       onPress={() => addMeal(mealType)}
                       style={styles.addMealButton}>
                       <Text style={styles.addMealText}>
                         {t('nutrition.add')}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 </View>
 
                 {mealsForType.length > 0 ? (
                   <View style={styles.mealContent}>
                     {mealsForType.map((meal: any, index: number) => (
-                      <TouchableOpacity
+                      <Pressable
                         key={meal.id}
                         style={[
                           styles.mealItem,
@@ -698,14 +720,14 @@ export default function NutritionScreen({navigation}: any) {
                             <Text style={styles.mealCalories}>
                               {Math.round(meal.total_calories || 0)} cal
                             </Text>
-                            <TouchableOpacity
+                            <Pressable
                               onPress={e => {
                                 e.stopPropagation();
                                 deleteMeal(meal.id);
                               }}
                               style={styles.deleteButton}>
                               <Text style={styles.deleteButtonText}>×</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                           </View>
                         </View>
                         {meal.foods && meal.foods.length > 0 && (
@@ -725,7 +747,7 @@ export default function NutritionScreen({navigation}: any) {
                             )}
                           </View>
                         )}
-                      </TouchableOpacity>
+                      </Pressable>
                     ))}
                   </View>
                 ) : (
@@ -753,11 +775,11 @@ export default function NutritionScreen({navigation}: any) {
               <Text style={styles.modalTitle}>
                 {t('nutrition.add_custom_meal')}
               </Text>
-              <TouchableOpacity
+              <Pressable
                 onPress={() => setShowCustomMealModal(false)}
                 style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>×</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <ScrollView style={styles.modalContent}>
@@ -776,7 +798,7 @@ export default function NutritionScreen({navigation}: any) {
                 <Text style={styles.label}>{t('nutrition.meal_type')}</Text>
                 <View style={styles.mealTypeContainer}>
                   {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
-                    <TouchableOpacity
+                    <Pressable
                       key={type}
                       style={[
                         styles.mealTypeButton,
@@ -792,7 +814,7 @@ export default function NutritionScreen({navigation}: any) {
                         {getMealTypeEmoji(type)}{' '}
                         {t(`nutrition.meal_types.${type}`)}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               </View>

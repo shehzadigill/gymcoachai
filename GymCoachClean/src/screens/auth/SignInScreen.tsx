@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
   SafeAreaView,
@@ -155,6 +155,8 @@ export default function SignInScreen({navigation}: any) {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    accessible={true}
+                    accessibilityLabel={t('auth.email')}
                   />
                 </View>
               </View>
@@ -171,11 +173,14 @@ export default function SignInScreen({navigation}: any) {
                     secureTextEntry
                     autoCapitalize="none"
                     autoCorrect={false}
+                    accessible={true}
+                    accessibilityLabel={t('auth.password')}
+                    testID="password-input"
                   />
                 </View>
               </View>
 
-              <TouchableOpacity
+              <Pressable
                 style={styles.forgotPassword}
                 onPress={() => {
                   Alert.alert(
@@ -186,17 +191,19 @@ export default function SignInScreen({navigation}: any) {
                 <Text style={styles.forgotPasswordText}>
                   {t('auth.forgot_password')}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Sign In Button */}
-              <TouchableOpacity
+              <Pressable
                 style={[
                   styles.signInButton,
                   (localLoading || isLoading) && styles.signInButtonDisabled,
                 ]}
                 onPress={handleSignIn}
                 disabled={localLoading || isLoading}
-                activeOpacity={0.8}>
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t('auth.sign_in')}>
                 {localLoading || isLoading ? (
                   <View style={styles.loadingContainer}>
                     <LoadingSpinner size="small" color="#667eea" />
@@ -209,7 +216,7 @@ export default function SignInScreen({navigation}: any) {
                     {t('auth.sign_in')}
                   </Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </Animated.View>
 
             {/* Footer */}
@@ -224,20 +231,23 @@ export default function SignInScreen({navigation}: any) {
               <Text style={styles.footerText}>
                 {t('auth.dont_have_account')}{' '}
               </Text>
-              <TouchableOpacity onPress={handleSignUp} activeOpacity={0.7}>
+              <Pressable
+                onPress={handleSignUp}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t('auth.sign_up')}>
                 <Text style={styles.signUpText}>{t('auth.sign_up')}</Text>
-              </TouchableOpacity>
+              </Pressable>
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
 
         {/* Back Button */}
-        <TouchableOpacity
+        <Pressable
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}>
+          onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>← {t('common.back')}</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

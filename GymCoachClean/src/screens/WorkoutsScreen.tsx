@@ -5,16 +5,15 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
   Alert,
   TextInput,
   Modal,
-  Pressable,
   Dimensions,
   FlatList,
   Image,
 } from 'react-native';
+import {TouchableOpacity} from 'react-native-gesture-handler';
 import {Card, LoadingSpinner, Button} from '../components/common/UI';
 import {Icon} from '../components/common/Icon';
 import {TabBar} from '../components/common/TabBar';
@@ -22,6 +21,7 @@ import apiClient from '../services/api';
 import LinearGradient from 'react-native-linear-gradient';
 import {useTranslation} from 'react-i18next';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import {useTheme} from '../theme';
 
 interface WorkoutPlan {
   id: string;
@@ -67,6 +67,7 @@ const {width, height} = Dimensions.get('window');
 
 export default function WorkoutsScreen({navigation}: any) {
   const {t} = useTranslation();
+  const {colors, isDark} = useTheme();
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -388,9 +389,11 @@ export default function WorkoutsScreen({navigation}: any) {
       });
     } catch (error) {
       console.error('Error starting quick workout:', error);
-      Alert.alert('Error', 'Failed to start quick workout. Please try again.', [
-        {text: 'OK'},
-      ]);
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_start_quick_workout'),
+        [{text: 'OK'}],
+      );
     }
   };
 
@@ -431,7 +434,10 @@ export default function WorkoutsScreen({navigation}: any) {
               loadWorkoutPlans(); // Refresh list
               Alert.alert('Success', 'Workout plan deleted successfully');
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete workout plan');
+              Alert.alert(
+                t('common.error'),
+                t('common.errors.failed_to_delete_workout_plan'),
+              );
             }
           },
         },
@@ -523,7 +529,11 @@ export default function WorkoutsScreen({navigation}: any) {
           </Text>
           <TouchableOpacity
             style={styles.heroButton}
-            onPress={startQuickWorkout}>
+            onPress={startQuickWorkout}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Start Quick Workout"
+            accessibilityHint="Creates and starts a new quick workout session">
             <Icon name="play-arrow" size={24} color="#fff" />
             <Text style={styles.heroButtonText}>
               {t('workouts_screen.actions.start_quick')}
@@ -1241,7 +1251,8 @@ export default function WorkoutsScreen({navigation}: any) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
@@ -1249,10 +1260,12 @@ export default function WorkoutsScreen({navigation}: any) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Workouts</Text>
-          <Text style={styles.subtitle}>
-            Manage your workouts, plans, and exercises
+        <View style={[styles.header, {backgroundColor: colors.background}]}>
+          <Text style={[styles.title, {color: colors.text}]}>
+            {t('workouts_screen.title')}
+          </Text>
+          <Text style={[styles.subtitle, {color: colors.subtext}]}>
+            {t('workouts_screen.subtitle')}
           </Text>
         </View>
 

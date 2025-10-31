@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {View, Text, StyleSheet, Pressable} from 'react-native';
 import {Icon} from '../common/Icon';
 
 interface RAGSource {
@@ -73,19 +73,18 @@ const RAGSourcesDisplay: React.FC<RAGSourcesDisplayProps> = ({
             </Text>
             <View style={styles.scoreContainer}>
               <View
-                style={[
-                  styles.scoreBar,
-                  {width: `${source.score * 100}%`},
-                ]}
+                style={[styles.scoreBar, {width: `${source.score * 100}%`}]}
               />
             </View>
-            <Text style={styles.scoreText}>{Math.round(source.score * 100)}%</Text>
+            <Text style={styles.scoreText}>
+              {Math.round(source.score * 100)}%
+            </Text>
           </View>
         ))}
       </View>
 
       {ragContext.sources.length > maxSources && (
-        <TouchableOpacity
+        <Pressable
           style={styles.expandButton}
           onPress={() => setExpanded(!expanded)}>
           <Text style={styles.expandText}>
@@ -98,7 +97,7 @@ const RAGSourcesDisplay: React.FC<RAGSourcesDisplayProps> = ({
             size={12}
             color="#3b82f6"
           />
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

@@ -1,5 +1,11 @@
 import {Platform, PermissionsAndroid, Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  launchCamera,
+  launchImageLibrary,
+  Asset,
+  ImagePickerResponse as RNImagePickerResponse,
+} from 'react-native-image-picker';
 
 // Image picker types
 export interface ImagePickerResponse {
@@ -59,16 +65,44 @@ async function pickImageNative(
   fromCamera: boolean,
 ): Promise<ImagePickerResponse | null> {
   try {
-    // For now, we'll use a simple file input approach
-    // In production, you should install react-native-image-picker
-    console.warn('Native image picker not yet implemented');
-    Alert.alert(
-      'Image Picker',
-      'Please install react-native-image-picker for full functionality',
-    );
-    return null;
+    const options = {
+      mediaType: 'photo' as const,
+      quality: 0.8 as const,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      includeBase64: false,
+    };
+
+    const result: RNImagePickerResponse = fromCamera
+      ? await launchCamera(options)
+      : await launchImageLibrary(options);
+
+    if (result.didCancel) {
+      console.log('User cancelled image picker');
+      return null;
+    }
+
+    if (result.errorCode) {
+      console.error('ImagePicker Error:', result.errorMessage);
+      Alert.alert('Error', result.errorMessage || 'Failed to pick image');
+      return null;
+    }
+
+    const asset = result.assets?.[0];
+    if (!asset || !asset.uri) {
+      console.error('No image selected');
+      return null;
+    }
+
+    return {
+      uri: asset.uri,
+      type: asset.type || 'image/jpeg',
+      name: asset.fileName || `photo_${Date.now()}.jpg`,
+      fileSize: asset.fileSize,
+    };
   } catch (error) {
     console.error('Error picking image:', error);
+    Alert.alert('Error', 'Failed to pick image');
     return null;
   }
 }

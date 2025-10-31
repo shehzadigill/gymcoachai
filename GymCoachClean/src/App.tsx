@@ -1,5 +1,6 @@
 import React, {useEffect} from 'react';
 import {StatusBar, Platform, I18nManager} from 'react-native';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AuthProvider, useAuth} from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
@@ -72,16 +73,18 @@ function AppContent() {
 export default function App() {
   console.log('[App] Mounting providers');
   return (
-    <QueryClientProvider client={queryClient}>
-      <LocaleProvider>
-        <ThemeProvider>
-          <SettingsProvider>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
-          </SettingsProvider>
-        </ThemeProvider>
-      </LocaleProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{flex: 1}}>
+      <QueryClientProvider client={queryClient}>
+        <LocaleProvider>
+          <ThemeProvider>
+            <SettingsProvider>
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </SettingsProvider>
+          </ThemeProvider>
+        </LocaleProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

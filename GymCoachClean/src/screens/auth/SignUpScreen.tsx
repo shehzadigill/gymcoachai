@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
   SafeAreaView,
@@ -151,6 +151,8 @@ export default function SignUpScreen({navigation}: any) {
                   onChangeText={setPassword}
                   secureTextEntry
                   autoCapitalize="none"
+                  textContentType="newPassword"
+                  passwordRules="minlength: 8;"
                 />
                 <Text style={styles.helperText}>
                   {t('auth.password_requirements')}
@@ -166,6 +168,7 @@ export default function SignUpScreen({navigation}: any) {
                   onChangeText={setConfirmPassword}
                   secureTextEntry
                   autoCapitalize="none"
+                  textContentType="newPassword"
                 />
               </View>
 
@@ -188,9 +191,9 @@ export default function SignUpScreen({navigation}: any) {
               <Text style={styles.footerText}>
                 {t('auth.already_have_account')}{' '}
               </Text>
-              <TouchableOpacity onPress={navigateToSignIn}>
+              <Pressable onPress={navigateToSignIn}>
                 <Text style={styles.signInLink}>{t('auth.sign_in')}</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         </ScrollView>

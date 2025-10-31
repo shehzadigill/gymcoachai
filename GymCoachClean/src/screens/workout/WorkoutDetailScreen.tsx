@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import {Card, Button, LoadingSpinner} from '../../components/common/UI';
 import apiClient from '../../services/api';
+import {useTranslation} from 'react-i18next';
 
 export default function WorkoutDetailScreen({route, navigation}: any) {
+  const {t} = useTranslation();
   const {workoutId} = route.params;
   const [workoutData, setWorkoutData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function WorkoutDetailScreen({route, navigation}: any) {
       const workout = workouts.find((w: any) => w.id === workoutId);
 
       if (!workout) {
-        Alert.alert('Error', 'Workout not found');
+        Alert.alert(t('common.error'), t('common.errors.workout_not_found'));
         navigation.goBack();
         return;
       }
@@ -34,7 +36,10 @@ export default function WorkoutDetailScreen({route, navigation}: any) {
       setWorkoutData(workout);
     } catch (error) {
       console.error('Error loading workout data:', error);
-      Alert.alert('Error', 'Failed to load workout details');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_load_workout_details'),
+      );
     } finally {
       setLoading(false);
     }

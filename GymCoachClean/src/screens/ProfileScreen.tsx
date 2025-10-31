@@ -5,13 +5,13 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   Alert,
   Switch,
   Modal,
   Image,
 } from 'react-native';
+import {TouchableOpacity} from 'react-native-gesture-handler';
 import {useAuth} from '../contexts/AuthContext';
 import {Card, Button, LoadingSpinner} from '../components/common/UI';
 import apiClient from '../services/api';
@@ -197,7 +197,10 @@ export default function ProfileScreen() {
       setEditing(false);
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update profile');
+      Alert.alert(
+        t('common.error'),
+        error.message || t('common.errors.failed_to_update_profile'),
+      );
     } finally {
       setSaving(false);
     }
@@ -218,7 +221,10 @@ export default function ProfileScreen() {
         console.log('Fitness goal added and saved:', goal);
       } catch (error) {
         console.error('Error saving fitness goal:', error);
-        Alert.alert('Error', 'Failed to save fitness goal. Please try again.');
+        Alert.alert(
+          t('common.error'),
+          t('common.errors.failed_to_save_fitness_goal'),
+        );
         // Revert local state if save failed
         setFitnessGoals(fitnessGoals);
       } finally {
@@ -238,7 +244,10 @@ export default function ProfileScreen() {
       console.log('Fitness goal removed and saved:', goalToRemove);
     } catch (error) {
       console.error('Error saving fitness goal removal:', error);
-      Alert.alert('Error', 'Failed to remove fitness goal. Please try again.');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_remove_fitness_goal'),
+      );
       // Revert local state if save failed
       setFitnessGoals(fitnessGoals);
     } finally {
@@ -261,7 +270,10 @@ export default function ProfileScreen() {
       Alert.alert('Success', 'Daily goals saved successfully!');
     } catch (error) {
       console.error('Error saving daily goals:', error);
-      Alert.alert('Error', 'Failed to save daily goals. Please try again.');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_save_daily_goals'),
+      );
     } finally {
       setSaving(false);
     }
@@ -351,7 +363,10 @@ export default function ProfileScreen() {
       Alert.alert('Success', 'AI trainer preferences saved successfully!');
     } catch (error) {
       console.error('Error saving AI preferences:', error);
-      Alert.alert('Error', 'Failed to save AI preferences. Please try again.');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_save_ai_preferences'),
+      );
     } finally {
       setSaving(false);
     }
@@ -381,7 +396,10 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('Error updating notification settings:', error);
-      Alert.alert('Error', 'Failed to update notification settings');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_update_notification_settings'),
+      );
     }
   };
 
@@ -440,23 +458,29 @@ export default function ProfileScreen() {
       Alert.alert('Success', 'Profile image updated successfully!');
     } catch (error) {
       console.error('Error uploading profile image:', error);
-      Alert.alert('Error', 'Failed to upload profile image. Please try again.');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_upload_profile_image'),
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      {text: 'Cancel', style: 'cancel'},
+    Alert.alert(t('profile.sign_out_title'), t('profile.sign_out_message'), [
+      {text: t('profile.cancel'), style: 'cancel'},
       {
-        text: 'Sign Out',
+        text: t('profile.sign_out'),
         style: 'destructive',
         onPress: async () => {
           try {
             await signOut();
           } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to sign out');
+            Alert.alert(
+              t('common.error'),
+              error.message || t('profile.sign_out_error'),
+            );
           }
         },
       },
@@ -480,10 +504,11 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       <FloatingSettingsButton />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, {backgroundColor: colors.background}]}>
         <Text style={[styles.title, {color: colors.text}]}>
           {t('profile.title')}
         </Text>
@@ -570,7 +595,13 @@ export default function ProfileScreen() {
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'profile' && styles.activeTab]}
-          onPress={() => setActiveTab('profile')}>
+          onPress={() => {
+            console.log('Profile tab pressed');
+            setActiveTab('profile');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel={t('profile.title')}>
           <Text
             style={[
               styles.tabText,
@@ -581,7 +612,13 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'goals' && styles.activeTab]}
-          onPress={() => setActiveTab('goals')}>
+          onPress={() => {
+            console.log('Goals tab pressed');
+            setActiveTab('goals');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel={t('profile.fitness_goals')}>
           <Text
             style={[
               styles.tabText,
@@ -592,7 +629,13 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'measurements' && styles.activeTab]}
-          onPress={() => setActiveTab('measurements')}>
+          onPress={() => {
+            console.log('Measurements tab pressed');
+            setActiveTab('measurements');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Body Measurements">
           <Text
             style={[
               styles.tabText,
@@ -603,7 +646,13 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'ai-trainer' && styles.activeTab]}
-          onPress={() => setActiveTab('ai-trainer')}>
+          onPress={() => {
+            console.log('AI Trainer tab pressed');
+            setActiveTab('ai-trainer');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel={t('tabs.ai_trainer')}>
           <Text
             style={[
               styles.tabText,
@@ -614,18 +663,24 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'settings' && styles.activeTab]}
-          onPress={() => setActiveTab('settings')}>
+          onPress={() => {
+            console.log('Settings tab pressed');
+            setActiveTab('settings');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel={t('tabs.settings')}>
           <Text
             style={[
               styles.tabText,
               activeTab === 'settings' && styles.activeTabText,
             ]}>
-            {t('settings.language')}
+            {t('tabs.settings')}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} nestedScrollEnabled={false}>
         {/* Profile Tab Content */}
         {activeTab === 'profile' && (
           <>
@@ -797,7 +852,7 @@ export default function ProfileScreen() {
                   </View>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Email:</Text>
+                    <Text style={styles.infoLabel}>{t('profile.email')}:</Text>
                     <Text style={styles.infoValue}>
                       {profileData.email || t('profile.not_set')}
                     </Text>
@@ -1140,7 +1195,9 @@ export default function ProfileScreen() {
             {/* Language & Theme */}
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>{t('settings.language')}</Text>
+                <Text style={styles.settingName}>
+                  {t('settings.language.title')}
+                </Text>
                 <View style={{flexDirection: 'row', gap: 8}}>
                   <TouchableOpacity
                     style={[
@@ -1164,7 +1221,9 @@ export default function ProfileScreen() {
 
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>{t('settings.theme')}</Text>
+                <Text style={styles.settingName}>
+                  {t('settings.theme.title')}
+                </Text>
                 <View style={{flexDirection: 'row', gap: 8}}>
                   <TouchableOpacity
                     style={[
@@ -1173,7 +1232,7 @@ export default function ProfileScreen() {
                     ]}
                     onPress={() => setMode('light')}>
                     <Text style={styles.editButtonText}>
-                      {t('settings.light')}
+                      {t('settings.theme.light')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1183,7 +1242,7 @@ export default function ProfileScreen() {
                     ]}
                     onPress={() => setMode('dark')}>
                     <Text style={styles.editButtonText}>
-                      {t('settings.dark')}
+                      {t('settings.theme.dark')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1193,7 +1252,7 @@ export default function ProfileScreen() {
                     ]}
                     onPress={() => setMode('system')}>
                     <Text style={styles.editButtonText}>
-                      {t('settings.system')}
+                      {t('settings.theme.system')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -2027,6 +2086,8 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 12,
     padding: 4,
+    zIndex: 10,
+    elevation: 10,
   },
   tab: {
     flex: 1,

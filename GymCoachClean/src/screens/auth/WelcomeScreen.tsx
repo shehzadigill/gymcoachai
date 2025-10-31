@@ -2,7 +2,7 @@ import React, {useEffect, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   SafeAreaView,
   Animated,
@@ -123,23 +123,27 @@ export default function WelcomeScreen({navigation}: any) {
               transform: [{translateY: slideAnim}],
             },
           ]}>
-          <TouchableOpacity
+          <Pressable
             style={styles.primaryButton}
             onPress={() => navigation.navigate('SignUp')}
-            activeOpacity={0.8}>
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t('auth.start_journey')}>
             <Text style={styles.primaryButtonText}>
               {t('auth.start_journey')}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('SignIn')}
-            activeOpacity={0.8}>
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t('auth.already_have_account')}>
             <Text style={styles.secondaryButtonText}>
               {t('auth.already_have_account')}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </Animated.View>
       </View>
     </SafeAreaView>

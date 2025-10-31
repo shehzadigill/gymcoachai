@@ -34,6 +34,12 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSCameraUsageDescription</key>
+	<string>GymCoach needs access to your camera to take progress photos</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GymCoach needs access to your photo library to select progress photos</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>GymCoach needs permission to save photos to your library</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

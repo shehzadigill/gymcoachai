@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import {Button, Card} from '../../components/common/UI';
 import apiClient from '../../services/api';
+import {useTranslation} from 'react-i18next';
 
 export default function CreatePlanScreen({navigation, route}: any) {
+  const {t} = useTranslation();
   const {editPlan, isTemplate, fromTemplate} = route.params || {};
   const isEditMode = !!editPlan;
   const isTemplateMode = isTemplate || fromTemplate;
@@ -73,7 +75,7 @@ export default function CreatePlanScreen({navigation, route}: any) {
 
   const handleSave = async () => {
     if (!planName.trim()) {
-      Alert.alert('Error', 'Please enter a plan name');
+      Alert.alert(t('common.error'), t('common.errors.please_enter_plan_name'));
       return;
     }
 

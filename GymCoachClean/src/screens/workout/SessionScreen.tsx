@@ -6,12 +6,14 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import {Card, Button, LoadingSpinner} from '../../components/common/UI';
 import apiClient from '../../services/api';
+import {useTranslation} from 'react-i18next';
 
 export default function SessionScreen({route, navigation}: any) {
+  const {t} = useTranslation();
   const {sessionId, workoutId, quickWorkout} = route.params || {};
   const [sessionData, setSessionData] = useState<any>(null);
   const [workoutData, setWorkoutData] = useState<any>(null);
@@ -66,7 +68,10 @@ export default function SessionScreen({route, navigation}: any) {
       }
     } catch (error) {
       console.error('Error loading session data:', error);
-      Alert.alert('Error', 'Failed to load session data');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_load_session_data'),
+      );
     } finally {
       setLoading(false);
     }
@@ -74,6 +79,16 @@ export default function SessionScreen({route, navigation}: any) {
 
   const startSession = async () => {
     try {
+      // Validate that at least one exercise is added for quick workout
+      if (quickWorkout && exercises.length === 0) {
+        Alert.alert(
+          'No Exercises',
+          'Please add at least one exercise before starting your workout.',
+          [{text: 'OK'}],
+        );
+        return;
+      }
+
       const sessionData = {
         name: quickWorkout
           ? 'Quick Workout'
@@ -107,7 +122,10 @@ export default function SessionScreen({route, navigation}: any) {
       Alert.alert('Success', 'Workout session started!');
     } catch (error) {
       console.error('Error starting session:', error);
-      Alert.alert('Error', 'Failed to start workout session');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.failed_to_start_workout_session'),
+      );
     }
   };
 
@@ -184,7 +202,10 @@ export default function SessionScreen({route, navigation}: any) {
   const completeSession = async () => {
     if (!sessionData?.id) {
       console.log('No session data or ID available');
-      Alert.alert('Error', 'No active session to complete');
+      Alert.alert(
+        t('common.error'),
+        t('common.errors.no_active_session_to_complete'),
+      );
       return;
     }
 
@@ -227,7 +248,10 @@ export default function SessionScreen({route, navigation}: any) {
       // More specific error message
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert('Error', `Failed to complete session: ${errorMessage}`);
+      Alert.alert(
+        t('common.error'),
+        `${t('common.errors.failed_to_complete_session')}: ${errorMessage}`,
+      );
     }
   };
 
@@ -453,7 +477,7 @@ export default function SessionScreen({route, navigation}: any) {
             <ScrollView style={styles.exerciseList}>
               {exerciseLibrary.length > 0 ? (
                 exerciseLibrary.map((exercise: any, index: number) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={exercise.id || index}
                     style={styles.exerciseOption}
                     onPress={() => addExerciseToSession(exercise)}>
@@ -465,7 +489,7 @@ export default function SessionScreen({route, navigation}: any) {
                         {exercise.category}
                       </Text>
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 ))
               ) : (
                 <View style={styles.emptyState}>

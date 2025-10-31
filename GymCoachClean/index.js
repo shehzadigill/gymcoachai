@@ -26,9 +26,12 @@ if (!global.TransformStream) {
   global.TransformStream = TransformStream;
 }
 
-import {AppRegistry} from 'react-native';
+import {AppRegistry, LogBox} from 'react-native';
 import App from './src/App';
 import {name as appName} from './app.json';
+
+// Disable LogBox warnings during testing
+LogBox.ignoreAllLogs();
 
 console.log('[index] Registering app component:', appName);
 AppRegistry.registerComponent(appName, () => App);

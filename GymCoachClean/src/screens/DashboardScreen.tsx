@@ -205,7 +205,7 @@ export default function DashboardScreen() {
         performancePredictionsPromise,
         personalizationPromise,
         performanceAnalysisPromise,
-        nutritionIntelligencePromise,
+        // nutritionIntelligencePromise,
       ] = await Promise.allSettled([
         apiClient.getWorkoutSessions(),
         apiClient.getNutritionStats(),
@@ -224,7 +224,7 @@ export default function DashboardScreen() {
         apiClient.predictPerformance(user?.id).catch(() => []),
         apiClient.analyzeUserPreferences().catch(() => null),
         apiClient.analyzePerformance({}).catch(() => null),
-        apiClient.analyzeNutritionAdherence({days: 14, includeHydration: true, includeTiming: true}).catch(() => null),
+        // apiClient.analyzeNutritionAdherence({days: 14, includeHydration: true, includeTiming: true}).catch(() => null),
       ]);
 
       console.log('Dashboard data loaded:', {
@@ -327,7 +327,8 @@ export default function DashboardScreen() {
       const todaysCarbs = nutritionData.today_carbs || 0;
       const todaysFat = nutritionData.today_fat || 0;
       const nutritionScore = nutritionData.nutrition_score || 0;
-      const nutritionStreak = nutritionData.streak || nutritionData.nutrition_streak || 0;
+      const nutritionStreak =
+        nutritionData.streak || nutritionData.nutrition_streak || 0;
       const macroBalance = nutritionData.macro_balance || {
         protein: 0,
         carbs: 0,
@@ -337,23 +338,48 @@ export default function DashboardScreen() {
       const mealsToday = nutritionData.meals_today || 0;
 
       // Process sleep data
-      const sleepDataResult = sleepData.status === 'fulfilled' ? sleepData.value : {};
-      const sleepHours = sleepDataResult?.hours || sleepDataResult?.body?.hours || 0;
-      const sleepQuality = sleepDataResult?.quality || sleepDataResult?.body?.quality || 0;
-      const sleepGoal = userProfileData.status === 'fulfilled' 
-        ? (userProfileData.value as any)?.sleepGoal || (userProfileData.value as any)?.body?.sleepGoal || 8
-        : 8;
+      const sleepDataResult =
+        sleepData.status === 'fulfilled' ? sleepData.value : {};
+      const sleepHours =
+        sleepDataResult?.hours || sleepDataResult?.body?.hours || 0;
+      const sleepQuality =
+        sleepDataResult?.quality || sleepDataResult?.body?.quality || 0;
+      const sleepGoal =
+        userProfileData.status === 'fulfilled'
+          ? (userProfileData.value as any)?.sleepGoal ||
+            (userProfileData.value as any)?.body?.sleepGoal ||
+            8
+          : 8;
 
       // Process AI insights
-      const aiInsights = aiInsightsPromise.status === 'fulfilled' ? (aiInsightsPromise.value || []) : [];
-      const weeklyReview = weeklyReviewPromise.status === 'fulfilled' ? weeklyReviewPromise.value : null;
-      const performancePredictions = performancePredictionsPromise.status === 'fulfilled' ? (performancePredictionsPromise.value || []) : [];
-      const personalizationProfile = personalizationPromise.status === 'fulfilled' ? personalizationPromise.value : null;
-      const performanceAnalysis = performanceAnalysisPromise.status === 'fulfilled' ? performanceAnalysisPromise.value : null;
-      const nutritionIntelligence = nutritionIntelligencePromise.status === 'fulfilled' ? nutritionIntelligencePromise.value : null;
+      const aiInsights =
+        aiInsightsPromise.status === 'fulfilled'
+          ? aiInsightsPromise.value || []
+          : [];
+      const weeklyReview =
+        weeklyReviewPromise.status === 'fulfilled'
+          ? weeklyReviewPromise.value
+          : null;
+      const performancePredictions =
+        performancePredictionsPromise.status === 'fulfilled'
+          ? performancePredictionsPromise.value || []
+          : [];
+      const personalizationProfile =
+        personalizationPromise.status === 'fulfilled'
+          ? personalizationPromise.value
+          : null;
+      const performanceAnalysis =
+        performanceAnalysisPromise.status === 'fulfilled'
+          ? performanceAnalysisPromise.value
+          : null;
+      const nutritionIntelligence = null;
+      // nutritionIntelligencePromise.status === 'fulfilled'
+      //   ? nutritionIntelligencePromise.value
+      //   : null;
 
       // Process progress photos
-      const photos = progressPhotos.status === 'fulfilled' ? (progressPhotos.value || []) : [];
+      const photos =
+        progressPhotos.status === 'fulfilled' ? progressPhotos.value || [] : [];
 
       // Calculate workout streak
       const currentStreak = calculateWorkoutStreak(workoutData);
@@ -1032,7 +1058,7 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>
             {t('dashboard.nutrition_insights') || 'Nutrition Insights'}
           </Text>
-          
+
           {/* Nutrition Score & Streak */}
           <View style={styles.nutritionMetricsRow}>
             <Card style={[styles.statCard, {flex: 0.48}]}>
@@ -1133,8 +1159,7 @@ export default function DashboardScreen() {
                     styles.progressBar,
                     {
                       width: `${Math.min(
-                        ((data.sleepHours || 0) / (data.sleepGoal || 8)) *
-                          100,
+                        ((data.sleepHours || 0) / (data.sleepGoal || 8)) * 100,
                         100,
                       )}%`,
                       backgroundColor: '#8b5cf6',
@@ -1195,9 +1220,7 @@ export default function DashboardScreen() {
               {data.weeklyReview.achievements &&
                 data.weeklyReview.achievements.length > 0 && (
                   <View style={styles.achievementsContainer}>
-                    <Text style={styles.achievementsTitle}>
-                      Achievements:
-                    </Text>
+                    <Text style={styles.achievementsTitle}>Achievements:</Text>
                     {data.weeklyReview.achievements
                       .slice(0, 3)
                       .map((achievement: any, index: number) => (
@@ -1247,16 +1270,15 @@ export default function DashboardScreen() {
         {data?.nutritionIntelligence && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              {t('dashboard.nutrition_intelligence') || 'Nutrition Intelligence'}
+              {t('dashboard.nutrition_intelligence') ||
+                'Nutrition Intelligence'}
             </Text>
             <Card style={styles.nutritionIntelligenceCard}>
               {data.nutritionIntelligence.adherenceScore !== undefined && (
                 <View style={styles.adherenceContainer}>
                   <Text style={styles.adherenceLabel}>Adherence Score</Text>
                   <Text style={styles.adherenceValue}>
-                    {Math.round(
-                      data.nutritionIntelligence.adherenceScore || 0,
-                    )}
+                    {Math.round(data.nutritionIntelligence.adherenceScore || 0)}
                     %
                   </Text>
                 </View>

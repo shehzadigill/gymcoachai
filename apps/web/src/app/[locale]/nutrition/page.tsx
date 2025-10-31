@@ -817,6 +817,21 @@ export default function NutritionPage() {
     >
   );
 
+  const getMealTypeLabel = (mealType: string): string => {
+    switch (mealType) {
+      case 'breakfast':
+        return t('breakfast');
+      case 'lunch':
+        return t('lunch');
+      case 'dinner':
+        return t('dinner');
+      case 'snack':
+        return t('snacks');
+      default:
+        return mealType;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -878,7 +893,7 @@ export default function NutritionPage() {
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Food</span>
+            <span>{t('add_food_button')}</span>
           </button>
           <button
             onClick={() => {
@@ -888,7 +903,7 @@ export default function NutritionPage() {
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Custom Meal</span>
+            <span>{t('custom_meal_button')}</span>
           </button>
         </div>
       </div>
@@ -896,7 +911,7 @@ export default function NutritionPage() {
       {/* Daily Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <NutritionCard
-          title="Calories"
+          title={t('calories')}
           current={dailyNutrition.calories}
           goal={dailyNutrition.caloriesGoal}
           unit="kcal"
@@ -904,7 +919,7 @@ export default function NutritionPage() {
           icon={<Flame className="h-5 w-5" />}
         />
         <NutritionCard
-          title="Protein"
+          title={t('protein')}
           current={dailyNutrition.protein}
           goal={dailyNutrition.proteinGoal}
           unit="g"
@@ -912,7 +927,7 @@ export default function NutritionPage() {
           icon={<Target className="h-5 w-5" />}
         />
         <NutritionCard
-          title="Carbs"
+          title={t('carbs')}
           current={dailyNutrition.carbs}
           goal={dailyNutrition.carbsGoal}
           unit="g"
@@ -920,7 +935,7 @@ export default function NutritionPage() {
           icon={<Apple className="h-5 w-5" />}
         />
         <NutritionCard
-          title="Fat"
+          title={t('fat')}
           current={dailyNutrition.fat}
           goal={dailyNutrition.fatGoal}
           unit="g"
@@ -941,9 +956,8 @@ export default function NutritionPage() {
               ),
               selectedDate,
             },
-            title: 'Need help with your nutrition?',
-            description:
-              'Get AI-powered advice on your daily nutrition, macro balance, and meal planning.',
+            title: t('need_help_title'),
+            description: t('need_help_description'),
             suggestedQuestions: [
               'How do my macros look today?',
               'What should I eat to reach my goals?',
@@ -951,6 +965,7 @@ export default function NutritionPage() {
               'What are good food substitutions?',
             ],
           }}
+          askButtonText={t('ask_ai_button')}
           className="mb-6"
         />
       )}
@@ -958,29 +973,29 @@ export default function NutritionPage() {
       {/* Weekly Stats */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-          Last 7 Days
+          {t('last_7_days')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-            <div className="text-gray-500 dark:text-gray-400">Calories</div>
+            <div className="text-gray-500 dark:text-gray-400">{t('calories')}</div>
             <div className="text-gray-900 dark:text-white text-lg font-semibold">
               {weeklyStats.calories.toFixed(2)}
             </div>
           </div>
           <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-            <div className="text-gray-500 dark:text-gray-400">Protein</div>
+            <div className="text-gray-500 dark:text-gray-400">{t('protein')}</div>
             <div className="text-gray-900 dark:text-white text-lg font-semibold">
               {weeklyStats.protein.toFixed(2)} g
             </div>
           </div>
           <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-            <div className="text-gray-500 dark:text-gray-400">Carbs</div>
+            <div className="text-gray-500 dark:text-gray-400">{t('carbs')}</div>
             <div className="text-gray-900 dark:text-white text-lg font-semibold">
               {weeklyStats.carbs.toFixed(2)} g
             </div>
           </div>
           <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-            <div className="text-gray-500 dark:text-gray-400">Fat</div>
+            <div className="text-gray-500 dark:text-gray-400">{t('fat')}</div>
             <div className="text-gray-900 dark:text-white text-lg font-semibold">
               {weeklyStats.fat.toFixed(2)} g
             </div>
@@ -1005,7 +1020,7 @@ export default function NutritionPage() {
       {/* Water Intake */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Water Intake
+          {t('water_intake')}
         </h3>
         <div className="flex items-center space-x-4">
           <div className="flex-1">
@@ -1155,7 +1170,7 @@ export default function NutritionPage() {
                       className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Create Custom Meal</span>
+                      <span>{t('create_custom_meal_button')}</span>
                     </button>
                   </div>
                 ) : (
@@ -1263,7 +1278,7 @@ export default function NutritionPage() {
                       className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Create Custom Meal</span>
+                      <span>{t('create_custom_meal_button')}</span>
                     </button>
                   </div>
                 </div>
@@ -1307,7 +1322,7 @@ export default function NutritionPage() {
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
-                      {mealType}
+                      {getMealTypeLabel(mealType)}
                     </h3>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       {total.calories.toFixed(2)} kcal •{' '}
@@ -1320,7 +1335,7 @@ export default function NutritionPage() {
                 <div className="p-4">
                   {mealEntries.length === 0 ? (
                     <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                      No {mealType} entries yet
+                      Inga {getMealTypeLabel(mealType).toLowerCase()} poster ännu
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -2058,7 +2073,7 @@ function CustomMealModal({
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Create Custom Meal
+              {t('create_custom_meal_button')}
             </h2>
             <button
               onClick={onClose}
@@ -2254,7 +2269,7 @@ function CustomMealModal({
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
               >
                 <Check className="h-4 w-4" />
-                <span>Add Custom Meal</span>
+                <span>{t('add_custom_meal_button')}</span>
               </button>
               <button
                 onClick={onClose}

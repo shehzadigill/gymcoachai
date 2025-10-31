@@ -7,7 +7,7 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
-  TouchableOpacity,
+  Pressable,
   Alert,
 } from 'react-native';
 import {Card, LoadingSpinner, Button} from '../components/common/UI';
@@ -20,6 +20,9 @@ import {
 } from '../types';
 import {useTranslation} from 'react-i18next';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import {PerformanceInsightsPanel} from '../components/analytics/PerformanceInsightsPanel';
+import {AchievementBadge} from '../components/analytics/AchievementBadge';
+import {useTheme} from '../theme';
 
 interface WorkoutAnalytics {
   total_workouts: number;
@@ -51,11 +54,13 @@ const {width} = Dimensions.get('window');
 
 export default function AnalyticsScreen() {
   const {t} = useTranslation();
+  const {colors, isDark} = useTheme();
   const [analytics, setAnalytics] = useState<WorkoutAnalytics | null>(null);
   const [strengthProgress, setStrengthProgress] = useState<any[]>([]);
   const [bodyMeasurements, setBodyMeasurements] = useState<any[]>([]);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
+  const [insights, setInsights] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,12 +82,14 @@ export default function AnalyticsScreen() {
         milestonesData,
         achievementsData,
         workoutSessions,
+        insightsData,
       ] = await Promise.allSettled([
         apiClient.getStrengthProgress(),
         apiClient.getBodyMeasurements(),
         apiClient.getMilestones(),
         apiClient.getAchievements(),
         apiClient.getWorkoutSessions(),
+        apiClient.getWorkoutInsights(),
       ]);
 
       // Process strength progress data
@@ -106,6 +113,11 @@ export default function AnalyticsScreen() {
           ? achievementsData.value || []
           : [];
       setAchievements(achievementsResults);
+
+      // Process insights data
+      const insightsResults =
+        insightsData.status === 'fulfilled' ? insightsData.value : null;
+      setInsights(insightsResults);
 
       // Process workout sessions to create analytics summary
       const sessions =
@@ -263,7 +275,8 @@ export default function AnalyticsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       <FloatingSettingsButton />
       <ScrollView
         style={styles.scrollView}
@@ -271,14 +284,18 @@ export default function AnalyticsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Analytics</Text>
-          <Text style={styles.subtitle}>Track your fitness progress</Text>
+        <View style={[styles.header, {backgroundColor: colors.background}]}>
+          <Text style={[styles.title, {color: colors.text}]}>
+            {t('analytics_screen.title')}
+          </Text>
+          <Text style={[styles.subtitle, {color: colors.subtext}]}>
+            {t('analytics_screen.subtitle')}
+          </Text>
 
           {/* Time Range Selector */}
           <View style={styles.timeRangeContainer}>
             {(['7d', '30d', '90d', '1y', 'all'] as TimeRange[]).map(range => (
-              <TouchableOpacity
+              <Pressable
                 key={range}
                 style={[
                   styles.timeRangeButton,
@@ -292,7 +309,7 @@ export default function AnalyticsScreen() {
                   ]}>
                   {range === 'all' ? 'All' : range.toUpperCase()}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -346,6 +363,14 @@ export default function AnalyticsScreen() {
             </Text>
           </Card>
         </View>
+
+        {/* Performance Insights */}
+        {insights && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>AI Performance Insights</Text>
+            <PerformanceInsightsPanel insights={insights} loading={loading} />
+          </View>
+        )}
 
         {/* Recent Strength Progress */}
         <View style={styles.section}>
@@ -530,21 +555,13 @@ export default function AnalyticsScreen() {
               {t('analytics.recent_achievements')}
             </Text>
             {achievements.slice(0, 3).map(achievement => (
-              <Card key={achievement.id} style={styles.achievementCard}>
-                <View style={styles.achievementContent}>
-                  <Text style={styles.achievementTitle}>
-                    {achievement.title}
-                  </Text>
-                  <Text style={styles.achievementDescription}>
-                    {achievement.description}
-                  </Text>
-                  <Text style={styles.achievementDate}>
-                    {t('analytics.unlocked')}{' '}
-                    {new Date(achievement.unlockedAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                <Text style={styles.achievementBadge}>🏆</Text>
-              </Card>
+              <AchievementBadge
+                key={achievement.id}
+                achievement={{
+                  ...achievement,
+                  earned_at: achievement.unlockedAt,
+                }}
+              />
             ))}
           </View>
         )}
