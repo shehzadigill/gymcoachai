@@ -483,7 +483,7 @@ export default function AnalyticsPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
             >
               <Filter className="h-4 w-4" />
-              {t('filters')}
+              {t('filters_text')}
             </button>
 
             <button
@@ -676,7 +676,7 @@ export default function AnalyticsPage() {
           </span>
         </div>
         <div className="text-xs text-blue-700">
-          {t('view_mode')}:{' '}
+          {t('view_mode_text')}:{' '}
           <span className="font-medium capitalize">{viewMode}</span> •{' '}
           {t('metrics_selected', { count: selectedMetrics.length })}
         </div>

@@ -38,23 +38,52 @@ impl ProgressPhotoRepository {
         end_date: Option<&str>,
         limit: Option<u32>,
     ) -> Result<Vec<ProgressPhoto>> {
+        // Build a single map of expression attribute values and a combined filter expression
+        let mut conditions: Vec<String> = vec!["userId = :userId".to_string()];
+        let mut expression_attribute_values: HashMap<String, AttributeValue> = HashMap::new();
+        expression_attribute_values.insert(
+            ":pk".to_string(),
+            AttributeValue::S("PROGRESS_PHOTOS".to_string()),
+        );
+        expression_attribute_values.insert(
+            ":userId".to_string(),
+            AttributeValue::S(user_id.to_string()),
+        );
+
+        if let Some(photo_type) = photo_type {
+            conditions.push("photoType = :photoType".to_string());
+            expression_attribute_values.insert(
+                ":photoType".to_string(),
+                AttributeValue::S(photo_type.to_string()),
+            );
+        }
+
+        if let Some(start_date) = start_date {
+            // takenAt stored as ISO timestamp string; string comparison works for ISO format
+            conditions.push("takenAt >= :start_date".to_string());
+            expression_attribute_values.insert(
+                ":start_date".to_string(),
+                AttributeValue::S(start_date.to_string()),
+            );
+        }
+
+        if let Some(end_date) = end_date {
+            conditions.push("takenAt <= :end_date".to_string());
+            expression_attribute_values.insert(
+                ":end_date".to_string(),
+                AttributeValue::S(end_date.to_string()),
+            );
+        }
+
+        let filter_exp = conditions.join(" AND ");
+
         let mut query = self
             .dynamodb_client
             .query()
             .table_name(&self.table_name)
             .key_condition_expression("PK = :pk")
-            .expression_attribute_values(":pk", AttributeValue::S("PROGRESS_PHOTOS".to_string()))
-            .filter_expression("userId = :userId")
-            .expression_attribute_values(":userId", AttributeValue::S(user_id.to_string()));
-
-        if let Some(photo_type) = photo_type {
-            query = query
-                .filter_expression("photoType = :photoType")
-                .expression_attribute_values(
-                    ":photoType",
-                    AttributeValue::S(photo_type.to_string()),
-                );
-        }
+            .filter_expression(&filter_exp)
+            .set_expression_attribute_values(Some(expression_attribute_values));
 
         if let Some(limit) = limit {
             query = query.limit(limit as i32);

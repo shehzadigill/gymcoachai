@@ -607,7 +607,7 @@ export class GymCoachAIStack extends cdk.Stack {
       'analytics-service',
       {
         // Add CloudFront domain placeholder - will be updated after deployment
-        CLOUDFRONT_DOMAIN: '', // Update manually after first deployment
+        CLOUDFRONT_DOMAIN: `d12pveuxxq3vvn.cloudfront.net`, // Update manually after first deployment
       }
     );
     const nutritionServiceLambda = this.createLambdaFunction(

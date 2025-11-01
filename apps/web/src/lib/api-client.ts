@@ -5,7 +5,7 @@ const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_URL || '';
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
-): Promise<Response> {
+): Promise<T | any> {
   const isLocal =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' ||
@@ -42,7 +42,8 @@ export async function apiFetch<T>(
     const text = await res.text().catch(() => '');
     throw new Error(text || `Request failed: ${res.status}`);
   }
-  return res;
+  const data = await res.json();
+  return data;
 }
 
 // Helper function to get current user ID from auth context
@@ -120,7 +121,7 @@ export const api = {
     const response = await apiFetch<any[]>(
       `/api/analytics/body-measurements/${id}${query}`
     );
-    const measurements = (await response.json()) || [];
+    const measurements = response || [];
     // Group measurements by date for backward compatibility
     const groupedByDate: { [key: string]: any } = {};
 
@@ -232,7 +233,7 @@ export const api = {
   async getAchievements(userId?: string) {
     const id = userId || (await getCurrentUserId());
     const res = await apiFetch<any>(`/api/analytics/achievements/${id}`);
-    return res.json();
+    return res;
   },
 
   async getPerformanceTrends(
@@ -254,7 +255,7 @@ export const api = {
   async getUserProfile(userId?: string) {
     // Don't include user ID in path - let backend authenticate from JWT token
     const res = await apiFetch<any>('/api/user-profiles/profile');
-    return res.json();
+    return res;
   },
 
   async updateUserProfile(data: any, userId?: string) {
@@ -348,7 +349,7 @@ export const api = {
       const res = await apiFetch<any>(
         `/api/user-profiles/profile/preferences/${id}`
       );
-      return res.json();
+      return res;
     } catch (error) {
       console.warn('API Client: User preferences fetch failed:', error);
       return null;
@@ -394,7 +395,7 @@ export const api = {
   async getWorkoutSessions(userId?: string) {
     const id = userId || (await getCurrentUserId());
     const res = await apiFetch<any[]>(`/api/workouts/sessions?userId=${id}`);
-    return res.json();
+    return res;
   },
 
   async getWorkoutSession(sessionId: string, userId?: string) {
@@ -480,7 +481,7 @@ export const api = {
   async getWorkoutPlans(userId?: string) {
     const id = userId || (await getCurrentUserId());
     const res = await apiFetch<any[]>(`/api/workouts/plans?userId=${id}`);
-    return res.json();
+    return res;
   },
 
   async createWorkoutPlan(data: any, userId?: string) {
@@ -518,7 +519,7 @@ export const api = {
   async getExercises(userId?: string) {
     const id = userId || (await getCurrentUserId());
     const res = await apiFetch(`/api/workouts/exercises?userId=${id}`);
-    return res.json();
+    return res;
   },
 
   async createExercise(data: any, userId?: string) {
@@ -573,9 +574,10 @@ export const api = {
     if (filters?.limit) params.append('limit', filters.limit.toString());
 
     const queryString = params.toString() ? `?${params}` : '';
-    return apiFetch<any[]>(
+    const res = await apiFetch<any[]>(
       `/api/analytics/progress-photos/${id}${queryString}`
     );
+    return res;
   },
 
   async uploadProgressPhoto(
@@ -685,7 +687,7 @@ export const api = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     const res = await apiFetch<any>(`/api/workouts/analytics?${params}`);
-    return res.json();
+    return res;
   },
 
   // Workout History
@@ -726,7 +728,7 @@ export const api = {
     const response = await apiFetch<any>(
       `/api/workouts/history/detailed?${params}`
     );
-    return response.json();
+    return response;
   },
 
   async getWorkoutInsights(userId?: string, timeRange?: string) {
@@ -734,7 +736,7 @@ export const api = {
     const params = new URLSearchParams({ userId: id });
     if (timeRange) params.append('timeRange', timeRange);
     const response = await apiFetch<any>(`/api/workouts/insights?${params}`);
-    return response.json();
+    return response;
   },
 
   async compareWorkoutPeriods(
@@ -783,7 +785,7 @@ export const api = {
     const id = userId || (await getCurrentUserId());
     // First get the session to preserve existing data
     const res = await this.getWorkoutSession(sessionId, id);
-    let sessionData = await res.json();
+    let sessionData = res;
     if (res.ok && typeof sessionData === 'object' && 'body' in sessionData) {
       sessionData =
         typeof sessionData.body === 'string'
@@ -827,7 +829,7 @@ export const api = {
       );
     }
     const res = await apiFetch<any[]>(`/api/nutrition/me/meals/date/${date}`);
-    return res.json();
+    return res;
   },
 
   async createMeal(data: any, userId?: string) {
@@ -880,7 +882,7 @@ export const api = {
     const res = await apiFetch<any>(url);
 
     // Backend returns: { body: { foods: [...], next_cursor: "..." } }
-    const bodyData = await res.json();
+    const bodyData = res;
     const rawFoods = Array.isArray(bodyData.foods)
       ? bodyData.foods
       : Array.isArray(bodyData)
@@ -952,7 +954,7 @@ export const api = {
     userId = userId || (await getCurrentUserId());
     if (userId) {
       const res = await apiFetch<any>(`/api/nutrition/users/${userId}/stats`);
-      return res.json();
+      return res;
     }
   },
 
@@ -1023,7 +1025,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ file_type: fileType }),
     });
-    return await res.json();
+    return res;
   },
 
   async uploadImage(file: File, uploadUrl: string): Promise<void> {
@@ -1084,7 +1086,7 @@ export const api = {
     const params = new URLSearchParams({ userId: id });
     if (date) params.append('date', date);
     const res = await apiFetch<any>(`/api/user-profiles/sleep?${params}`);
-    return res.json() || [];
+    return res || [];
   },
 
   async logSleep(
@@ -1251,28 +1253,9 @@ export const api = {
 
       const text = await res.text().catch(() => '');
       throw new Error(text || `Request failed: ${res.status}`);
-    } catch (error) {
-      // Fallback to Lambda URL
-      const lambdaUrl =
-        'https://omk3alczw57uum2gv5ouwbseym0ymyut.lambda-url.eu-north-1.on.aws';
-      const lambdaFetchOptions: RequestInit = {
-        ...fetchOptions,
-        mode: 'cors',
-        credentials: 'omit',
-      };
-
-      console.log(
-        `AI Request (Lambda): ${lambdaUrl}${path}`,
-        lambdaFetchOptions
-      );
-      const res = await fetch(`${lambdaUrl}${path}`, lambdaFetchOptions);
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(text || `Request failed: ${res.status}`);
-      }
-
-      return (await res.json()) as T;
+    } catch (err) {
+      console.error('API request error:', err);
+      throw err;
     }
   },
 

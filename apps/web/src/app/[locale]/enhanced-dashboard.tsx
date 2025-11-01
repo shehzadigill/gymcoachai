@@ -182,9 +182,6 @@ export default function DashboardPage() {
           api
             .getWater(new Date().toISOString().split('T')[0])
             .then(async (res) => {
-              if (res && typeof res.json === 'function') {
-                return await res.json();
-              }
               return res;
             })
             .catch((e) => {
@@ -1110,7 +1107,7 @@ export default function DashboardPage() {
       } else if (diffInHours < 24) {
         return t('hours_ago', { count: Math.max(0, diffInHours) });
       } else {
-        return t('days_ago', { count: Math.max(0, diffInDays) });
+        return t('days_ago', { count: Math.max(0, diffInDays || 0) });
       }
     } catch (error) {
       console.error('Error formatting date:', dateString, error);

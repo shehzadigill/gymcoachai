@@ -27,7 +27,7 @@ export function ProtectedRoute({
     if (!isAuthenticated) {
       const currentPath = window.location.pathname + window.location.search;
       const redirectUrl = encodeURIComponent(currentPath);
-      router.replace(`${redirectTo}?redirect=${redirectUrl}`);
+      router.push(`${redirectTo}?redirect=${redirectUrl}`);
       return;
     }
 

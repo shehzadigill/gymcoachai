@@ -55,7 +55,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.json();
+    return response;
   }
 
   async retrieveRelevantMemories(
@@ -70,7 +70,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ query, context }),
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -83,7 +83,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ memoryId, importance }),
     });
-    return response.json();
+    return response;
   }
 
   async updateMemory(
@@ -95,7 +95,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ memoryId, ...updates }),
     });
-    return response.json();
+    return response;
   }
 
   async deleteMemory(
@@ -106,14 +106,14 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ memoryId }),
     });
-    return response.json();
+    return response;
   }
 
   async cleanupOldMemories(): Promise<AIResponse<{ deletedCount: number }>> {
     const response = await apiFetch('/api/ai/memory/cleanup', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async getMemorySummary(): Promise<
@@ -129,7 +129,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/memory/summary', {
       method: 'GET',
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -145,7 +145,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify(request || {}),
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -157,7 +157,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ context }),
     });
-    return response.json();
+    return response;
   }
 
   async adaptCoachingMessage(
@@ -169,7 +169,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ message, style, context }),
     });
-    return response.json();
+    return response;
   }
 
   async submitPersonalizationFeedback(feedback: {
@@ -181,7 +181,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ feedback_data: feedback }),
     });
-    return response.json();
+    return response;
   }
 
   async getPersonalizationProfile(
@@ -233,7 +233,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify(request),
     });
-    return response.json();
+    return response;
   }
 
   async assessInjuryRisk(): Promise<
@@ -249,7 +249,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/workout/assess-risk', {
       method: 'POST',
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -262,7 +262,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ exerciseId, reason }),
     });
-    return response.json();
+    return response;
   }
 
   async analyzePerformance(
@@ -274,7 +274,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify(workoutData || {}),
     });
-    return response.json();
+    return response;
   }
 
   async detectPerformanceAnomalies(): Promise<
@@ -283,7 +283,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/performance/anomalies', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async predictPerformance(userId?: string): Promise<PerformancePrediction[]> {
@@ -295,7 +295,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ userId }),
     });
-    const result = await response.json();
+    const result = await response;
 
     // Normalize response to always return an array
     let predictions: PerformancePrediction[] = [];
@@ -345,7 +345,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/performance/report', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   // Nutrition Intelligence APIs
@@ -360,7 +360,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify(request),
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -372,7 +372,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ currentPlan }),
     });
-    return response.json();
+    return response;
   }
 
   async substituteFoods(
@@ -385,7 +385,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ unavailableFoods, context }),
     });
-    return response.json();
+    return response;
   }
 
   async analyzeHydration(
@@ -402,7 +402,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ days }),
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -414,7 +414,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ goals }),
     });
-    return response.json();
+    return response;
   }
 
   async adjustMacros(
@@ -425,7 +425,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ currentMacros, goals }),
     });
-    return response.json();
+    return response;
   }
 
   async optimizeMealTiming(
@@ -435,7 +435,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ mealPlan }),
     });
-    return response.json();
+    return response;
   }
 
   async modifyMealTiming(
@@ -446,7 +446,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ currentTiming, workoutSchedule }),
     });
-    return response.json();
+    return response;
   }
 
   async scheduleMeals(
@@ -457,7 +457,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ mealPlan, preferences }),
     });
-    return response.json();
+    return response;
   }
 
   async analyzePreWorkoutNutrition(): Promise<
@@ -466,7 +466,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/nutrition/pre-workout', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async analyzePostWorkoutNutrition(): Promise<
@@ -475,7 +475,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/nutrition/post-workout', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async analyzeMealTiming(): Promise<
@@ -484,7 +484,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/nutrition/timing-analysis', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async suggestIntermittentFasting(): Promise<
@@ -493,7 +493,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/nutrition/intermittent-fasting', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   // Progress Monitoring APIs
@@ -503,7 +503,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/progress/monitor', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async detectPlateaus(): Promise<
@@ -512,7 +512,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/progress/plateau', {
       method: 'POST',
     });
-    return response.json();
+    return response;
   }
 
   async generateWeeklyReview(): Promise<WeeklyReview> {
@@ -523,7 +523,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/progress/weekly-review', {
       method: 'POST',
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -536,7 +536,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ conversationId }),
     });
-    return response.json();
+    return response;
   }
 
   async createConversationThread(
@@ -547,7 +547,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ conversationId, topic }),
     });
-    return response.json();
+    return response;
   }
 
   async getConversationAnalytics(
@@ -561,7 +561,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify({ conversationId }),
     });
-    const result = await response.json();
+    const result = await response;
     this.setCache(cacheKey, result);
     return result;
   }
@@ -578,7 +578,7 @@ export class AIServiceClient {
       method: 'POST',
       body: JSON.stringify(request),
     });
-    return response.json();
+    return response;
   }
 
   // Proactive Coaching APIs
@@ -590,7 +590,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/proactive/insights', {
       method: 'GET',
     });
-    const result = await response.json();
+    const result = await response;
 
     // Normalize response to always return an array
     let insights: ProactiveInsight[] = [];
@@ -641,7 +641,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/rate-limit', {
       method: 'GET',
     });
-    return response.json();
+    return response;
   }
 
   async validateRAG(): Promise<
@@ -650,7 +650,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/rag/validate', {
       method: 'GET',
     });
-    return response.json();
+    return response;
   }
 
   async getRAGStats(): Promise<
@@ -663,7 +663,7 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/rag/stats', {
       method: 'GET',
     });
-    return response.json();
+    return response;
   }
 
   // Error handling

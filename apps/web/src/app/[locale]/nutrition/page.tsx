@@ -977,13 +977,17 @@ export default function NutritionPage() {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-            <div className="text-gray-500 dark:text-gray-400">{t('calories')}</div>
+            <div className="text-gray-500 dark:text-gray-400">
+              {t('calories')}
+            </div>
             <div className="text-gray-900 dark:text-white text-lg font-semibold">
               {weeklyStats.calories.toFixed(2)}
             </div>
           </div>
           <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-            <div className="text-gray-500 dark:text-gray-400">{t('protein')}</div>
+            <div className="text-gray-500 dark:text-gray-400">
+              {t('protein')}
+            </div>
             <div className="text-gray-900 dark:text-white text-lg font-semibold">
               {weeklyStats.protein.toFixed(2)} g
             </div>
@@ -1335,7 +1339,8 @@ export default function NutritionPage() {
                 <div className="p-4">
                   {mealEntries.length === 0 ? (
                     <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                      Inga {getMealTypeLabel(mealType).toLowerCase()} poster ännu
+                      Inga {getMealTypeLabel(mealType).toLowerCase()} poster
+                      ännu
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -1702,18 +1707,17 @@ function AddFoodModal({
         <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Search for a food first
+              {t('search_for_food_first_title')}
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Close this modal and use the search bar on the main page to find
-              and select a food item, then click "Add Food" again.
+              {t('search_for_food_first_message')}
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={onClose}
                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
               >
-                Got it, close this
+                {t('got_it_close')}
               </button>
             </div>
           </div>
@@ -1762,7 +1766,7 @@ function AddFoodModal({
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Add Food Entry
+              {t('add_food_entry_title')}
             </h2>
             <button
               onClick={onClose}
@@ -1775,7 +1779,7 @@ function AddFoodModal({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Food
+                {t('food_label')}
               </label>
               <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="font-medium text-gray-900 dark:text-white">
@@ -1789,7 +1793,7 @@ function AddFoodModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Serving Size
+                {t('serving_size_label')}
               </label>
               <select
                 value={servingSize}
@@ -1814,7 +1818,7 @@ function AddFoodModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Weight (grams)
+                {t('weight_label')}
               </label>
               <input
                 type="number"
@@ -1827,7 +1831,7 @@ function AddFoodModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Meal Type
+                {t('meal_type_label')}
               </label>
               <select
                 value={selectedMeal}
@@ -1847,7 +1851,7 @@ function AddFoodModal({
 
             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                Nutrition (per 100g)
+                {t('nutrition_per_100g')}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm text-blue-800 dark:text-blue-200">
                 {selectedFood.nutritionFacts.calories > 0 && (
@@ -1896,7 +1900,7 @@ function AddFoodModal({
                 )}
               </div>
               <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                Your portion: {servingWeight}g ={' '}
+                {t('your_portion')}: {servingWeight}g ={' '}
                 {[
                   nutrition.calories > 0
                     ? `${nutrition.calories.toFixed(2)} cal`
@@ -1920,13 +1924,13 @@ function AddFoodModal({
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
               >
                 <Check className="h-4 w-4" />
-                <span>Add Food</span>
+                <span>{t('add_food_button')}</span>
               </button>
               <button
                 onClick={onClose}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                Cancel
+                {t('cancel_button')}
               </button>
             </div>
           </div>
@@ -1954,7 +1958,7 @@ function EditMealModal({
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Edit Meal
+              {t('edit_meal_title')}
             </h2>
             <button
               onClick={onClose}
@@ -1966,7 +1970,7 @@ function EditMealModal({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Name
+                {t('name_label')}
               </label>
               <input
                 type="text"
@@ -1977,7 +1981,7 @@ function EditMealModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Meal Type
+                {t('meal_type_label')}
               </label>
               <select
                 value={mealType}
@@ -1996,13 +2000,13 @@ function EditMealModal({
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
               >
                 <Check className="h-4 w-4" />
-                <span>Save</span>
+                <span>{t('save_button')}</span>
               </button>
               <button
                 onClick={onClose}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                Cancel
+                {t('cancel_button')}
               </button>
             </div>
           </div>
@@ -2048,7 +2052,7 @@ function CustomMealModal({
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      alert('Please enter a meal name');
+      alert(t('meal_name_required_alert'));
       return;
     }
 
@@ -2086,13 +2090,13 @@ function CustomMealModal({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Meal Name *
+                {t('meal_name_label')}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Homemade Pasta, Restaurant Burger"
+                placeholder={t('meal_name_placeholder')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
@@ -2100,7 +2104,7 @@ function CustomMealModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Calories
+                  {t('calories_label')}
                 </label>
                 <input
                   type="number"
@@ -2112,7 +2116,7 @@ function CustomMealModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Protein (g)
+                  {t('protein_label')}
                 </label>
                 <input
                   type="number"
@@ -2128,7 +2132,7 @@ function CustomMealModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Carbs (g)
+                  {t('carbs_label')}
                 </label>
                 <input
                   type="number"
@@ -2141,7 +2145,7 @@ function CustomMealModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Fat (g)
+                  {t('fat_label')}
                 </label>
                 <input
                   type="number"
@@ -2157,7 +2161,7 @@ function CustomMealModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Fiber (g)
+                  {t('fiber_label')}
                 </label>
                 <input
                   type="number"
@@ -2170,7 +2174,7 @@ function CustomMealModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Sugar (g)
+                  {t('sugar_label')}
                 </label>
                 <input
                   type="number"
@@ -2186,7 +2190,7 @@ function CustomMealModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Sodium (mg)
+                  {t('sodium_label')}
                 </label>
                 <input
                   type="number"
@@ -2198,7 +2202,7 @@ function CustomMealModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Weight (g)
+                  {t('weight_label')}
                 </label>
                 <input
                   type="number"
@@ -2212,7 +2216,7 @@ function CustomMealModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Serving Description
+                {t('serving_description')}
               </label>
               <input
                 type="text"
@@ -2225,7 +2229,7 @@ function CustomMealModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Meal Type *
+                {t('meal_type_label')}
               </label>
               <select
                 value={mealType}
@@ -2245,20 +2249,20 @@ function CustomMealModal({
 
             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
-                Nutrition Summary
+                {t('nutrition_summary')}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm text-green-800 dark:text-green-200">
                 <div>
-                  <strong>{calories}</strong> calories
+                  <strong>{calories}</strong> {t('calories_label')}
                 </div>
                 <div>
-                  <strong>{protein}g</strong> protein
+                  <strong>{protein}g</strong> {t('protein_label')}
                 </div>
                 <div>
-                  <strong>{carbs}g</strong> carbs
+                  <strong>{carbs}g</strong> {t('carbs_label')}
                 </div>
                 <div>
-                  <strong>{fat}g</strong> fat
+                  <strong>{fat}g</strong> {t('fat_label')}
                 </div>
               </div>
             </div>
@@ -2275,7 +2279,7 @@ function CustomMealModal({
                 onClick={onClose}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                Cancel
+                {t('cancel_button')}
               </button>
             </div>
           </div>

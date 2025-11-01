@@ -43,9 +43,9 @@ export default function SignInPage() {
           });
         }
 
-        // Redirect to dashboard with locale
-        const dashboardPath =
-          locale === 'en' ? '/dashboard' : `/${locale}/dashboard`;
+        // Redirect to dashboard with locale-aware path (always include locale)
+        // This ensures users end up at /[locale]/dashboard instead of /dashboard
+        const dashboardPath = `/${locale}/dashboard`;
         router.push(dashboardPath);
       } else {
         setError('Invalid username or password');
