@@ -1419,7 +1419,8 @@ export default function AITrainerPage() {
                             {memory.type}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {Math.round(memory.importance * 100)}% {t('importance')}
+                            {Math.round(memory.importance * 100)}%{' '}
+                            {t('importance')}
                           </span>
                         </div>
                         <div className="text-gray-700 dark:text-gray-300 text-xs">

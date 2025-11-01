@@ -278,6 +278,7 @@ export default function ProfilePage() {
       };
 
       const response = await api.updateUserProfile(profileData);
+      setProfile((profile) => ({ ...profile, ...updatedProfile }));
       if (response) {
         setSuccess('Profile saved successfully');
       } else {
