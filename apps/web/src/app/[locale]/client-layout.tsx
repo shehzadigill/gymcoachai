@@ -41,6 +41,7 @@ export default function ClientLayout({
   locale: string;
 }) {
   const t = useTranslations('nav');
+  const tAuth = useTranslations('auth');
   const user = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
@@ -190,6 +191,7 @@ export default function ClientLayout({
               user={user}
               onSignOut={handleSignOut}
               locale={locale}
+              tAuth={tAuth}
             />
           </div>
         </div>
@@ -208,6 +210,7 @@ export default function ClientLayout({
               setDesktopSidebarCollapsed(!desktopSidebarCollapsed)
             }
             locale={locale}
+            tAuth={tAuth}
           />
         </div>
 
@@ -276,6 +279,7 @@ function SidebarContent({
   collapsed = false,
   onToggleCollapse,
   locale,
+  tAuth,
 }: {
   navigation: Array<{
     name: string;
@@ -288,7 +292,8 @@ function SidebarContent({
   onSignOut: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
-  locale?: string;
+  locale: string;
+  tAuth: any;
 }) {
   const [expandedItems, setExpandedItems] = useState<{
     [key: string]: boolean;
@@ -450,7 +455,7 @@ function SidebarContent({
                 className="mt-2 w-full flex items-center px-2 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-md"
               >
                 <LogOut className="mr-3 flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300" />
-                Sign out
+                {tAuth('sign_out')}
               </button>
             </>
           ) : (
@@ -461,7 +466,7 @@ function SidebarContent({
               <button
                 onClick={onSignOut}
                 className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-md"
-                title="Sign out"
+                title={tAuth('sign_out')}
               >
                 <LogOut className="h-4 w-4" />
               </button>

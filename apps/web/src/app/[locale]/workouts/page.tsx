@@ -736,7 +736,7 @@ export default function WorkoutsPage() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
-              <span>New Session</span>
+              <span>{t('new_session')}</span>
             </button>
           ) : (
             <button
@@ -745,7 +745,7 @@ export default function WorkoutsPage() {
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
-              <span>New Plan</span>
+              <span>{t('new_plan')}</span>
             </button>
           )}
         </div>
@@ -758,21 +758,21 @@ export default function WorkoutsPage() {
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Play className="h-4 w-4" />
-          <span>Quick Workout</span>
+          <span>{t('quick_workout')}</span>
         </button>
         <button
           onClick={() => router.push('/workouts/plans')}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Calendar className="h-4 w-4" />
-          <span>Browse Plans</span>
+          <span>{t('browse_plans')}</span>
         </button>
         <button
           onClick={() => router.push('/workouts/exercises')}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Dumbbell className="h-4 w-4" />
-          <span>Exercise Library</span>
+          <span>{t('exercise_library')}</span>
         </button>
       </div>
 
@@ -783,7 +783,7 @@ export default function WorkoutsPage() {
             <Dumbbell className="h-8 w-8 text-blue-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Workouts
+                {t('total_workouts')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {workouts.length}
@@ -796,7 +796,7 @@ export default function WorkoutsPage() {
             <CheckCircle className="h-8 w-8 text-green-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Completed
+                {t('completed')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {workouts.filter((w) => w.completed).length}
@@ -809,7 +809,7 @@ export default function WorkoutsPage() {
             <Clock className="h-8 w-8 text-orange-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Time
+                {t('total_time')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {workouts.reduce((acc, w) => acc + w.duration, 0)}m
@@ -822,7 +822,7 @@ export default function WorkoutsPage() {
             <TrendingUp className="h-8 w-8 text-purple-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                This Week
+                {t('this_week')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {
@@ -847,7 +847,7 @@ export default function WorkoutsPage() {
             <div className="flex items-center space-x-2">
               <Brain className="w-5 h-5 text-blue-600" />
               <h3 className="text-lg font-semibold text-gray-900">
-                AI Workout Intelligence
+                {t('ai_intelligence')}
               </h3>
               <Sparkles className="w-4 h-4 text-purple-500" />
             </div>
@@ -869,13 +869,15 @@ export default function WorkoutsPage() {
             {/* Workout Adaptations */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Plan Adaptations</h4>
+                <h4 className="font-medium text-gray-900">
+                  {t('plan_adaptations')}
+                </h4>
                 {aiSuggestions.adaptations && (
                   <ConfidenceIndicator score={0.8} size="sm" />
                 )}
               </div>
               <p className="text-sm text-gray-600 mb-3">
-                AI-powered workout plan optimizations based on your progress
+                {t('plan_adaptations_desc')}
               </p>
               <button
                 onClick={() => {
@@ -887,14 +889,16 @@ export default function WorkoutsPage() {
                 }
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >
-                Optimize My Plan
+                {t('optimize_my_plan')}
               </button>
             </div>
 
             {/* Injury Risk Assessment */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Injury Risk</h4>
+                <h4 className="font-medium text-gray-900">
+                  {t('injury_risk')}
+                </h4>
                 {aiSuggestions.injuryRisk && (
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -910,34 +914,36 @@ export default function WorkoutsPage() {
                 )}
               </div>
               <p className="text-sm text-gray-600 mb-3">
-                Assess injury risk and get prevention recommendations
+                {t('injury_risk_desc')}
               </p>
               <button
                 onClick={handleCheckInjuryRisk}
                 disabled={aiLoading}
                 className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >
-                Check Injury Risk
+                {t('check_injury_risk')}
               </button>
             </div>
 
             {/* Performance Analytics */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Performance</h4>
+                <h4 className="font-medium text-gray-900">
+                  {t('performance')}
+                </h4>
                 {aiSuggestions.performance && (
                   <ConfidenceIndicator score={0.8} size="sm" />
                 )}
               </div>
               <p className="text-sm text-gray-600 mb-3">
-                Analyze performance trends and get insights
+                {t('performance_desc')}
               </p>
               <button
                 onClick={() => setShowPerformanceAnalytics(true)}
                 disabled={aiLoading}
                 className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >
-                View Analytics
+                {t('view_analytics')}
               </button>
             </div>
           </div>
@@ -949,7 +955,7 @@ export default function WorkoutsPage() {
               className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
             >
               <Brain className="w-4 h-4" />
-              <span>Ask AI About Workouts</span>
+              <span>{t('ask_ai_about_workouts')}</span>
             </button>
             <button
               onClick={() => handleFindAlternatives('example-exercise-id')}
@@ -957,7 +963,7 @@ export default function WorkoutsPage() {
               className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
             >
               <Target className="w-4 h-4" />
-              <span>Find Exercise Alternatives</span>
+              <span>{t('find_exercise_alternatives')}</span>
             </button>
           </div>
         </div>
@@ -972,16 +978,16 @@ export default function WorkoutsPage() {
               <div className="col-span-full text-center py-12">
                 <Dumbbell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  No workout sessions yet
+                  {t('no_sessions')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Start by creating a new workout or using a workout plan.
+                  {t('no_sessions_desc')}
                 </p>
                 <button
                   onClick={() => updateActiveView('plans')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                 >
-                  View Workout Plans
+                  {t('view_workout_plans')}
                 </button>
               </div>
             ) : (
@@ -1008,14 +1014,14 @@ export default function WorkoutsPage() {
                           <button
                             onClick={() => editWorkoutSession(workout)}
                             className="text-gray-400 hover:text-blue-600 p-1"
-                            title="Edit workout"
+                            title={t('edit_workout')}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => deleteWorkoutSession(workout.id)}
                             className="text-gray-400 hover:text-red-600 p-1"
-                            title="Delete workout"
+                            title={t('delete_workout')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -1034,7 +1040,7 @@ export default function WorkoutsPage() {
                       </div>
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                         <Dumbbell className="h-4 w-4 mr-1" />
-                        {workout.exercises.length} exercises
+                        {workout.exercises.length} {t('exercises')}
                       </div>
                     </div>
 
@@ -1044,14 +1050,16 @@ export default function WorkoutsPage() {
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
                       >
                         <Play className="h-4 w-4" />
-                        <span>{workout.completed ? 'Repeat' : 'Start'}</span>
+                        <span>
+                          {workout.completed ? t('repeat') : t('start')}
+                        </span>
                       </button>
                       {!workout.completed && (
                         <button
                           onClick={() => completeWorkout(workout.id)}
                           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                         >
-                          Complete
+                          {t('complete')}
                         </button>
                       )}
                     </div>

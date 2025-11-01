@@ -496,12 +496,16 @@ export default function ProfilePage() {
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
           {[
-            { id: 'profile', name: 'Profile', icon: User },
-            { id: 'preferences', name: 'Preferences', icon: Settings },
-            { id: 'goals', name: 'Goals', icon: Target },
-            { id: 'measurements', name: 'Body Measurements', icon: Weight },
-            { id: 'ai-trainer', name: 'AI Trainer', icon: Bot },
-            { id: 'security', name: 'Security', icon: Shield },
+            { id: 'profile', name: t('tab_profile'), icon: User },
+            { id: 'preferences', name: t('tab_preferences'), icon: Settings },
+            { id: 'goals', name: t('tab_goals'), icon: Target },
+            {
+              id: 'measurements',
+              name: t('tab_body_measurements'),
+              icon: Weight,
+            },
+            { id: 'ai-trainer', name: t('tab_ai_trainer'), icon: Bot },
+            { id: 'security', name: t('tab_security'), icon: Shield },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -575,6 +579,7 @@ function ProfileTab({
   onImageUpload: (file: File) => void;
   uploading: boolean;
 }) {
+  const t = useTranslations('profile_page');
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -603,7 +608,7 @@ function ProfileTab({
               {profile.profileImageUrl ? (
                 <img
                   src={profile.profileImageUrl}
-                  alt="Profile"
+                  alt={t('tab_profile')}
                   className="w-24 h-24 rounded-full object-cover"
                 />
               ) : (
@@ -635,7 +640,8 @@ function ProfileTab({
             <p className="text-gray-600 dark:text-gray-400">{profile.email}</p>
             {profile.createdAt && (
               <p className="text-sm text-gray-500 dark:text-gray-500">
-                Member since {new Date(profile.createdAt).toLocaleDateString()}
+                {t('member_since')}{' '}
+                {new Date(profile.createdAt).toLocaleDateString()}
               </p>
             )}
           </div>
@@ -645,12 +651,12 @@ function ProfileTab({
       {/* Basic Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Basic Information
+          {t('basic_info')}
         </h3>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            First Name
+            {t('first_name')}
           </label>
           <input
             type="text"
@@ -661,7 +667,7 @@ function ProfileTab({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Email
+            {t('email')}
           </label>
           <input
             type="email"
@@ -673,20 +679,20 @@ function ProfileTab({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Bio
+            {t('bio')}
           </label>
           <textarea
             value={profile.bio || ''}
             onChange={(e) => onUpdate({ bio: e.target.value })}
             rows={3}
-            placeholder="Tell us about yourself..."
+            placeholder={t('bio_placeholder')}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Date of Birth
+            {t('date_of_birth')}
           </label>
           <input
             type="date"
@@ -698,17 +704,17 @@ function ProfileTab({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Gender
+            {t('gender')}
           </label>
           <select
             value={profile.gender || ''}
             onChange={(e) => onUpdate({ gender: e.target.value as any })}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="">Select gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
+            <option value="">{t('select_gender')}</option>
+            <option value="male">{t('male')}</option>
+            <option value="female">{t('female')}</option>
+            <option value="other">{t('other')}</option>
           </select>
         </div>
       </div>
@@ -716,11 +722,11 @@ function ProfileTab({
       {/* Physical Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Physical Information
+          {t('physical_info')}
         </h3>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Last Name
+            {t('last_name')}
           </label>
           <input
             type="text"
@@ -731,7 +737,7 @@ function ProfileTab({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Height (cm)
+            {t('height_cm')}
           </label>
           <input
             type="number"
@@ -745,17 +751,17 @@ function ProfileTab({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Fitness Level
+            {t('fitness_level')}
           </label>
           <select
             value={profile.fitnessLevel || ''}
             onChange={(e) => onUpdate({ fitnessLevel: e.target.value as any })}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="">Select fitness level</option>
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
+            <option value="">{t('select_fitness_level')}</option>
+            <option value="beginner">{t('beginner')}</option>
+            <option value="intermediate">{t('intermediate')}</option>
+            <option value="advanced">{t('advanced')}</option>
           </select>
         </div>
       </div>
@@ -770,30 +776,31 @@ function PreferencesTab({
   preferences: UserProfile['preferences'];
   onUpdate: (updates: Partial<UserProfile['preferences']>) => void;
 }) {
+  const t = useTranslations('profile_page');
   return (
     <div className="space-y-6">
       {/* Units */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Units
+          {t('units')}
         </h3>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Measurement System
+              {t('measurement_system')}
             </label>
             <select
               value={preferences.units}
               onChange={(e) => onUpdate({ units: e.target.value as any })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
-              <option value="metric">Metric (kg, cm)</option>
-              <option value="imperial">Imperial (lbs, ft)</option>
+              <option value="metric">{t('metric')}</option>
+              <option value="imperial">{t('imperial')}</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Timezone
+              {t('timezone')}
             </label>
             <select
               value={preferences.timezone}
@@ -816,20 +823,20 @@ function PreferencesTab({
       {/* Notifications */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Notifications
+          {t('notifications')}
         </h3>
         <div className="space-y-3">
           {[
-            { key: 'email', label: 'Email Notifications', icon: Bell },
-            { key: 'push', label: 'Push Notifications', icon: Bell },
+            { key: 'email', label: t('email_notifications'), icon: Bell },
+            { key: 'push', label: t('push_notifications'), icon: Bell },
             {
               key: 'workoutReminders',
-              label: 'Workout Reminders',
+              label: t('workout_reminders'),
               icon: Activity,
             },
             {
               key: 'nutritionReminders',
-              label: 'Nutrition Reminders',
+              label: t('nutrition_reminders'),
               icon: Heart,
             },
           ].map(({ key, label, icon: Icon }) => (
@@ -868,12 +875,12 @@ function PreferencesTab({
       {/* Privacy */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Privacy
+          {t('privacy')}
         </h3>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Profile Visibility
+              {t('profile_visibility')}
             </label>
             <select
               value={preferences.privacy.profileVisibility}
@@ -887,20 +894,20 @@ function PreferencesTab({
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
-              <option value="public">Public</option>
-              <option value="friends">Friends Only</option>
-              <option value="private">Private</option>
+              <option value="public">{t('public')}</option>
+              <option value="friends">{t('friends_only')}</option>
+              <option value="private">{t('private')}</option>
             </select>
           </div>
           {[
             {
               key: 'workoutSharing',
-              label: 'Share Workout Progress',
+              label: t('share_workout_progress'),
               icon: Activity,
             },
             {
               key: 'progressSharing',
-              label: 'Share Progress Photos',
+              label: t('share_progress_photos'),
               icon: Camera,
             },
           ].map(({ key, label, icon: Icon }) => (
@@ -946,6 +953,7 @@ function GoalsTab({
   profile: UserProfile;
   onUpdate: (updates: Partial<UserProfile>) => void;
 }) {
+  const t = useTranslations('profile_page');
   const [newGoal, setNewGoal] = useState('');
   const [dailyGoals, setDailyGoals] = useState({
     calories: 2000,
@@ -1002,14 +1010,14 @@ function GoalsTab({
       {/* Daily Goals Section */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Daily Goals
+          {t('daily_goals')}
         </h3>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Daily Calories
+                {t('daily_calories')}
               </label>
               <div className="flex items-center space-x-2">
                 <input
@@ -1025,14 +1033,14 @@ function GoalsTab({
                   placeholder="2000"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  kcal
+                  {t('kcal')}
                 </span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Water Intake
+                {t('water_intake')}
               </label>
               <div className="flex items-center space-x-2">
                 <input
@@ -1045,14 +1053,14 @@ function GoalsTab({
                   placeholder="8"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  glasses
+                  {t('glasses')}
                 </span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Protein
+                {t('protein')}
               </label>
               <div className="flex items-center space-x-2">
                 <input
@@ -1065,14 +1073,14 @@ function GoalsTab({
                   placeholder="150"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  g
+                  {t('g')}
                 </span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Carbohydrates
+                {t('carbohydrates')}
               </label>
               <div className="flex items-center space-x-2">
                 <input
@@ -1085,14 +1093,14 @@ function GoalsTab({
                   placeholder="200"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  g
+                  {t('g')}
                 </span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Fat
+                {t('fat')}
               </label>
               <div className="flex items-center space-x-2">
                 <input
@@ -1105,7 +1113,7 @@ function GoalsTab({
                   placeholder="65"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  g
+                  {t('g')}
                 </span>
               </div>
             </div>
@@ -1116,7 +1124,7 @@ function GoalsTab({
               onClick={saveDailyGoals}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
             >
-              Save Daily Goals
+              {t('save_daily_goals')}
             </button>
           </div>
         </div>
@@ -1125,7 +1133,7 @@ function GoalsTab({
       {/* Fitness Goals Section */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Fitness Goals
+          {t('fitness_goals')}
         </h3>
 
         {/* Add Goal Form */}
@@ -1134,7 +1142,7 @@ function GoalsTab({
             type="text"
             value={newGoal}
             onChange={(e) => setNewGoal(e.target.value)}
-            placeholder="Add a new goal..."
+            placeholder={t('add_goal_placeholder')}
             className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             onKeyPress={(e) => e.key === 'Enter' && addGoal()}
           />
@@ -1142,7 +1150,7 @@ function GoalsTab({
             onClick={addGoal}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
           >
-            Add
+            {t('add')}
           </button>
         </div>
 
@@ -1158,7 +1166,7 @@ function GoalsTab({
                 onClick={() => removeGoal(index)}
                 className="text-red-500 hover:text-red-700"
               >
-                Remove
+                {t('remove')}
               </button>
             </div>
           ))}
@@ -1209,7 +1217,7 @@ function AITrainerTab({
             '🔄 AI Trainer tab active - fetching fresh preferences...'
           );
           const response = await api.getUserPreferences(userId);
-          const result = await response?.json();
+          const result = response;
 
           if (result?.aiTrainer) {
             console.log(
@@ -1440,23 +1448,23 @@ function AITrainerTab({
 
   const user = useCurrentUser();
   console.log('AI preferences for user', user?.id, aiPreferences);
+  const t = useTranslations('profile_page');
   return (
     <div className="space-y-6">
       {/* Enable/Disable AI Trainer */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          AI Trainer Settings
+          {t('ai_trainer_settings')}
         </h3>
         <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div className="flex items-center space-x-3">
             <Bot className="h-6 w-6 text-blue-600" />
             <div>
               <h4 className="font-medium text-gray-900 dark:text-white">
-                Enable AI Trainer
+                {t('enable_ai_trainer')}
               </h4>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Get personalized workout and nutrition advice from our AI
-                trainer
+                {t('ai_trainer_description')}
               </p>
             </div>
           </div>
@@ -1860,6 +1868,8 @@ function AITrainerTab({
 }
 
 function SecurityTab() {
+  const t = useTranslations('profile_page');
+  const c = useTranslations('common');
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -1899,19 +1909,19 @@ function SecurityTab() {
 
     // Validation
     if (formData.newPassword !== formData.confirmPassword) {
-      setError('New passwords do not match');
+      setError(t('passwords_no_match'));
       setIsLoading(false);
       return;
     }
 
     if (formData.newPassword.length < 8) {
-      setError('New password must be at least 8 characters long');
+      setError(t('password_too_short'));
       setIsLoading(false);
       return;
     }
 
     if (formData.currentPassword === formData.newPassword) {
-      setError('New password must be different from current password');
+      setError(t('password_same_as_current'));
       setIsLoading(false);
       return;
     }
@@ -1922,7 +1932,7 @@ function SecurityTab() {
         newPassword: formData.newPassword,
       });
 
-      setSuccess('Password updated successfully!');
+      setSuccess(t('password_updated'));
       setFormData({
         currentPassword: '',
         newPassword: '',
@@ -1933,7 +1943,7 @@ function SecurityTab() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to update password. Please try again.');
+        setError(t('failed_update_password'));
       }
     } finally {
       setIsLoading(false);
@@ -1958,10 +1968,10 @@ function SecurityTab() {
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
           <Lock className="h-5 w-5 mr-2" />
-          Change Password
+          {t('change_password')}
         </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Update your password to keep your account secure
+          {t('change_password_subtitle')}
         </p>
       </div>
 
@@ -1990,7 +2000,7 @@ function SecurityTab() {
           {/* Current Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Current Password
+              {t('current_password')}
             </label>
             <div className="relative">
               <input
@@ -1999,7 +2009,7 @@ function SecurityTab() {
                 value={formData.currentPassword}
                 onChange={handleChange}
                 required
-                placeholder="Enter your current password"
+                placeholder={t('current_password_placeholder')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                          dark:bg-gray-700 dark:text-white pr-12"
@@ -2021,7 +2031,7 @@ function SecurityTab() {
           {/* New Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              New Password
+              {t('new_password')}
             </label>
             <div className="relative">
               <input
@@ -2030,7 +2040,7 @@ function SecurityTab() {
                 value={formData.newPassword}
                 onChange={handleChange}
                 required
-                placeholder="Enter your new password"
+                placeholder={t('new_password_placeholder')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                          dark:bg-gray-700 dark:text-white pr-12"
@@ -2053,7 +2063,7 @@ function SecurityTab() {
               <div className="mt-3">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600 dark:text-gray-400">
-                    Password Strength
+                    {t('password_strength')}
                   </span>
                   <span
                     className={`font-medium ${
@@ -2065,10 +2075,10 @@ function SecurityTab() {
                     }`}
                   >
                     {passwordStrength < 50
-                      ? 'Weak'
+                      ? t('weak')
                       : passwordStrength < 75
-                        ? 'Medium'
-                        : 'Strong'}
+                        ? t('good')
+                        : t('strong')}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -2100,7 +2110,7 @@ function SecurityTab() {
                           : 'bg-gray-300'
                       }`}
                     ></div>
-                    At least 8 characters
+                    {t('password_req_length')}
                   </div>
                   <div
                     className={`text-xs flex items-center ${
@@ -2118,7 +2128,8 @@ function SecurityTab() {
                           : 'bg-gray-300'
                       }`}
                     ></div>
-                    Uppercase & lowercase letters
+                    {t('password_req_uppercase')} &{' '}
+                    {t('password_req_lowercase')}
                   </div>
                   <div
                     className={`text-xs flex items-center ${
@@ -2134,7 +2145,7 @@ function SecurityTab() {
                           : 'bg-gray-300'
                       }`}
                     ></div>
-                    Numbers
+                    {t('password_req_number')}
                   </div>
                   <div
                     className={`text-xs flex items-center ${
@@ -2150,7 +2161,7 @@ function SecurityTab() {
                           : 'bg-gray-300'
                       }`}
                     ></div>
-                    Special characters
+                    {t('password_req_special')}
                   </div>
                 </div>
               </div>
@@ -2160,7 +2171,7 @@ function SecurityTab() {
           {/* Confirm New Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirm New Password
+              {t('confirm_new_password')}
             </label>
             <div className="relative">
               <input
@@ -2169,7 +2180,7 @@ function SecurityTab() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                placeholder="Confirm your new password"
+                placeholder={t('confirm_new_password_placeholder')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                          dark:bg-gray-700 dark:text-white pr-12"
@@ -2189,7 +2200,7 @@ function SecurityTab() {
             {formData.confirmPassword &&
               formData.newPassword !== formData.confirmPassword && (
                 <p className="mt-1 text-sm text-red-600">
-                  Passwords do not match
+                  {t('passwords_no_match')}
                 </p>
               )}
           </div>
@@ -2212,12 +2223,12 @@ function SecurityTab() {
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Updating...</span>
+                  <span>{c('saving')}</span>
                 </>
               ) : (
                 <>
                   <Lock className="h-4 w-4" />
-                  <span>Update Password</span>
+                  <span>{t('update_password')}</span>
                 </>
               )}
             </button>
@@ -2228,13 +2239,13 @@ function SecurityTab() {
       {/* Security Tips */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-          🔒 Security Tips
+          🔒 {t('security_tips')}
         </h4>
         <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-          <li>• Use a unique password that you don't use elsewhere</li>
-          <li>• Consider using a password manager</li>
-          <li>• Change your password regularly</li>
-          <li>• Never share your password with anyone</li>
+          <li>• {t('security_tip_unique_password')}</li>
+          <li>• {t('security_tip_password_manager')}</li>
+          <li>• {t('security_tip_change_regularly')}</li>
+          <li>• {t('security_tip_never_share')}</li>
         </ul>
       </div>
     </div>
@@ -2262,41 +2273,42 @@ function MeasurementsTab({
   saving,
   loading,
 }: MeasurementsTabProps) {
-  const t = useTranslations('profile');
+  const t = useTranslations('profile_page');
+  const c = useTranslations('common');
 
   return (
     <div className="space-y-6">
       {/* Add New Measurement */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Add New Measurement
+          {t('add_new_measurement')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Weight (kg)
+              {t('weight_kg')}
             </label>
             <input
               type="number"
               step="0.1"
               value={currentWeight}
               onChange={(e) => onWeightChange(e.target.value)}
-              placeholder="Enter your current weight"
+              placeholder={t('enter_current_weight')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Body Fat (%)
+              {t('body_fat_percent')}
             </label>
             <input
               type="number"
               step="0.1"
               value={currentBodyFat}
               onChange={(e) => onBodyFatChange(e.target.value)}
-              placeholder="Enter your body fat percentage"
+              placeholder={t('enter_body_fat')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
@@ -2308,21 +2320,21 @@ function MeasurementsTab({
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Save className="h-4 w-4" />
-          <span>{saving ? 'Saving...' : 'Save Measurement'}</span>
+          <span>{saving ? c('saving') : t('save_measurement')}</span>
         </button>
       </div>
 
       {/* Measurement History */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Recent Measurements
+          {t('recent_measurements')}
         </h3>
 
         {loading ? (
           <div className="text-center py-4">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
             <p className="text-gray-500 dark:text-gray-400 mt-2">
-              Loading measurements...
+              {t('loading_measurements')}
             </p>
           </div>
         ) : measurements.length > 0 ? (
@@ -2343,12 +2355,12 @@ function MeasurementsTab({
                 <div className="flex flex-col items-end space-y-1">
                   {measurement.weight && (
                     <span className="text-gray-900 dark:text-white">
-                      Weight: {measurement.weight} kg
+                      {t('weight_record', { value: measurement.weight })}
                     </span>
                   )}
                   {measurement.bodyFat && (
                     <span className="text-gray-900 dark:text-white">
-                      Body Fat: {measurement.bodyFat}%
+                      {t('bodyfat_record', { value: measurement.bodyFat })}
                     </span>
                   )}
                 </div>
@@ -2359,7 +2371,7 @@ function MeasurementsTab({
           <div className="text-center py-8">
             <Weight className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 dark:text-gray-400">
-              No measurements recorded yet. Add your first measurement above!
+              {t('no_measurements')}
             </p>
           </div>
         )}

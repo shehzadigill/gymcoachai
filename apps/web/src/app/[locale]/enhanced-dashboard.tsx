@@ -435,31 +435,31 @@ export default function DashboardPage() {
 
         const dailyGoals = [
           {
-            name: 'Calories',
+            name: t('goal_labels.calories'),
             current: Math.round(todaysCalories),
             target: dailyGoalsFromPrefs?.calories || 2000,
-            unit: 'kcal',
+            unit: t('units.kcal'),
           },
           {
-            name: 'Protein',
+            name: t('goal_labels.protein'),
             current: Math.round(todaysProtein),
             target: dailyGoalsFromPrefs?.protein || 150,
-            unit: 'g',
+            unit: t('units.g'),
           },
           {
-            name: 'Carbs',
+            name: t('goal_labels.carbs'),
             current: Math.round(todaysCarbs),
             target: dailyGoalsFromPrefs?.carbs || 200,
-            unit: 'g',
+            unit: t('units.g'),
           },
           {
-            name: 'Fat',
+            name: t('goal_labels.fat'),
             current: Math.round(todaysFat),
             target: dailyGoalsFromPrefs?.fat || 67,
-            unit: 'g',
+            unit: t('units.g'),
           },
           {
-            name: 'Water',
+            name: t('goal_labels.water'),
             current:
               nutritionData.water_intake ||
               nutritionData.waterIntake ||
@@ -467,13 +467,13 @@ export default function DashboardPage() {
               waterIntake?.glasses ||
               (typeof waterIntake === 'number' ? waterIntake : 0),
             target: dailyGoalsFromPrefs?.water || 8,
-            unit: 'glasses',
+            unit: t('units.glasses'),
           },
         ];
 
         const weeklyGoals = [
           {
-            name: 'Workouts',
+            name: t('goal_labels.workouts'),
             current: workoutsThisWeek,
             target:
               userProfile?.body?.weeklyWorkoutGoal ||
@@ -481,16 +481,16 @@ export default function DashboardPage() {
               (workoutPlans && workoutPlans.length > 0
                 ? workoutPlans[0].weeklyTarget || 4
                 : 4),
-            unit: 'sessions',
+            unit: t('units.sessions'),
           },
           {
-            name: 'Active Days',
+            name: t('goal_labels.active_days'),
             current: activeDaysThisWeek,
             target:
               userProfile?.body?.weeklyActiveDaysGoal ||
               userProfile?.weeklyActiveDaysGoal ||
               5,
-            unit: 'days',
+            unit: t('units.days'),
           },
         ];
 
@@ -764,10 +764,14 @@ export default function DashboardPage() {
         .slice(0, 3)
         .forEach((workout: any) => {
           if (workout) {
+            const duration =
+              workout.duration_minutes || workout.durationMinutes;
             activities.push({
               icon: <Dumbbell size={16} />,
-              title: `Completed ${workout.name || 'workout session'}`,
-              description: `Duration: ${workout.duration_minutes || workout.durationMinutes || 'N/A'} minutes`,
+              title: `${t('activity.completed')} ${workout.name || 'workout session'}`,
+              description: duration
+                ? t('activity.duration', { duration: duration })
+                : t('activity.duration_na'),
               timestamp: formatTimeAgo(
                 workout.completedAt ||
                   workout.completed_at ||
@@ -871,8 +875,12 @@ export default function DashboardPage() {
         }
       });
 
+      // Get localized weekday name
+      const dayOfWeek = date.getDay();
+      const weekdayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
       last7Days.push({
-        label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        label: t(`weekdays.${weekdayKeys[dayOfWeek]}`),
         value: dayWorkouts.length,
         timestamp: dateStr,
       });
@@ -884,6 +892,7 @@ export default function DashboardPage() {
   const processNutritionHistory = (meals: any[], nutritionStats: any) => {
     // Use real nutrition data from the last 7 days
     const last7Days = [];
+    const weekdayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
     // If we have comprehensive nutrition stats, use weekly data
     if (nutritionStats?.weekly_calories) {
@@ -893,9 +902,10 @@ export default function DashboardPage() {
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
+        const dayOfWeek = date.getDay();
 
         last7Days.push({
-          label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          label: t(`weekdays.${weekdayKeys[dayOfWeek]}`),
           value: i === 0 ? nutritionStats.today_calories || 0 : avgDaily,
           timestamp: date.toISOString().split('T')[0],
         });
@@ -906,6 +916,7 @@ export default function DashboardPage() {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
+        const dayOfWeek = date.getDay();
 
         // For today, use today's meals, for other days use estimated data
         const calories =
@@ -918,7 +929,7 @@ export default function DashboardPage() {
             : 1800; // Default estimate
 
         last7Days.push({
-          label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          label: t(`weekdays.${weekdayKeys[dayOfWeek]}`),
           value: calories,
           timestamp: dateStr,
         });
@@ -955,12 +966,12 @@ export default function DashboardPage() {
       // Return demo data so users can see the chart structure
       console.log('No strength data available, using demo data');
       return [
-        { label: 'Chest', value: 135 },
-        { label: 'Back', value: 165 },
-        { label: 'Shoulders', value: 95 },
-        { label: 'Arms', value: 85 },
-        { label: 'Legs', value: 225 },
-        { label: 'Core', value: 45 },
+        { label: t('muscle_groups.chest'), value: 135 },
+        { label: t('muscle_groups.back'), value: 165 },
+        { label: t('muscle_groups.shoulders'), value: 95 },
+        { label: t('muscle_groups.arms'), value: 85 },
+        { label: t('muscle_groups.legs'), value: 225 },
+        { label: t('muscle_groups.core'), value: 45 },
       ];
     }
 
@@ -1015,12 +1026,12 @@ export default function DashboardPage() {
     if (processedData.length === 0) {
       console.log('No valid strength data found, returning demo data');
       return [
-        { label: 'Chest', value: 135 },
-        { label: 'Back', value: 165 },
-        { label: 'Shoulders', value: 95 },
-        { label: 'Arms', value: 85 },
-        { label: 'Legs', value: 225 },
-        { label: 'Core', value: 45 },
+        { label: t('muscle_groups.chest'), value: 135 },
+        { label: t('muscle_groups.back'), value: 165 },
+        { label: t('muscle_groups.shoulders'), value: 95 },
+        { label: t('muscle_groups.arms'), value: 85 },
+        { label: t('muscle_groups.legs'), value: 225 },
+        { label: t('muscle_groups.core'), value: 45 },
       ];
     }
 
@@ -1273,22 +1284,26 @@ export default function DashboardPage() {
             }}
             icon={Dumbbell}
             iconColor="text-blue-600"
-            description={`Total: ${data?.totalWorkouts || 0} sessions`}
+            description={t('total_sessions', {
+              count: data?.totalWorkouts || 0,
+            })}
           />
           <MetricCard
             title={t('stats.day_streak')}
-            value={`${data?.currentStreak || 0} days`}
+            value={`${data?.currentStreak || 0} ${t('units.days')}`}
             change={{ value: 3, period: t('vs_last_week'), positive: true }}
             icon={Flame}
             iconColor="text-orange-600"
-            description="Keep the momentum going!"
+            description={t('keep_momentum')}
           />
           <MetricCard
             title={t('stats.calories_today')}
             value={`${data?.caloriesToday || 0}`}
             icon={Target}
             iconColor="text-green-600"
-            description={`Goal: ${data?.calorieGoal || 2000} kcal`}
+            description={t('goal_calories', {
+              count: data?.calorieGoal || 2000,
+            })}
           >
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div
@@ -1328,7 +1343,7 @@ export default function DashboardPage() {
             value={`${data?.nutritionScore || 0}/100`}
             icon={Trophy}
             iconColor="text-yellow-600"
-            description="Daily nutrition quality"
+            description={t('daily_nutrition_quality')}
           >
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div
@@ -1342,10 +1357,10 @@ export default function DashboardPage() {
 
           <MetricCard
             title={t('nutrition_streak')}
-            value={`${data?.nutritionStreak || 0} days`}
+            value={`${data?.nutritionStreak || 0} ${t('units.days')}`}
             icon={Flame}
             iconColor="text-red-600"
-            description="Consecutive logging days"
+            description={t('consecutive_logging_days')}
           />
 
           <MetricCard
@@ -1353,27 +1368,33 @@ export default function DashboardPage() {
             value={`${data?.mealsToday || 0}`}
             icon={Utensils}
             iconColor="text-green-600"
-            description={`Avg: ${Math.round((data?.weeklyCalorieAvg || 0) / 7)} cal/day`}
+            description={t('avg_calories_day', {
+              count: Math.round((data?.weeklyCalorieAvg || 0) / 7),
+            })}
           />
 
           <MetricCard
             title={t('protein_today')}
-            value={`${Math.round(data?.todaysProtein || 0)}g`}
+            value={`${Math.round(data?.todaysProtein || 0)}${t('units.g')}`}
             icon={Apple}
             iconColor="text-purple-600"
-            description={`${Math.round(data?.macroBalance?.protein || 0)}% of calories`}
+            description={t('percent_of_calories', {
+              percent: Math.round(data?.macroBalance?.protein || 0),
+            })}
           >
             <div className="flex space-x-2 mt-2 text-xs">
               <div className="flex-1">
-                <div className="text-gray-500">Carbs</div>
+                <div className="text-gray-500">{t('carbs')}</div>
                 <div className="font-semibold">
-                  {Math.round(data?.todaysCarbs || 0)}g
+                  {Math.round(data?.todaysCarbs || 0)}
+                  {t('units.g')}
                 </div>
               </div>
               <div className="flex-1">
-                <div className="text-gray-500">Fat</div>
+                <div className="text-gray-500">{t('fat')}</div>
                 <div className="font-semibold">
-                  {Math.round(data?.todaysFat || 0)}g
+                  {Math.round(data?.todaysFat || 0)}
+                  {t('units.g')}
                 </div>
               </div>
             </div>

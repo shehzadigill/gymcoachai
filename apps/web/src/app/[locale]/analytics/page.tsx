@@ -721,7 +721,9 @@ export default function AnalyticsPage() {
                   ? ('up' as const)
                   : ('down' as const),
             }}
-            description={`${analytics.total_workouts} total workouts`}
+            description={t('metric_descriptions.total_workouts', {
+              count: analytics.total_workouts,
+            })}
           />
         )}
 
@@ -746,7 +748,7 @@ export default function AnalyticsPage() {
                 (analytics.calories_burned_this_week || 0) > 0 ? 10 : 0,
               trend: 'up' as const,
             }}
-            description="Weekly calories burned"
+            description={t('metric_descriptions.weekly_calories')}
           />
         )}
 
@@ -794,8 +796,8 @@ export default function AnalyticsPage() {
               analytics.body_measurements.find(
                 (m) => m.measurement_type === 'weight'
               )
-                ? 'Latest measurement'
-                : 'No data available'
+                ? t('metric_descriptions.latest_measurement')
+                : t('no_data')
             }
           />
         )}
@@ -843,7 +845,7 @@ export default function AnalyticsPage() {
                   ? ('up' as const)
                   : ('stable' as const),
             }}
-            description="Monthly workout goal (12 sessions)"
+            description={t('metric_descriptions.monthly_goal')}
           />
         )}
 
@@ -865,7 +867,7 @@ export default function AnalyticsPage() {
               percentage: analytics.volume_load_trend || 0,
               trend: (analytics.volume_load_trend || 0) > 0 ? 'up' : 'down',
             }}
-            description="Weight × reps across all exercises"
+            description={t('metric_descriptions.avg_volume')}
           />
         )}
 
@@ -891,7 +893,7 @@ export default function AnalyticsPage() {
                   ? ('up' as const)
                   : ('stable' as const),
             }}
-            description="Average time per workout"
+            description={t('metric_descriptions.avg_time_per_workout')}
           />
         )}
 
@@ -919,7 +921,7 @@ export default function AnalyticsPage() {
                     ? 'stable'
                     : 'down',
             }}
-            description="Workout frequency consistency"
+            description={t('metric_descriptions.frequency_consistency')}
           />
         )}
 
@@ -947,7 +949,7 @@ export default function AnalyticsPage() {
                     ? 'stable'
                     : 'down',
             }}
-            description="Average workout intensity"
+            description={t('metric_descriptions.average_intensity')}
           />
         )}
 
@@ -977,7 +979,7 @@ export default function AnalyticsPage() {
                   ? ('up' as const)
                   : ('stable' as const),
             }}
-            description="New personal records set"
+            description={t('metric_descriptions.new_prs')}
           />
         )}
       </div>
@@ -1006,9 +1008,11 @@ export default function AnalyticsPage() {
               <div className="h-48 flex items-center justify-center bg-gray-50 rounded-lg">
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 text-blue-500 mx-auto mb-2" />
-                  <p className="text-gray-600">Strength trending upward</p>
+                  <p className="text-gray-600">
+                    {t('trends.strength_trending_upward')}
+                  </p>
                   <p className="text-sm text-gray-500">
-                    +{analytics.volume_load_trend || 0}% this period
+                    +{analytics.volume_load_trend || 0}% {t('this_period')}
                   </p>
                 </div>
               </div>
@@ -1082,7 +1086,7 @@ export default function AnalyticsPage() {
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Top Muscle Groups
+              {t('top_muscle_groups')}
             </h3>
             <div className="space-y-3">
               {analytics.favorite_exercises.length > 0
@@ -1110,7 +1114,7 @@ export default function AnalyticsPage() {
                         </div>
                       );
                     })
-                : [{ name: 'No workout data available', percentage: 0 }].map(
+                : [{ name: t('no_workout_data'), percentage: 0 }].map(
                     (muscle) => (
                       <div
                         key={muscle.name}
@@ -1157,7 +1161,9 @@ export default function AnalyticsPage() {
                     <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <Trophy className="h-5 w-5 text-yellow-500 flex-shrink-0" />
                       <span className="text-gray-700 font-medium">
-                        {analytics.current_streak} Day Streak!
+                        {t('achievements.day_streak', {
+                          count: analytics.current_streak,
+                        })}
                       </span>
                     </div>
                   )}
@@ -1165,7 +1171,9 @@ export default function AnalyticsPage() {
                     <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
                       <Award className="h-5 w-5 text-green-500 flex-shrink-0" />
                       <span className="text-gray-700 font-medium">
-                        Perfect Week ({analytics.workouts_this_week} workouts)
+                        {t('achievements.perfect_week', {
+                          count: analytics.workouts_this_week,
+                        })}
                       </span>
                     </div>
                   )}
@@ -1173,7 +1181,9 @@ export default function AnalyticsPage() {
                     <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <Target className="h-5 w-5 text-blue-500 flex-shrink-0" />
                       <span className="text-gray-700 font-medium">
-                        Consistency Master ({analytics.total_workouts} total)
+                        {t('achievements.consistency_master', {
+                          count: analytics.total_workouts,
+                        })}
                       </span>
                     </div>
                   )}
@@ -1183,7 +1193,7 @@ export default function AnalyticsPage() {
                       <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <Target className="h-5 w-5 text-gray-500 flex-shrink-0" />
                         <span className="text-gray-700 font-medium">
-                          Keep going! More achievements coming soon.
+                          {t('achievements.keep_going')}
                         </span>
                       </div>
                     )}
@@ -1198,27 +1208,27 @@ export default function AnalyticsPage() {
       {(viewMode === 'overview' || viewMode === 'detailed') && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <MetricCard
-            title="Personal Records"
+            title={t('metrics.personal_records')}
             value={analytics.personal_records_count || 0}
             icon={<Trophy className="h-6 w-6" />}
             color="yellow"
-            description="New PRs this period"
+            description={t('metric_descriptions.new_prs')}
           />
 
           <MetricCard
-            title="Weekly Frequency"
+            title={t('metrics.weekly_frequency')}
             value={analytics.weekly_frequency || 0}
             icon={<Calendar className="h-6 w-6" />}
             color="blue"
-            description="Workouts per week"
+            description={t('metric_descriptions.workouts_per_week')}
           />
 
           <MetricCard
-            title="Achievements"
+            title={t('metrics.achievements')}
             value={analytics.achievement_count || 0}
             icon={<Award className="h-6 w-6" />}
             color="green"
-            description="Total achievements"
+            description={t('metric_descriptions.total_achievements')}
           />
         </div>
       )}

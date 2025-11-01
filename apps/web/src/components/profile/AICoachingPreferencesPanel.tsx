@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Bot,
   Brain,
   MessageSquare,
   Target,
-  Clock,
-  Settings,
   Save,
   RefreshCw,
   CheckCircle,
@@ -17,10 +16,8 @@ import {
   Zap,
   BookOpen,
   Shield,
-  Users,
 } from 'lucide-react';
 import { aiService } from '../../lib/ai-service-client';
-import { ConfidenceIndicator } from '../ai/visualizations';
 import { api } from '../../lib/api-client';
 
 // AI Preferences interface for the user profile service
@@ -164,6 +161,8 @@ export default function AICoachingPreferencesPanel({
   onPreferencesUpdate,
   className = '',
 }: AICoachingPreferencesPanelProps) {
+  const t = useTranslations('profile_page');
+
   console.log(
     '🔧 AICoachingPreferencesPanel - currentPreferences prop:',
     currentPreferences
@@ -173,8 +172,6 @@ export default function AICoachingPreferencesPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [personalizationProfile, setPersonalizationProfile] =
-    useState<any>(null);
   const [preferences, setPreferences] = useState<AIPreferences>(() => {
     const defaultPrefs = {
       enabled: true,
@@ -215,7 +212,7 @@ export default function AICoachingPreferencesPanel({
 
       // Fetch AI preferences from user profile service
       const res = await api.getUserPreferences(userId);
-      const userPreferencesResponse = await res?.json();
+      const userPreferencesResponse = res;
       console.log('User preferences response:', userPreferencesResponse);
 
       if (userPreferencesResponse?.aiTrainer) {
@@ -470,19 +467,16 @@ export default function AICoachingPreferencesPanel({
         <div className="flex items-center space-x-2">
           <Bot className="w-5 h-5 text-purple-600" />
           <h3 className="text-lg font-semibold text-gray-900">
-            AI Coaching Preferences
+            {t('ai_coaching_preferences')}
           </h3>
           <Sparkles className="w-4 h-4 text-purple-500" />
         </div>
         <div className="flex items-center space-x-4">
-          {personalizationProfile && (
-            <ConfidenceIndicator
-              score={personalizationProfile.confidence || 0.8}
-            />
-          )}
           {/* AI Trainer Enable/Disable Toggle */}
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">AI Trainer:</span>
+            <span className="text-sm text-gray-600">
+              {t('ai_trainer_label')}
+            </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -503,44 +497,11 @@ export default function AICoachingPreferencesPanel({
             <span
               className={`text-sm font-medium ${preferences.enabled ? 'text-green-600' : 'text-gray-400'}`}
             >
-              {preferences.enabled ? 'Enabled' : 'Disabled'}
+              {preferences.enabled ? t('enabled') : t('disabled')}
             </span>
           </div>
         </div>
       </div>
-
-      {/* AI Analysis */}
-      {personalizationProfile && (
-        <div className="bg-white rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-medium text-gray-900">AI Analysis</h4>
-            <button
-              onClick={handleAnalyzePreferences}
-              disabled={loading}
-              className="text-sm text-purple-600 hover:text-purple-700 flex items-center space-x-1"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
-              />
-              <span>Re-analyze</span>
-            </button>
-          </div>
-          <div className="text-sm text-gray-600">
-            <p className="mb-2">
-              <strong>Current Style:</strong>{' '}
-              {personalizationProfile.coachingStyle || 'Not analyzed'}
-            </p>
-            <p className="mb-2">
-              <strong>Communication Style:</strong>{' '}
-              {personalizationProfile.communicationStyle || 'Not analyzed'}
-            </p>
-            <p>
-              <strong>Motivation Type:</strong>{' '}
-              {personalizationProfile.motivationType || 'Not analyzed'}
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="flex space-x-2 mb-6">
@@ -552,7 +513,7 @@ export default function AICoachingPreferencesPanel({
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Coaching Style
+          {t('coaching_style_tab')}
         </button>
         <button
           onClick={() => setActiveTab('communication')}
@@ -562,7 +523,7 @@ export default function AICoachingPreferencesPanel({
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Communication
+          {t('communication_tab')}
         </button>
         <button
           onClick={() => setActiveTab('goals')}
@@ -572,7 +533,7 @@ export default function AICoachingPreferencesPanel({
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Goals & Focus
+          {t('goals_focus_tab')}
         </button>
         <button
           onClick={() => setActiveTab('equipment')}
@@ -582,7 +543,7 @@ export default function AICoachingPreferencesPanel({
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Equipment
+          {t('equipment_tab')}
         </button>
       </div>
 
@@ -591,11 +552,10 @@ export default function AICoachingPreferencesPanel({
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center mb-6">
           <Bot className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-gray-600 mb-2">
-            AI Trainer Disabled
+            {t('ai_trainer_disabled')}
           </h4>
           <p className="text-gray-500 mb-4">
-            Enable the AI trainer toggle above to configure your coaching
-            preferences.
+            {t('enable_ai_trainer_description')}
           </p>
         </div>
       )}
@@ -608,7 +568,7 @@ export default function AICoachingPreferencesPanel({
           <div className="space-y-4">
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Select Your Preferred Coaching Style
+                {t('select_preferred_coaching_style')}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {coachingStyles.map((style) => {
@@ -629,17 +589,18 @@ export default function AICoachingPreferencesPanel({
                         <IconComponent className="w-6 h-6 text-purple-600 mt-1" />
                         <div className="flex-1">
                           <h5 className="font-medium text-gray-900 mb-1">
-                            {style.name}
+                            {t(`coaching_style_${style.id}`)}
                           </h5>
                           <p className="text-sm text-gray-600 mb-2">
-                            {style.description}
+                            {t(`coaching_style_${style.id}_desc`)}
                           </p>
                           <div className="text-xs text-gray-500 mb-2">
-                            <strong>Characteristics:</strong>{' '}
-                            {style.characteristics.join(', ')}
+                            <strong>{t('characteristics')}:</strong>{' '}
+                            {t(`coaching_style_${style.id}_chars`)}
                           </div>
                           <div className="text-xs text-gray-500 italic">
-                            "{style.example}"
+                            &apos;{t(`coaching_style_${style.id}_example`)}
+                            &apos;
                           </div>
                         </div>
                       </div>
@@ -651,7 +612,7 @@ export default function AICoachingPreferencesPanel({
 
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Motivation Type
+                {t('motivation_type_section')}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {motivationTypes.map((type) => (
@@ -675,10 +636,10 @@ export default function AICoachingPreferencesPanel({
                     />
                     <div className="text-center">
                       <div className="font-medium text-sm text-gray-900">
-                        {type.name}
+                        {t(`motivation_type_${type.id}`)}
                       </div>
                       <div className="text-xs text-gray-600 mt-1">
-                        {type.description}
+                        {t(`motivation_type_${type.id}_desc`)}
                       </div>
                     </div>
                   </label>
@@ -693,7 +654,7 @@ export default function AICoachingPreferencesPanel({
           <div className="space-y-4">
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Communication Frequency
+                {t('communication_frequency')}
               </h4>
               <div className="space-y-3">
                 {communicationFrequencies.map((freq) => (
@@ -722,10 +683,10 @@ export default function AICoachingPreferencesPanel({
                       <MessageSquare className="w-5 h-5 text-purple-600" />
                       <div>
                         <div className="font-medium text-gray-900">
-                          {freq.name}
+                          {t(`communication_freq_${freq.id}`)}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {freq.description}
+                          {t(`communication_freq_${freq.id}_desc`)}
                         </div>
                       </div>
                     </div>
@@ -736,12 +697,12 @@ export default function AICoachingPreferencesPanel({
 
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Workout Preferences
+                {t('workout_preferences')}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Workout Duration (minutes)
+                    {t('workout_duration_minutes')}
                   </label>
                   <input
                     type="number"
@@ -759,7 +720,7 @@ export default function AICoachingPreferencesPanel({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Workout Days Per Week
+                    {t('workout_days_per_week')}
                   </label>
                   <input
                     type="number"
@@ -784,7 +745,9 @@ export default function AICoachingPreferencesPanel({
         {activeTab === 'goals' && (
           <div className="space-y-4">
             <div className="bg-white rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-4">Focus Areas</h4>
+              <h4 className="font-medium text-gray-900 mb-4">
+                {t('focus_areas')}
+              </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   'Strength',
@@ -819,7 +782,9 @@ export default function AICoachingPreferencesPanel({
                     <div className="text-center">
                       <Target className="w-5 h-5 text-purple-600 mx-auto mb-1" />
                       <div className="text-sm font-medium text-gray-900">
-                        {area}
+                        {t(
+                          `focus_area_${area.toLowerCase().replace(' ', '_')}`
+                        )}
                       </div>
                     </div>
                   </label>
@@ -829,7 +794,7 @@ export default function AICoachingPreferencesPanel({
 
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Meal Preferences
+                {t('meal_preferences')}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
@@ -864,7 +829,9 @@ export default function AICoachingPreferencesPanel({
                     />
                     <div className="text-center">
                       <div className="text-sm font-medium text-gray-900">
-                        {pref}
+                        {t(
+                          `meal_pref_${pref.toLowerCase().replace('-', '_').replace(' ', '_')}`
+                        )}
                       </div>
                     </div>
                   </label>
@@ -874,7 +841,7 @@ export default function AICoachingPreferencesPanel({
 
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Allergies & Restrictions
+                {t('allergies_restrictions')}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
@@ -909,7 +876,7 @@ export default function AICoachingPreferencesPanel({
                     />
                     <div className="text-center">
                       <div className="text-sm font-medium text-gray-900">
-                        {allergy}
+                        {t(`allergy_${allergy.toLowerCase()}`)}
                       </div>
                     </div>
                   </label>
@@ -924,7 +891,7 @@ export default function AICoachingPreferencesPanel({
           <div className="space-y-4">
             <div className="bg-white rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-4">
-                Available Equipment
+                {t('available_equipment')}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
@@ -965,7 +932,12 @@ export default function AICoachingPreferencesPanel({
                     />
                     <div className="text-center">
                       <div className="text-sm font-medium text-gray-900">
-                        {equipment}
+                        {t(
+                          `equipment_${equipment
+                            .toLowerCase()
+                            .replace(/[-\s]+/g, '_')
+                            .replace(/[^a-z0-9_]/g, '')}`
+                        )}
                       </div>
                     </div>
                   </label>
@@ -974,7 +946,9 @@ export default function AICoachingPreferencesPanel({
             </div>
 
             <div className="bg-white rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-4">Injury History</h4>
+              <h4 className="font-medium text-gray-900 mb-4">
+                {t('injury_history')}
+              </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   'Knee',
@@ -1008,7 +982,7 @@ export default function AICoachingPreferencesPanel({
                     />
                     <div className="text-center">
                       <div className="text-sm font-medium text-gray-900">
-                        {injury}
+                        {t(`injury_${injury.toLowerCase()}`)}
                       </div>
                     </div>
                   </label>
@@ -1050,7 +1024,7 @@ export default function AICoachingPreferencesPanel({
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{saving ? 'Saving...' : 'Save Preferences'}</span>
+          <span>{saving ? t('saving') : t('save_preferences')}</span>
         </button>
         <button
           onClick={handleAnalyzePreferences}
@@ -1058,7 +1032,7 @@ export default function AICoachingPreferencesPanel({
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
         >
           <Brain className="w-4 h-4" />
-          <span>AI Analysis</span>
+          <span>{t('ai_analysis_button')}</span>
         </button>
       </div>
     </div>

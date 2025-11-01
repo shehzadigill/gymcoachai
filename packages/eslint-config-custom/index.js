@@ -1,8 +1,8 @@
 module.exports = {
   extends: [
     'next/core-web-vitals',
-    'turbo/recommended',
-    '@typescript-eslint/recommended',
+    'turbo',
+    'plugin:@typescript-eslint/recommended',
   ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],

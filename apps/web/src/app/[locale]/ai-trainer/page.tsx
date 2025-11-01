@@ -348,7 +348,7 @@ export default function AITrainerPage() {
 
     const trimmedTitle = editingTitle.trim();
     if (trimmedTitle.length > 100) {
-      alert('Title too long (max 100 characters)');
+      alert(t('title_too_long'));
       return;
     }
 
@@ -377,7 +377,7 @@ export default function AITrainerPage() {
       console.log('Conversation title updated successfully');
     } catch (error) {
       console.error('Failed to update conversation title:', error);
-      alert('Failed to update conversation title');
+      alert(t('failed_to_update_title'));
     }
   };
 
@@ -491,7 +491,7 @@ export default function AITrainerPage() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: t('error_message'),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -529,7 +529,7 @@ export default function AITrainerPage() {
       );
       if (response.success) {
         // Show summary in a modal or notification
-        alert(`Conversation Summary:\n\n${response.data.summary}`);
+        alert(t('conversation_summary', { summary: response.data.summary }));
       }
     } catch (error) {
       console.error('Failed to summarize conversation:', error);
@@ -576,7 +576,7 @@ export default function AITrainerPage() {
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-500">Loading AI Trainer...</p>
+          <p className="text-gray-500">{t('loading')}</p>
         </div>
       </div>
     );
@@ -589,16 +589,16 @@ export default function AITrainerPage() {
         <div className="text-center">
           <Bot className="h-16 w-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Authentication Required
+            {t('auth_required_title')}
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Please sign in to access the AI Trainer
+            {t('auth_required_message')}
           </p>
           <Link
             href="/auth/signin"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Sign In
+            {tCommon('sign_in')}
           </Link>
         </div>
       </div>
@@ -615,10 +615,10 @@ export default function AITrainerPage() {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-              AI Trainer
+              {t('title')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Your personal fitness coach powered by AI
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -704,7 +704,7 @@ export default function AITrainerPage() {
               <div className="flex items-center justify-between">
                 {!conversationsCollapsed && (
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Conversations
+                    {t('conversations')}
                   </h2>
                 )}
                 <button
@@ -714,8 +714,8 @@ export default function AITrainerPage() {
                   className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
                   title={
                     conversationsCollapsed
-                      ? 'Expand conversations'
-                      : 'Collapse conversations'
+                      ? t('expand_conversations')
+                      : t('collapse_conversations')
                   }
                 >
                   <Menu className="h-4 w-4" />
@@ -727,7 +727,7 @@ export default function AITrainerPage() {
                     type="text"
                     value={conversationSearch}
                     onChange={(e) => setConversationSearch(e.target.value)}
-                    placeholder="Search conversations..."
+                    placeholder={t('search_conversations')}
                     className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -737,7 +737,7 @@ export default function AITrainerPage() {
               {conversations.length === 0 ? (
                 !conversationsCollapsed && (
                   <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                    No conversations yet
+                    {t('no_conversations')}
                   </div>
                 )
               ) : (
@@ -840,7 +840,7 @@ export default function AITrainerPage() {
                                   ? new Date(
                                       conversation.lastMessageAt
                                     ).toLocaleDateString()
-                                  : 'Unknown date'}
+                                  : t('unknown_date')}
                               </p>
                             </div>
                             <button
@@ -868,7 +868,7 @@ export default function AITrainerPage() {
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                AI Analytics
+                {t('ai_analytics')}
               </h3>
             </div>
             <div className="p-4 space-y-4 overflow-y-auto">
@@ -876,12 +876,12 @@ export default function AITrainerPage() {
               {conversationAnalytics && (
                 <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Conversation Insights
+                    {t('conversation_insights')}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">
-                        Messages:
+                        {t('messages')}:
                       </span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         {conversationAnalytics.engagementMetrics.messageCount}
@@ -889,7 +889,7 @@ export default function AITrainerPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">
-                        Satisfaction:
+                        {t('satisfaction')}:
                       </span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         {
@@ -901,7 +901,7 @@ export default function AITrainerPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">
-                        Sentiment:
+                        {t('sentiment')}:
                       </span>
                       <span
                         className={`font-medium ${
@@ -925,7 +925,7 @@ export default function AITrainerPage() {
               {proactiveInsights.length > 0 && (
                 <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Proactive Insights
+                    {t('proactive_insights')}
                   </h4>
                   <div className="space-y-2">
                     {proactiveInsights.slice(0, 3).map((insight) => (
@@ -949,19 +949,19 @@ export default function AITrainerPage() {
               {ragStats && (
                 <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Knowledge Base
+                    {t('knowledge_base')}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
-                        Total Sources:
+                        {t('total_sources')}:
                       </span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         {ragStats.totalVectors.toLocaleString()}
                       </span>
                     </div>
                     <div className="text-gray-600 dark:text-gray-400">
-                      <span className="text-xs">Namespaces:</span>
+                      <span className="text-xs">{t('namespaces')}:</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {ragStats.namespaces.map((ns) => (
                           <span
@@ -986,14 +986,14 @@ export default function AITrainerPage() {
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Personalization
+                {t('personalization')}
               </h3>
             </div>
             <div className="p-4 space-y-4 overflow-y-auto">
               {/* Coaching Style Selector */}
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                  Coaching Style
+                  {t('coaching_style')}
                 </h4>
                 <div className="space-y-2">
                   {[
@@ -1025,7 +1025,7 @@ export default function AITrainerPage() {
                 <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                     <Brain className="h-4 w-4" />
-                    All AI Memories ({userMemories.length})
+                    {t('all_ai_memories', { count: userMemories.length })}
                   </h4>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {userMemories.map((memory) => (
@@ -1059,12 +1059,12 @@ export default function AITrainerPage() {
               {personalizationProfile && (
                 <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Profile
+                    {t('profile')}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
-                        Communication:
+                        {t('communication')}:
                       </span>
                       <span className="font-medium capitalize text-gray-900 dark:text-white">
                         {personalizationProfile.communicationStyle}
@@ -1072,7 +1072,7 @@ export default function AITrainerPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
-                        Motivation:
+                        {t('motivation')}:
                       </span>
                       <span className="font-medium capitalize text-gray-900 dark:text-white">
                         {personalizationProfile.motivationType}
@@ -1080,7 +1080,7 @@ export default function AITrainerPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
-                        Confidence:
+                        {t('confidence')}:
                       </span>
                       <ConfidenceIndicator
                         score={personalizationProfile.confidence}
@@ -1103,86 +1103,75 @@ export default function AITrainerPage() {
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <Bot className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  Welcome to your AI Trainer!
+                  {t('welcome_title')}
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
-                  I'm here to help you with workout plans, nutrition advice,
-                  form checks, and motivation. What would you like to know?
+                  {t('welcome_message')}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
                   <button
                     onClick={() =>
-                      setInputMessage(
-                        'Create a personalized 4-day workout split for me'
-                      )
+                      setInputMessage(t('quick_action_workout_plan'))
                     }
                     className="p-4 text-left bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <Dumbbell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       <div className="font-medium text-gray-900 dark:text-white">
-                        Smart Workout Plan
+                        {t('smart_workout_plan_title')}
                       </div>
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
-                      AI-powered personalized routines
+                      {t('smart_workout_plan_desc')}
                     </div>
                   </button>
 
                   <button
-                    onClick={() =>
-                      setInputMessage(
-                        'Create a weekly meal plan optimized for my goals'
-                      )
-                    }
+                    onClick={() => setInputMessage(t('quick_action_meal_plan'))}
                     className="p-4 text-left bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200 dark:border-green-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <Apple className="h-6 w-6 text-green-600 dark:text-green-400" />
                       <div className="font-medium text-gray-900 dark:text-white">
-                        Nutrition Intelligence
+                        {t('nutrition_intelligence_title')}
                       </div>
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
-                      AI-optimized meal planning
+                      {t('nutrition_intelligence_desc')}
                     </div>
                   </button>
 
                   <button
                     onClick={() =>
-                      setInputMessage(
-                        'Analyze my recent workout performance and suggest improvements'
-                      )
+                      setInputMessage(t('quick_action_progress_analysis'))
                     }
                     className="p-4 text-left bg-purple-50 dark:bg-purple-900/30 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                       <div className="font-medium text-gray-900 dark:text-white">
-                        Performance Analysis
+                        {t('performance_analysis_title')}
                       </div>
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
-                      AI-powered progress insights
+                      {t('performance_analysis_desc')}
                     </div>
                   </button>
 
                   <button
                     onClick={() =>
-                      setInputMessage(
-                        'Give me personalized motivation based on my current goals'
-                      )
+                      setInputMessage(t('quick_action_motivation'))
                     }
                     className="p-4 text-left bg-orange-50 dark:bg-orange-900/30 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 border border-orange-200 dark:border-orange-800 transition-colors"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <Target className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                       <div className="font-medium text-gray-900 dark:text-white">
-                        Personalized Coaching
+                        {t('personalized_coaching_title')}
                       </div>
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-300">
-                      Adaptive motivation & guidance
+                      {t('personalized_coaching_desc')}
                     </div>
                   </button>
                 </div>
@@ -1192,7 +1181,7 @@ export default function AITrainerPage() {
                   <div className="mt-8 max-w-2xl">
                     <div className="text-center mb-4">
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Powered by Advanced AI
+                        {t('powered_by_advanced_ai')}
                       </h4>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
@@ -1202,10 +1191,10 @@ export default function AITrainerPage() {
                             {getCoachingStyleIcon(coachingStyle)}
                           </div>
                           <div className="text-xs font-medium text-blue-900 dark:text-blue-200 capitalize">
-                            {coachingStyle} Style
+                            {coachingStyle} {t('style')}
                           </div>
                           <div className="text-xs text-blue-700 dark:text-blue-300">
-                            Personalized coaching
+                            {t('personalized_coaching_desc')}
                           </div>
                         </div>
                       )}
@@ -1214,10 +1203,11 @@ export default function AITrainerPage() {
                         <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
                           <div className="text-2xl mb-1">🧠</div>
                           <div className="text-xs font-medium text-green-900 dark:text-green-200">
-                            {ragStats.totalVectors.toLocaleString()}+ Sources
+                            {ragStats.totalVectors.toLocaleString()}+{' '}
+                            {t('sources')}
                           </div>
                           <div className="text-xs text-green-700 dark:text-green-300">
-                            Knowledge base
+                            {t('knowledge_base_desc')}
                           </div>
                         </div>
                       )}
@@ -1226,10 +1216,10 @@ export default function AITrainerPage() {
                         <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
                           <div className="text-2xl mb-1">💭</div>
                           <div className="text-xs font-medium text-purple-900 dark:text-purple-200">
-                            {userMemories.length} Memories
+                            {userMemories.length} {t('memories')}
                           </div>
                           <div className="text-xs text-purple-700 dark:text-purple-300">
-                            Long-term context
+                            {t('long_term_context')}
                           </div>
                         </div>
                       )}
@@ -1395,7 +1385,7 @@ export default function AITrainerPage() {
                 <div className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>AI Trainer is thinking...</span>
+                    <span>{t('ai_thinking')}</span>
                   </div>
                 </div>
               </div>
@@ -1412,7 +1402,9 @@ export default function AITrainerPage() {
                   <summary className="cursor-pointer p-3 flex items-center justify-between hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors">
                     <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
                       <Brain className="h-4 w-4" />
-                      <span>AI Memories ({userMemories.length})</span>
+                      <span>
+                        {t('ai_memories', { count: userMemories.length })}
+                      </span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400 group-open:rotate-180 transition-transform" />
                   </summary>
@@ -1427,7 +1419,7 @@ export default function AITrainerPage() {
                             {memory.type}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {Math.round(memory.importance * 100)}% importance
+                            {Math.round(memory.importance * 100)}% {t('importance')}
                           </span>
                         </div>
                         <div className="text-gray-700 dark:text-gray-300 text-xs">
@@ -1440,7 +1432,7 @@ export default function AITrainerPage() {
                         onClick={() => setShowPersonalization(true)}
                         className="text-xs text-blue-600 dark:text-blue-400 hover:underline w-full text-center py-1"
                       >
-                        View all {userMemories.length} memories →
+                        {t('view_all_memories', { count: userMemories.length })}
                       </button>
                     )}
                   </div>
@@ -1454,7 +1446,7 @@ export default function AITrainerPage() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask your AI trainer anything..."
+                placeholder={t('input_placeholder')}
                 className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 disabled={isLoading}
               />
@@ -1470,10 +1462,10 @@ export default function AITrainerPage() {
               {/* Enhanced Quick Actions */}
               <div className="flex flex-wrap gap-2 text-xs mb-3">
                 {[
-                  'Create a 4-day workout split',
-                  'Weekly meal plan at 2200 kcal',
-                  'Analyze my progress',
-                  'Motivate me to work out',
+                  t('quick_action_1'),
+                  t('quick_action_2'),
+                  t('quick_action_3'),
+                  t('quick_action_4'),
                 ].map((s) => (
                   <button
                     key={s}
@@ -1521,7 +1513,7 @@ export default function AITrainerPage() {
                       title="Summarize conversation"
                     >
                       <Lightbulb className="h-3 w-3" />
-                      <span>Summarize</span>
+                      <span>{t('summarize')}</span>
                     </button>
                   </div>
                 )}
