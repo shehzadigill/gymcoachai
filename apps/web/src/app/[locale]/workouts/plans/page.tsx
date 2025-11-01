@@ -19,6 +19,7 @@ import {
   Filter,
   Search,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 
@@ -69,6 +70,7 @@ export default function WorkoutPlansPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const t = useTranslations('workout_plans');
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [scheduledWorkouts, setScheduledWorkouts] = useState<
     ScheduledWorkout[]
@@ -272,10 +274,10 @@ export default function WorkoutPlansPage() {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Workout Plans
+              {t('title')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Create, schedule, and track your structured workout programs
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -284,7 +286,7 @@ export default function WorkoutPlansPage() {
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
-          <span>Create Plan</span>
+          <span>{t('new_plan')}</span>
         </button>
       </div>
 
@@ -298,7 +300,7 @@ export default function WorkoutPlansPage() {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
-          My Plans
+          {t('my_plans')}
         </button>
         <button
           onClick={() => setView('templates')}
@@ -308,7 +310,7 @@ export default function WorkoutPlansPage() {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
-          Templates
+          {t('templates')}
         </button>
         <button
           onClick={() => setView('schedule')}
@@ -318,7 +320,7 @@ export default function WorkoutPlansPage() {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
-          Schedule
+          {t('schedule')}
         </button>
       </div>
 
@@ -332,7 +334,7 @@ export default function WorkoutPlansPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search plans..."
+                placeholder={t('search_plans')}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -341,7 +343,7 @@ export default function WorkoutPlansPage() {
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Difficulties</option>
+              <option value="all">{t('all_difficulties')}</option>
               <option value="beginner">Beginner</option>
               <option value="intermediate">Intermediate</option>
               <option value="advanced">Advanced</option>
@@ -351,15 +353,15 @@ export default function WorkoutPlansPage() {
               onChange={(e) => setDurationFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Durations</option>
-              <option value="short">Short (1-4 weeks)</option>
-              <option value="medium">Medium (5-8 weeks)</option>
-              <option value="long">Long (9+ weeks)</option>
+              <option value="all">{t('all_durations')}</option>
+              <option value="short">{t('short_duration')}</option>
+              <option value="medium">{t('medium_duration')}</option>
+              <option value="long">{t('long_duration')}</option>
             </select>
             <div className="flex items-center space-x-2">
               <Filter className="h-4 w-4 text-gray-400" />
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {filteredPlans.length} plans
+                {t('plans_count', { count: filteredPlans.length })}
               </span>
             </div>
           </div>

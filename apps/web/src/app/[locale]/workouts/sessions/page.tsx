@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   CheckCircle,
   Clock,
@@ -23,6 +24,7 @@ import { api } from '../../../../lib/api-client';
 interface Exercise {
   id: string;
   name: string;
+
   muscle_group: string;
   description?: string;
   equipment?: string;
@@ -65,6 +67,7 @@ interface WorkoutSession {
 
 export default function WorkoutSessionsPage() {
   const router = useRouter();
+  const t = useTranslations('workout_sessions');
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,10 +174,11 @@ export default function WorkoutSessionsPage() {
   const getPeriodLabel = (period: 'all' | 'week' | 'month') => {
     switch (period) {
       case 'week':
-        return 'This Week';
+        return t('this_week');
       case 'month':
-        return 'This Month';
+        return t('this_month');
       default:
+        return t('all_time');
         return 'All Time';
     }
   };
@@ -263,14 +267,14 @@ export default function WorkoutSessionsPage() {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm('Are you sure you want to delete this workout session?'))
-      return;
+    if (!confirm(t('confirm_delete_session'))) return;
 
     try {
       await api.deleteWorkoutSession(sessionId);
       setSessions(sessions.filter((s) => s.id !== sessionId));
     } catch (error) {
       console.error('Error deleting session:', error);
+      alert(t('failed_to_delete'));
     }
   };
 
@@ -279,7 +283,7 @@ export default function WorkoutSessionsPage() {
   };
 
   const handleCompleteSession = async (sessionId: string) => {
-    if (!confirm('Mark this workout session as completed?')) return;
+    if (!confirm(t('confirm_complete_session'))) return;
 
     try {
       await api.completeWorkoutSession(sessionId);
@@ -291,8 +295,11 @@ export default function WorkoutSessionsPage() {
             : s
         )
       );
+      alert(t('session_completed'));
     } catch (error) {
       console.error('Error completing session:', error);
+      alert(t('failed_to_complete'));
+
       alert('Failed to complete session. Please try again.');
     }
   };
@@ -321,25 +328,23 @@ export default function WorkoutSessionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Workout Sessions
+            {t('title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage and track your workout sessions
-          </p>
+          <p className="text-gray-600 dark:text-gray-400">{t('subtitle')}</p>
         </div>
         <button
           onClick={handleNewSession}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4 mr-2" />
-          New Session
+          {t('new_session')}
         </button>
       </div>
 
       {/* Stats Period Filter */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Stats - {getPeriodLabel(statsPeriod)}
+          {t('stats')} - {getPeriodLabel(statsPeriod)}
         </h2>
         <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
           {(['all', 'month', 'week'] as const).map((period) => (
