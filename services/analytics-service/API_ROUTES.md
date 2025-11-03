@@ -76,21 +76,21 @@
 ### Get Strength Progress
 
 ```bash
-curl 'https://d12pveuxxq3vvn.cloudfront.net/api/analytics/strength-progress/40ccb9bc-e091-7079-4c1d-3a2c47e01000?startDate=2025-09-14T21:08:05.619Z&endDate=2025-10-14T21:08:05.619Z' \
+curl 'https://d202qmtk8kkxra.cloudfront.net/api/analytics/strength-progress/40ccb9bc-e091-7079-4c1d-3a2c47e01000?startDate=2025-09-14T21:08:05.619Z&endDate=2025-10-14T21:08:05.619Z' \
   -H 'authorization: Bearer YOUR_TOKEN'
 ```
 
 ### Get Workout Analytics
 
 ```bash
-curl 'https://d12pveuxxq3vvn.cloudfront.net/api/analytics/workout/40ccb9bc-e091-7079-4c1d-3a2c47e01000?period=30d' \
+curl 'https://d202qmtk8kkxra.cloudfront.net/api/analytics/workout/40ccb9bc-e091-7079-4c1d-3a2c47e01000?period=30d' \
   -H 'authorization: Bearer YOUR_TOKEN'
 ```
 
 ### Get Progress Photos Timeline
 
 ```bash
-curl 'https://d12pveuxxq3vvn.cloudfront.net/api/analytics/progress-photos/40ccb9bc-e091-7079-4c1d-3a2c47e01000/timeline?time_range=30d' \
+curl 'https://d202qmtk8kkxra.cloudfront.net/api/analytics/progress-photos/40ccb9bc-e091-7079-4c1d-3a2c47e01000/timeline?time_range=30d' \
   -H 'authorization: Bearer YOUR_TOKEN'
 ```
 

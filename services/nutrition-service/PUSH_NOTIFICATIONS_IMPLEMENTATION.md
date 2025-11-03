@@ -114,7 +114,7 @@ impl FirebaseNotificationService {
             notification: FirebaseNotification {
                 title: title.to_string(),
                 body: body.to_string(),
-                icon: Some("https://d12pveuxxq3vvn.cloudfront.net/app-icon.png".to_string()),
+                icon: Some("https://d202qmtk8kkxra.cloudfront.net/app-icon.png".to_string()),
                 sound: "default".to_string(),
                 badge: Some(1),
             },
@@ -358,7 +358,7 @@ Once you have Firebase keys:
 3. **Test with curl:**
 
 ```bash
-curl -X POST https://q4tzbydpzvguvoaxj6x7nwscii0rpktw.lambda-url.eu-north-1.on.aws/nutrition/notifications/send \
+curl -X POST https://q4tzbydpzvguvoaxj6x7nwscii0rpktw.lambda-url.eu-west-1.on.aws/nutrition/notifications/send \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": "test-user",

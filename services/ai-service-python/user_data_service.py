@@ -1105,3 +1105,103 @@ class UserDataService:
             return (last_date - first_date).days
         except Exception:
             return 0
+    
+    async def get_user_data(self, user_id: str, data_key: Optional[str] = None) -> Optional[Dict]:
+        """
+        Get user data by key or all user data
+        
+        Args:
+            user_id: User ID
+            data_key: Optional specific data key to retrieve
+            
+        Returns:
+            User data dictionary or None
+        """
+        try:
+            if data_key:
+                # Get specific data item
+                response = self.table.get_item(
+                    Key={
+                        'PK': f'USER#{user_id}',
+                        'SK': f'DATA#{data_key}'
+                    }
+                )
+                
+                if 'Item' in response:
+                    return response['Item'].get('data', response['Item'])
+                return None
+            else:
+                # Get all user data items
+                response = self.table.query(
+                    KeyConditionExpression='PK = :pk AND begins_with(SK, :sk)',
+                    ExpressionAttributeValues={
+                        ':pk': f'USER#{user_id}',
+                        ':sk': 'DATA#'
+                    }
+                )
+                
+                # Convert to dictionary with data_key as keys
+                user_data = {}
+                for item in response.get('Items', []):
+                    key = item['SK'].replace('DATA#', '')
+                    user_data[key] = item.get('data', item)
+                
+                return user_data if user_data else None
+                
+        except ClientError as e:
+            logger.error(f"Error getting user data for {user_id}: {e}")
+            return None
+    
+    async def update_user_data(self, user_id: str, data_key: str, data: Dict) -> bool:
+        """
+        Update or create user data
+        
+        Args:
+            user_id: User ID
+            data_key: Data key to store under
+            data: Data to store
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.table.put_item(
+                Item={
+                    'PK': f'USER#{user_id}',
+                    'SK': f'DATA#{data_key}',
+                    'data': data,
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'entity_type': 'USER_DATA'
+                }
+            )
+            logger.info(f"Updated user data for {user_id}, key: {data_key}")
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Error updating user data for {user_id}: {e}")
+            return False
+    
+    async def delete_user_data(self, user_id: str, data_key: str) -> bool:
+        """
+        Delete user data by key
+        
+        Args:
+            user_id: User ID
+            data_key: Data key to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.table.delete_item(
+                Key={
+                    'PK': f'USER#{user_id}',
+                    'SK': f'DATA#{data_key}'
+                }
+            )
+            logger.info(f"Deleted user data for {user_id}, key: {data_key}")
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Error deleting user data for {user_id}: {e}")
+            return False

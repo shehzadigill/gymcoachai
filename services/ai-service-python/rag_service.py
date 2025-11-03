@@ -498,8 +498,9 @@ class RAGService:
             # Test embedding service
             try:
                 test_embedding = await self.embedding_service.generate_embedding("test query")
-                if test_embedding and len(test_embedding) == 1536:
+                if test_embedding and len(test_embedding) == 1024:
                     validation_results['embedding_service'] = True
+                    validation_results['embedding_dimensions'] = len(test_embedding)
             except Exception as e:
                 logger.error(f"Embedding service validation failed: {e}")
             

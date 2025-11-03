@@ -7,8 +7,8 @@ export const testAmplifyConfig = () => {
   const config = {
     Auth: {
       Cognito: {
-        userPoolId: 'eu-north-1_dE19nCAjn',
-        userPoolClientId: '10ukk27kmnj1ba86dpmqc6amu6',
+        userPoolId: 'eu-west-1_PjxjqOwho',
+        userPoolClientId: '2pigu1tu2it4aablmg1cgis1eo',
         loginWith: {
           email: true,
           username: true,
@@ -35,7 +35,7 @@ export const testCognitoConnection = async () => {
 
     // Try to make a basic request to Cognito
     const response = await fetch(
-      'https://cognito-idp.eu-north-1.amazonaws.com/',
+      'https://cognito-idp.eu-west-1.amazonaws.com/',
       {
         method: 'POST',
         headers: {

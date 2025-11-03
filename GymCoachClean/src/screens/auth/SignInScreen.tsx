@@ -73,6 +73,7 @@ export default function SignInScreen({navigation}: any) {
         t('auth.errors.signin_failed'),
         error.message || t('auth.errors.try_again'),
       );
+      console.error('Sign in error:', error);
     } finally {
       setLocalLoading(false);
     }

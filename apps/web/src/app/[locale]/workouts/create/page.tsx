@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
+import { useTranslations } from 'next-intl';
 import {
   Plus,
   Trash2,
@@ -57,6 +58,7 @@ export default function CreateWorkoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const t = useTranslations('workout_create');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -142,9 +144,7 @@ export default function CreateWorkoutPage() {
       } catch (error) {
         console.error('Failed to parse template data:', error);
         console.error('Template data that failed:', fromTemplateParam);
-        setError(
-          `Failed to load template data: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
+        setError(t('failed_to_load_template'));
       }
     }
 
@@ -277,8 +277,8 @@ export default function CreateWorkoutPage() {
 
       if (response) {
         const successMessage = isTemplate
-          ? 'Workout template created successfully!'
-          : 'Workout plan created successfully!';
+          ? t('template_saved')
+          : t('workout_saved');
         setSuccess(successMessage);
         setTimeout(() => {
           // Navigate to templates tab if it's a template, otherwise to my-plans
@@ -288,7 +288,7 @@ export default function CreateWorkoutPage() {
       }
     } catch (e: any) {
       console.error('Failed to create workout plan:', e);
-      setError(e?.message || 'Failed to create workout plan');
+      setError(t('failed_to_save'));
     } finally {
       setSaving(false);
     }
@@ -307,25 +307,25 @@ export default function CreateWorkoutPage() {
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {isTemplate ? 'Create Workout Template' : 'Create Workout Plan'}
+              {isTemplate ? t('create_template_title') : t('create_plan_title')}
             </h1>
             {isTemplate && (
               <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
-                Template
+                {t('template_badge')}
               </span>
             )}
             {searchParams.get('fromTemplate') && !isTemplate && (
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
-                From Template
+                {t('from_template_badge')}
               </span>
             )}
           </div>
           <p className="text-gray-600 dark:text-gray-400">
             {isTemplate
-              ? 'Create a reusable workout template that others can use'
+              ? t('template_subtitle')
               : searchParams.get('fromTemplate')
-                ? 'Creating a new workout plan from template'
-                : 'Build your custom workout routine'}
+                ? t('from_template_subtitle')
+                : t('build_routine_subtitle')}
           </p>
         </div>
       </div>
@@ -347,13 +347,13 @@ export default function CreateWorkoutPage() {
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Workout Details
+              {t('workout_details')}
             </h3>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Workout Name *
+                  {t('workout_name')}
                 </label>
                 <input
                   type="text"
@@ -362,13 +362,13 @@ export default function CreateWorkoutPage() {
                     setWorkout({ ...workout, name: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Upper Body Strength"
+                  placeholder={t('workout_name_placeholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
+                  {t('description')}
                 </label>
                 <textarea
                   value={workout.description}
@@ -377,13 +377,13 @@ export default function CreateWorkoutPage() {
                   }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Describe your workout..."
+                  placeholder={t('description_placeholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Difficulty
+                  {t('difficulty')}
                 </label>
                 <select
                   value={workout.difficulty}
@@ -395,16 +395,16 @@ export default function CreateWorkoutPage() {
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
+                  <option value="beginner">{t('beginner')}</option>
+                  <option value="intermediate">{t('intermediate')}</option>
+                  <option value="advanced">{t('advanced')}</option>
                 </select>
               </div>
 
               {isTemplate && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tags (comma separated)
+                    {t('tags')}
                   </label>
                   <input
                     type="text"
@@ -419,7 +419,7 @@ export default function CreateWorkoutPage() {
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="e.g., strength, beginner, full-body"
+                    placeholder={t('tags_placeholder')}
                   />
                 </div>
               )}
@@ -436,7 +436,7 @@ export default function CreateWorkoutPage() {
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Make this a template (others can use it)
+                    {t('make_template')}
                   </span>
                 </label>
               </div>
@@ -444,7 +444,7 @@ export default function CreateWorkoutPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Duration (weeks)
+                    {t('duration_weeks')}
                   </label>
                   <input
                     type="number"
@@ -462,7 +462,7 @@ export default function CreateWorkoutPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Frequency/week
+                    {t('frequency_week')}
                   </label>
                   <input
                     type="number"
@@ -485,18 +485,18 @@ export default function CreateWorkoutPage() {
           {/* Workout Summary */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Workout Summary
+              {t('workout_summary')}
             </h3>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">
-                  Exercises:
+                  {t('exercises_label')}
                 </span>
                 <span className="font-medium">{workout.exercises.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">
-                  Total Sets:
+                  {t('total_sets')}
                 </span>
                 <span className="font-medium">
                   {workout.exercises.reduce((acc, ex) => acc + ex.sets, 0)}
@@ -504,7 +504,7 @@ export default function CreateWorkoutPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">
-                  Estimated Time:
+                  {t('estimated_time')}
                 </span>
                 <span className="font-medium">
                   {Math.round(
@@ -513,7 +513,7 @@ export default function CreateWorkoutPage() {
                       0
                     ) / 60
                   )}{' '}
-                  min
+                  {t('min')}
                 </span>
               </div>
             </div>
@@ -525,13 +525,13 @@ export default function CreateWorkoutPage() {
           {/* Add Exercise Form */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Add Exercise
+              {t('add_exercise')}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Exercise Name *
+                  {t('exercise_name')}
                 </label>
                 <input
                   type="text"
@@ -540,7 +540,7 @@ export default function CreateWorkoutPage() {
                     setNewExercise({ ...newExercise, name: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Bench Press"
+                  placeholder={t('exercise_name_placeholder')}
                 />
               </div>
 
@@ -634,7 +634,7 @@ export default function CreateWorkoutPage() {
                   }
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Exercise instructions..."
+                  placeholder={t('instructions_placeholder')}
                 />
               </div>
             </div>
@@ -646,14 +646,14 @@ export default function CreateWorkoutPage() {
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
                 >
                   <BookOpen className="h-4 w-4" />
-                  <span>From Library</span>
+                  <span>{t('from_library')}</span>
                 </button>
                 <button
                   onClick={() => setShowCustomExerciseForm(true)}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Custom Exercise</span>
+                  <span>{t('custom_exercise')}</span>
                 </button>
               </div>
               <button
@@ -661,7 +661,7 @@ export default function CreateWorkoutPage() {
                 className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
               >
                 <Plus className="h-4 w-4" />
-                <span>Quick Add (Manual)</span>
+                <span>{t('quick_add_manual')}</span>
               </button>
             </div>
           </div>
@@ -669,13 +669,13 @@ export default function CreateWorkoutPage() {
           {/* Exercise List */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Exercises ({workout.exercises.length})
+              {t('exercises_count_header', { count: workout.exercises.length })}
             </h3>
 
             {workout.exercises.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Dumbbell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No exercises added yet</p>
+                <p>{t('no_exercises_added')}</p>
                 <p className="text-sm">Add your first exercise above</p>
               </div>
             ) : (
@@ -711,10 +711,10 @@ export default function CreateWorkoutPage() {
           <Save className="h-4 w-4" />
           <span>
             {saving
-              ? 'Saving...'
+              ? t('saving')
               : isTemplate
-                ? 'Save Template'
-                : 'Save Workout Plan'}
+                ? t('save_template')
+                : t('save_workout_plan')}
           </span>
         </button>
       </div>
@@ -755,6 +755,7 @@ function ExerciseCard({
   onUpdate: (updates: Partial<Exercise>) => void;
   onRemove: () => void;
 }) {
+  const t = useTranslations('workout_create');
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(exercise);
 
@@ -781,7 +782,7 @@ function ExerciseCard({
             </h4>
             {!!exercise.weight && exercise.weight > 0 && (
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                ({exercise.weight} lbs)
+                {t('lbs_label', { weight: exercise.weight })}
               </span>
             )}
           </div>
@@ -795,7 +796,7 @@ function ExerciseCard({
                   setEditData({ ...editData, name: e.target.value })
                 }
                 className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Exercise name"
+                placeholder={t('exercise_name_edit_placeholder')}
               />
               <input
                 type="number"
@@ -804,7 +805,7 @@ function ExerciseCard({
                   setEditData({ ...editData, sets: Number(e.target.value) })
                 }
                 className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Sets"
+                placeholder={t('sets_placeholder')}
               />
               <input
                 type="number"
@@ -813,7 +814,7 @@ function ExerciseCard({
                   setEditData({ ...editData, reps: Number(e.target.value) })
                 }
                 className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Reps"
+                placeholder={t('reps_placeholder')}
               />
               <input
                 type="number"
@@ -822,22 +823,22 @@ function ExerciseCard({
                   setEditData({ ...editData, weight: Number(e.target.value) })
                 }
                 className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Weight"
+                placeholder={t('weight_placeholder')}
               />
             </div>
           ) : (
             <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-2">
               <span className="flex items-center space-x-1">
                 <Target className="h-4 w-4" />
-                <span>{exercise.sets} sets</span>
+                <span>{t('sets_label', { count: exercise.sets })}</span>
               </span>
               <span className="flex items-center space-x-1">
                 <RotateCcw className="h-4 w-4" />
-                <span>{exercise.reps} reps</span>
+                <span>{t('reps_label', { count: exercise.reps })}</span>
               </span>
               <span className="flex items-center space-x-1">
                 <Clock className="h-4 w-4" />
-                <span>{exercise.restTime}s rest</span>
+                <span>{t('rest_label', { count: exercise.restTime })}</span>
               </span>
             </div>
           )}
@@ -899,6 +900,7 @@ function ExerciseSelectionModal({
   onSelect: (exercise: LibraryExercise) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations('workout_create');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMuscleGroup, setFilterMuscleGroup] = useState('all');
 
@@ -938,7 +940,7 @@ function ExerciseSelectionModal({
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search exercises..."
+                placeholder={t('search_exercises')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -949,7 +951,7 @@ function ExerciseSelectionModal({
               onChange={(e) => setFilterMuscleGroup(e.target.value)}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Muscle Groups</option>
+              <option value="all">{t('all_muscle_groups')}</option>
               {muscleGroups.map((group) => (
                 <option key={group} value={group}>
                   {group.charAt(0).toUpperCase() + group.slice(1)}
@@ -963,7 +965,7 @@ function ExerciseSelectionModal({
             {filteredExercises.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Dumbbell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No exercises found</p>
+                <p>{t('no_exercises_found')}</p>
                 <p className="text-sm">Try different search terms or filters</p>
               </div>
             ) : (
@@ -1019,7 +1021,7 @@ function ExerciseSelectionModal({
                       </div>
                       {isSelected && (
                         <div className="text-blue-600 dark:text-blue-400 text-sm font-medium ml-4">
-                          ✓ Added
+                          {t('added_badge')}
                         </div>
                       )}
                     </div>
@@ -1042,6 +1044,7 @@ function CustomExerciseModal({
   onSave: (exercise: any) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations('workout_create');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -1084,7 +1087,7 @@ function CustomExerciseModal({
                 setFormData({ ...formData, name: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="e.g., Custom Push-up Variation"
+              placeholder={t('custom_exercise_name_placeholder')}
               required
             />
           </div>
@@ -1100,7 +1103,7 @@ function CustomExerciseModal({
               }
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Describe how to perform this exercise..."
+              placeholder={t('description_custom_placeholder')}
             />
           </div>
 
@@ -1115,7 +1118,7 @@ function CustomExerciseModal({
                 setFormData({ ...formData, muscle_group: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="e.g., chest, legs, back"
+              placeholder={t('muscle_group_placeholder')}
             />
           </div>
 
@@ -1130,7 +1133,7 @@ function CustomExerciseModal({
                 setFormData({ ...formData, equipment: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="e.g., dumbbells, bodyweight, barbell"
+              placeholder={t('equipment_placeholder')}
             />
           </div>
 
@@ -1145,9 +1148,9 @@ function CustomExerciseModal({
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
+              <option value="beginner">{t('beginner')}</option>
+              <option value="intermediate">{t('intermediate')}</option>
+              <option value="advanced">{t('advanced')}</option>
             </select>
           </div>
 

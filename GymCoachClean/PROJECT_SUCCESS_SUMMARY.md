@@ -16,7 +16,7 @@ Successfully created a **clean, functional React Native app** with all the worki
 ### 2. **Migrated Working Components**
 
 - ✅ **Authentication System**: Real AWS Cognito integration (not demo/mock)
-  - User Pool: `eu-north-1_s19fcM8z5`
+  - User Pool: `eu-west-1_s19fcM8z5`
   - Client ID: `61b7oqg3cp3fh0btl5k83sjjgd`
 - ✅ **All Screens**: Dashboard, Workouts, Nutrition, Analytics, Profile
 - ✅ **Navigation**: Complete stack and tab navigation with animations

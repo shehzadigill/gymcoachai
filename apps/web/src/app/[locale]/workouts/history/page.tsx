@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
@@ -130,6 +131,7 @@ type DifficultyFilter = 'all' | 'easy' | 'moderate' | 'hard' | 'extreme';
 export default function EnhancedWorkoutHistoryPage() {
   const router = useRouter();
   const user = useCurrentUser();
+  const t = useTranslations('workout_history');
   const [history, setHistory] = useState<WorkoutHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -440,7 +442,7 @@ export default function EnhancedWorkoutHistoryPage() {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <div className="text-red-600 dark:text-red-400">
-          {error || 'No history data available'}
+          {error || t('no_history_data')}
         </div>
       </div>
     );
@@ -452,11 +454,9 @@ export default function EnhancedWorkoutHistoryPage() {
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Workout History
+            {t('title')}
           </h1>
-          <p className="text-gray-600">
-            View and manage your past workout sessions
-          </p>
+          <p className="text-gray-600">{t('subtitle')}</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -466,7 +466,7 @@ export default function EnhancedWorkoutHistoryPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search workouts..."
+                placeholder={t('search_workouts')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -493,7 +493,7 @@ export default function EnhancedWorkoutHistoryPage() {
               ) : (
                 <List className="h-4 w-4" />
               )}
-              {viewMode === 'list' ? 'Grid' : 'List'}
+              {viewMode === 'list' ? t('grid_view') : t('list_view')}
             </button>
 
             {/* Sort Controls */}
@@ -502,11 +502,11 @@ export default function EnhancedWorkoutHistoryPage() {
               onChange={(e) => setSortBy(e.target.value as SortBy)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="date">Sort by Date</option>
-              <option value="duration">Sort by Duration</option>
-              <option value="calories">Sort by Calories</option>
-              <option value="volume">Sort by Volume</option>
-              <option value="rating">Sort by Rating</option>
+              <option value="date">{t('sort_by_date')}</option>
+              <option value="duration">{t('sort_by_duration')}</option>
+              <option value="calories">{t('sort_by_calories')}</option>
+              <option value="volume">{t('sort_by_volume')}</option>
+              <option value="rating">{t('sort_by_rating')}</option>
             </select>
 
             <button
@@ -526,7 +526,7 @@ export default function EnhancedWorkoutHistoryPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
             >
               <Filter className="h-4 w-4" />
-              Filters
+              {t('filters')}
             </button>
 
             {/* Refresh */}
@@ -538,7 +538,7 @@ export default function EnhancedWorkoutHistoryPage() {
               <RefreshCw
                 className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
               />
-              Refresh
+              {t('refresh')}
             </button>
 
             {/* Export */}
@@ -547,7 +547,7 @@ export default function EnhancedWorkoutHistoryPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              Export
+              {t('export')}
             </button>
           </div>
         </div>
@@ -559,7 +559,7 @@ export default function EnhancedWorkoutHistoryPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
+                {t('status')}
               </label>
               <select
                 value={filterCompleted}
@@ -568,15 +568,15 @@ export default function EnhancedWorkoutHistoryPage() {
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">All Sessions</option>
-                <option value="completed">Completed Only</option>
-                <option value="incomplete">Incomplete Only</option>
+                <option value="all">{t('all_sessions')}</option>
+                <option value="completed">{t('completed_only')}</option>
+                <option value="incomplete">{t('incomplete_only')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Difficulty
+                {t('difficulty')}
               </label>
               <select
                 value={difficultyFilter}
@@ -585,11 +585,11 @@ export default function EnhancedWorkoutHistoryPage() {
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">All Difficulties</option>
-                <option value="easy">Easy</option>
-                <option value="moderate">Moderate</option>
-                <option value="hard">Hard</option>
-                <option value="extreme">Extreme</option>
+                <option value="all">{t('all_difficulties')}</option>
+                <option value="easy">{t('easy')}</option>
+                <option value="moderate">{t('moderate')}</option>
+                <option value="hard">{t('hard')}</option>
+                <option value="extreme">{t('extreme')}</option>
               </select>
             </div>
 
@@ -603,7 +603,7 @@ export default function EnhancedWorkoutHistoryPage() {
                 }}
                 className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
-                Clear Filters
+                {t('clear_filters')}
               </button>
             </div>
           </div>
@@ -617,7 +617,7 @@ export default function EnhancedWorkoutHistoryPage() {
             <Calendar className="h-8 w-8 text-blue-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Sessions
+                {t('total_sessions')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {history.pagination.total}
@@ -630,7 +630,7 @@ export default function EnhancedWorkoutHistoryPage() {
             <CheckCircle className="h-8 w-8 text-green-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Completed
+                {t('completed')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {history.sessions.filter((s) => s.completed_at).length}
@@ -643,7 +643,7 @@ export default function EnhancedWorkoutHistoryPage() {
             <Clock className="h-8 w-8 text-orange-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Time
+                {t('total_time')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {Math.round(
@@ -661,7 +661,7 @@ export default function EnhancedWorkoutHistoryPage() {
             <Star className="h-8 w-8 text-yellow-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Avg Rating
+                {t('avg_rating')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {(
@@ -685,9 +685,9 @@ export default function EnhancedWorkoutHistoryPage() {
             onChange={(e) => setFilterCompleted(e.target.value as FilterStatus)}
             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="all">All Sessions</option>
-            <option value="completed">Completed Only</option>
-            <option value="incomplete">Incomplete Only</option>
+            <option value="all">{t('all_sessions')}</option>
+            <option value="completed">{t('completed_only')}</option>
+            <option value="incomplete">{t('incomplete_only')}</option>
           </select>
         </div>
       </div>
@@ -697,10 +697,10 @@ export default function EnhancedWorkoutHistoryPage() {
         <div className="text-center py-12">
           <Calendar className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-            No workout sessions found
+            {t('no_sessions_found')}
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Start working out to see your history here.
+            {t('start_working_out')}
           </p>
         </div>
       ) : (

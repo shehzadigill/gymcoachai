@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import boto3
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timezone, timedelta
 import asyncio
@@ -17,6 +18,8 @@ class MemoryService:
     
     def __init__(self):
         self.table_name = os.environ.get('DYNAMODB_TABLE', 'gymcoach-ai-main')
+        self.dynamodb = boto3.resource('dynamodb')
+        self.table = self.dynamodb.Table(self.table_name)
         self.user_data_service = UserDataService(self.table_name)
         self.bedrock_service = BedrockService()
         
@@ -200,39 +203,31 @@ class MemoryService:
         try:
             logger.info(f"Deleting memory {memory_id} for user {user_id}")
             
-            # Delete from DynamoDB
-            table = await self._get_table()
-            
-            try:
-                # First, verify the memory exists and belongs to the user
-                response = table.get_item(
-                    Key={
-                        'user_id': user_id,
-                        'memory_id': memory_id
-                    }
-                )
-                
-                if 'Item' not in response:
-                    return {'error': 'Memory not found'}
-                
-                # Delete the memory
-                table.delete_item(
-                    Key={
-                        'user_id': user_id,
-                        'memory_id': memory_id
-                    }
-                )
-                
-                return {
-                    'status': 'success',
-                    'message': 'Memory deleted successfully',
-                    'memory_id': memory_id,
-                    'user_id': user_id
+            # First, verify the memory exists and belongs to the user
+            response = self.table.get_item(
+                Key={
+                    'PK': f'USER#{user_id}',
+                    'SK': f'DATA#memory_{memory_id}'
                 }
-                
-            except Exception as e:
-                logger.error(f"Error deleting memory from DynamoDB: {e}")
-                return {'error': str(e)}
+            )
+            
+            if 'Item' not in response:
+                return {'error': 'Memory not found'}
+            
+            # Delete the memory
+            self.table.delete_item(
+                Key={
+                    'PK': f'USER#{user_id}',
+                    'SK': f'DATA#memory_{memory_id}'
+                }
+            )
+            
+            return {
+                'status': 'success',
+                'message': 'Memory deleted successfully',
+                'memory_id': memory_id,
+                'user_id': user_id
+            }
             
         except Exception as e:
             logger.error(f"Error deleting memory for user {user_id}: {e}")
@@ -324,6 +319,30 @@ class MemoryService:
             logger.error(f"Error getting memory summary for user {user_id}: {e}")
             return {'error': str(e)}
     
+    async def get_user_memories(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        Public method to get all memories for a user
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            List of memory dictionaries
+        """
+        return await self._get_user_memories(user_id)
+    
+    async def get_conversation_history(self, user_id: str) -> Dict[str, Any]:
+        """
+        Public method to get conversation history for a user
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            Dictionary with conversation history
+        """
+        return await self._get_conversation_history(user_id)
+    
     # Helper methods for memory management
     
     async def _get_conversation_history(self, user_id: str) -> Dict[str, Any]:
@@ -405,10 +424,15 @@ class MemoryService:
             Provide a concise summary that captures the essential information for future reference.
             """
             
-            bedrock_result = self.bedrock_service.invoke_bedrock(
-                summary_prompt,
-                {'conversation': old_messages},
-                max_tokens=300
+            # Run bedrock in executor since it's synchronous
+            loop = asyncio.get_event_loop()
+            bedrock_result = await loop.run_in_executor(
+                None,
+                lambda: self.bedrock_service.invoke_bedrock(
+                    summary_prompt,
+                    {'conversation': old_messages},
+                    max_tokens=300
+                )
             )
             
             if bedrock_result['success']:
@@ -483,10 +507,15 @@ class MemoryService:
             Return as JSON array of memory objects.
             """
             
-            bedrock_result = self.bedrock_service.invoke_bedrock(
-                extraction_prompt,
-                {'conversation': conversation},
-                max_tokens=500
+            # Run bedrock in executor since it's synchronous
+            loop = asyncio.get_event_loop()
+            bedrock_result = await loop.run_in_executor(
+                None,
+                lambda: self.bedrock_service.invoke_bedrock(
+                    extraction_prompt,
+                    {'conversation': conversation},
+                    max_tokens=500
+                )
             )
             
             if bedrock_result['success']:
@@ -560,6 +589,9 @@ class MemoryService:
         try:
             # Get user data and find memory items
             user_data = await self.user_data_service.get_user_data(user_id)
+            
+            if not user_data:
+                return []
             
             memories = []
             for key, value in user_data.items():
@@ -756,10 +788,15 @@ class MemoryService:
             Keep the summary concise but comprehensive for coaching purposes.
             """
             
-            bedrock_result = self.bedrock_service.invoke_bedrock(
-                summary_prompt,
-                {'memories': memories, 'analysis': analysis},
-                max_tokens=400
+            # Run bedrock in executor since it's synchronous
+            loop = asyncio.get_event_loop()
+            bedrock_result = await loop.run_in_executor(
+                None,
+                lambda: self.bedrock_service.invoke_bedrock(
+                    summary_prompt,
+                    {'memories': memories, 'analysis': analysis},
+                    max_tokens=400
+                )
             )
             
             if bedrock_result['success']:

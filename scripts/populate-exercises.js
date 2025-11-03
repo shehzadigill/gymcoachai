@@ -1,6 +1,6 @@
 const https = require('https');
 
-const API_BASE_URL = 'https://d12pveuxxq3vvn.cloudfront.net';
+const API_BASE_URL = 'https://d202qmtk8kkxra.cloudfront.net';
 
 const sampleExercises = [
   {
@@ -137,7 +137,7 @@ async function createExercise(exerciseData) {
   const data = JSON.stringify(exerciseData);
 
   const options = {
-    hostname: 'd12pveuxxq3vvn.cloudfront.net',
+    hostname: 'd202qmtk8kkxra.cloudfront.net',
     port: 443,
     path: '/api/workouts/exercises',
     method: 'POST',

@@ -25,8 +25,6 @@ impl UserRepository {
         item.insert("SK".to_string(), AttributeValue::S(format!("USER#{}", user.id)));
         item.insert("GSI1PK".to_string(), AttributeValue::S(format!("USER#{}", user.email)));
         item.insert("GSI1SK".to_string(), AttributeValue::S(format!("USER#{}", user.id)));
-        item.insert("GSI2PK".to_string(), AttributeValue::S(format!("USER#{}", user.username.as_ref().unwrap_or(&"".to_string()))));
-        item.insert("GSI2SK".to_string(), AttributeValue::S(format!("USER#{}", user.id)));
         
         // Entity type
         item.insert("EntityType".to_string(), AttributeValue::S("USER".to_string()));
@@ -160,12 +158,13 @@ impl UserRepository {
     }
 
     pub async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
+        // Use Scan with filter expression since username lookups are rare
         let request = self.client
-            .query()
+            .scan()
             .table_name(&self.table_name)
-            .index_name("GSI2")
-            .key_condition_expression("GSI2PK = :gsi2pk")
-            .expression_attribute_values(":gsi2pk", AttributeValue::S(format!("USER#{}", username)));
+            .filter_expression("EntityType = :entity_type AND Username = :username")
+            .expression_attribute_values(":entity_type", AttributeValue::S("USER".to_string()))
+            .expression_attribute_values(":username", AttributeValue::S(username.to_string()));
 
         match request.send().await {
             Ok(response) => {
@@ -211,9 +210,8 @@ impl UserRepository {
         }
 
         if let Some(username) = &updates.username {
-            update_expression.push_str(", Username = :username, GSI2PK = :gsi2pk");
+            update_expression.push_str(", Username = :username");
             expression_attribute_values.insert(":username".to_string(), AttributeValue::S(username.clone()));
-            expression_attribute_values.insert(":gsi2pk".to_string(), AttributeValue::S(format!("USER#{}", username)));
         }
 
         if let Some(phone_number) = &updates.phone_number {

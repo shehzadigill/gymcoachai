@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
@@ -128,6 +129,7 @@ interface WorkoutSession {
 
 export default function WorkoutAnalyticsPage() {
   const user = useCurrentUser();
+  const t = useTranslations('workouts_page.workout_analytics');
   const [analytics, setAnalytics] = useState<WorkoutAnalytics | null>(null);
   const [insights, setInsights] = useState<WorkoutInsights | null>(null);
   const [strengthProgress, setStrengthProgress] = useState<StrengthProgress[]>(
@@ -296,15 +298,15 @@ export default function WorkoutAnalyticsPage() {
   const getTimeRangeLabel = (range: string) => {
     switch (range) {
       case '7d':
-        return 'Last 7 days';
+        return t('time_range.last_7_days');
       case '30d':
-        return 'Last 30 days';
+        return t('time_range.last_30_days');
       case '90d':
-        return 'Last 90 days';
+        return t('time_range.last_90_days');
       case '1y':
-        return 'Last year';
+        return t('time_range.last_year');
       default:
-        return 'Last 30 days';
+        return t('time_range.last_30_days');
     }
   };
 
@@ -366,15 +368,13 @@ export default function WorkoutAnalyticsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="text-red-600 text-xl mb-4">
-            Error Loading Analytics
-          </div>
+          <div className="text-red-600 text-xl mb-4">{t('error_loading')}</div>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={fetchAllData}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            Retry
+            {t('retry')}
           </button>
         </div>
       </div>
@@ -387,10 +387,10 @@ export default function WorkoutAnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Workout Analytics
+            {t('title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Deep analysis of your training performance and progress
+            {t('subtitle')}
           </p>
         </div>
 
@@ -404,10 +404,10 @@ export default function WorkoutAnalyticsPage() {
               }
               className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
-              <option value="1y">Last year</option>
+              <option value="7d">{t('time_range.last_7_days')}</option>
+              <option value="30d">{t('time_range.last_30_days')}</option>
+              <option value="90d">{t('time_range.last_90_days')}</option>
+              <option value="1y">{t('time_range.last_year')}</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
@@ -420,7 +420,7 @@ export default function WorkoutAnalyticsPage() {
                 onChange={(e) => setSelectedExercise(e.target.value)}
                 className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All Exercises</option>
+                <option value="all">{t('filters.all_exercises')}</option>
                 {uniqueExercises.map((exercise) => (
                   <option key={exercise} value={exercise}>
                     {exercise}
@@ -439,7 +439,7 @@ export default function WorkoutAnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Workouts
+                {t('metrics.total_workouts')}
               </p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {analytics?.total_workouts || 0}
@@ -456,7 +456,7 @@ export default function WorkoutAnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Volume
+                {t('metrics.total_volume')}
               </p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {analytics?.total_volume
@@ -467,7 +467,7 @@ export default function WorkoutAnalyticsPage() {
             <Target className="h-8 w-8 text-green-600" />
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            Total weight lifted (lbs)
+            {t('metrics.total_volume_desc')}
           </p>
         </div>
 
@@ -475,7 +475,7 @@ export default function WorkoutAnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Training Time
+                {t('metrics.training_time')}
               </p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {analytics?.total_duration_minutes
@@ -486,7 +486,7 @@ export default function WorkoutAnalyticsPage() {
             <Clock className="h-8 w-8 text-purple-600" />
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            Avg:{' '}
+            {t('metrics.avg_prefix')}{' '}
             {analytics?.average_workout_duration
               ? formatDuration(Math.round(analytics.average_workout_duration))
               : '0m'}
@@ -497,7 +497,7 @@ export default function WorkoutAnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Personal Records
+                {t('metrics.personal_records')}
               </p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {analytics?.personal_records_count || 0}
@@ -506,7 +506,7 @@ export default function WorkoutAnalyticsPage() {
             <Award className="h-8 w-8 text-yellow-600" />
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            New achievements
+            {t('metrics.new_achievements')}
           </p>
         </div>
       </div>
@@ -518,7 +518,7 @@ export default function WorkoutAnalyticsPage() {
           analytics.favorite_exercises.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Favorite Exercises
+                {t('sections.favorite_exercises')}
               </h2>
               <div className="space-y-3">
                 {analytics.favorite_exercises
@@ -543,7 +543,7 @@ export default function WorkoutAnalyticsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Strength Progress
+              {t('sections.strength_progress')}
             </h2>
             <TrendingUp className="h-5 w-5 text-gray-400" />
           </div>
@@ -562,7 +562,7 @@ export default function WorkoutAnalyticsPage() {
                       {exercise.current_max_weight} lbs
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      1RM (lbs)
+                      {t('sections.strength_progress_1rm')}
                     </p>
                   </div>
                   <div className="text-right">
@@ -572,7 +572,7 @@ export default function WorkoutAnalyticsPage() {
                       +{exercise.percentage_increase.toFixed(1)}%
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      vs last month
+                      {t('sections.strength_progress_vs_last_month')}
                     </p>
                   </div>
                 </div>
@@ -588,7 +588,7 @@ export default function WorkoutAnalyticsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Body Measurements
+                {t('sections.body_measurements')}
               </h2>
               <BarChart3 className="h-5 w-5 text-gray-400" />
             </div>
@@ -608,7 +608,8 @@ export default function WorkoutAnalyticsPage() {
                     </span>
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    Last updated: {formatDate(measurement.measured_at)}
+                    {t('sections.body_measurements_last_updated')}{' '}
+                    {formatDate(measurement.measured_at)}
                   </p>
                 </div>
               ))}
@@ -620,18 +621,18 @@ export default function WorkoutAnalyticsPage() {
       {insights && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Performance Insights
+            {t('sections.performance_insights')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Trends */}
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                Trends
+                {t('trends.title')}
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Strength:
+                    {t('trends.strength')}
                   </span>
                   <span
                     className={`text-sm font-medium capitalize ${calculateTrendColor(insights.strength_trend)}`}
@@ -641,7 +642,7 @@ export default function WorkoutAnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Consistency:
+                    {t('trends.consistency')}
                   </span>
                   <span
                     className={`text-sm font-medium capitalize ${calculateTrendColor(insights.consistency_trend)}`}
@@ -651,7 +652,7 @@ export default function WorkoutAnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Volume:
+                    {t('trends.volume')}
                   </span>
                   <span
                     className={`text-sm font-medium capitalize ${calculateTrendColor(insights.volume_trend)}`}
@@ -665,12 +666,12 @@ export default function WorkoutAnalyticsPage() {
             {/* Risk Assessment */}
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                Risk Assessment
+                {t('trends.risk_assessment')}
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Plateau Risk:
+                    {t('trends.plateau_risk')}
                   </span>
                   <div className="flex items-center gap-2">
                     <div className="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
@@ -694,7 +695,7 @@ export default function WorkoutAnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Overtraining:
+                    {t('trends.overtraining')}
                   </span>
                   <div className="flex items-center gap-2">
                     <div className="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
@@ -724,7 +725,7 @@ export default function WorkoutAnalyticsPage() {
           {insights.recommendations && insights.recommendations.length > 0 && (
             <div className="mt-6">
               <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                Recommendations
+                {t('recommendations.title')}
               </h3>
               <ul className="space-y-2">
                 {insights.recommendations.slice(0, 3).map((rec, index) => (
@@ -748,7 +749,7 @@ export default function WorkoutAnalyticsPage() {
           analytics.most_trained_muscle_groups.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Muscle Group Focus
+                {t('sections.muscle_group_focus')}
               </h2>
               <div className="space-y-3">
                 {analytics.most_trained_muscle_groups
@@ -797,7 +798,7 @@ export default function WorkoutAnalyticsPage() {
         {workoutHistory?.sessions && workoutHistory.sessions.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Recent Sessions
+              {t('sections.recent_sessions')}
             </h2>
             <div className="space-y-3">
               {workoutHistory.sessions.slice(0, 5).map((session, index) => (
@@ -810,8 +811,9 @@ export default function WorkoutAnalyticsPage() {
                       {new Date(session.started_at).toLocaleDateString()}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {session.total_exercises} exercises • {session.total_sets}{' '}
-                      sets
+                      {session.total_exercises}{' '}
+                      {t('sections.recent_sessions_exercises')} •{' '}
+                      {session.total_sets} {t('sections.recent_sessions_sets')}
                     </p>
                   </div>
                   <div className="text-right">
@@ -821,7 +823,7 @@ export default function WorkoutAnalyticsPage() {
                     <p className="text-xs text-gray-500">
                       {session.total_volume
                         ? `${(session.total_volume / 1000).toFixed(1)}k lbs`
-                        : 'Volume'}
+                        : t('sections.recent_sessions_volume')}
                     </p>
                   </div>
                 </div>
@@ -834,7 +836,7 @@ export default function WorkoutAnalyticsPage() {
       {/* Training Consistency & Achievement Milestones from Backend */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Training Consistency & Milestones
+          {t('sections.training_consistency')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
@@ -842,10 +844,12 @@ export default function WorkoutAnalyticsPage() {
               {analytics?.weekly_frequency?.toFixed(1) || '0.0'}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              Weekly Frequency
+              {t('sections.training_consistency_weekly_frequency')}
             </div>
             <div className="text-xs text-green-600 mt-1">
-              {(analytics?.weekly_frequency || 0) >= 3 ? 'Excellent' : 'Good'}
+              {(analytics?.weekly_frequency || 0) >= 3
+                ? t('sections.training_consistency_excellent')
+                : t('sections.training_consistency_good')}
             </div>
           </div>
           <div className="text-center">
@@ -853,10 +857,12 @@ export default function WorkoutAnalyticsPage() {
               {Math.round((analytics?.consistency_score || 0) * 100)}%
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              Consistency Score
+              {t('sections.training_consistency_score')}
             </div>
             <div className="text-xs text-green-600 mt-1">
-              {(analytics?.consistency_score || 0) > 0.8 ? 'Excellent' : 'Good'}
+              {(analytics?.consistency_score || 0) > 0.8
+                ? t('sections.training_consistency_excellent')
+                : t('sections.training_consistency_good')}
             </div>
           </div>
           <div className="text-center">
@@ -864,9 +870,11 @@ export default function WorkoutAnalyticsPage() {
               {analytics?.achievement_count || 0}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              Achievements
+              {t('sections.training_consistency_achievements')}
             </div>
-            <div className="text-xs text-blue-600 mt-1">This period</div>
+            <div className="text-xs text-blue-600 mt-1">
+              {t('sections.training_consistency_this_period')}
+            </div>
           </div>
         </div>
       </div>

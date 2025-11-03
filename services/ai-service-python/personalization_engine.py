@@ -75,8 +75,8 @@ class PersonalizationEngine:
             logger.info(f"Analyzing user preferences for user {user_id}")
             
             # Get user memories and conversation history
-            memories = await self.memory_service._get_user_memories(user_id)
-            conversation_history = await self.memory_service._get_conversation_history(user_id)
+            memories = await self.memory_service.get_user_memories(user_id)
+            conversation_history = await self.memory_service.get_conversation_history(user_id)
             
             # Analyze communication patterns
             communication_analysis = await self._analyze_communication_patterns(

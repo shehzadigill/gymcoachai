@@ -1,247 +1,282 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Firebase Push Notification Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #6c757d; cursor: not-allowed; }
-        .log {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 10px 0;
-            font-family: monospace;
-            white-space: pre-wrap;
-            max-height: 300px;
-            overflow-y: auto;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+      .log {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>🔥 Firebase Push Notification Test</h1>
-        
-        <div id="status" class="status info">
-            Initializing Firebase...
-        </div>
+      <h1>🔥 Firebase Push Notification Test</h1>
 
-        <div>
-            <button id="requestPermission" onclick="requestPermission()" disabled>
-                Request Notification Permission
-            </button>
-            <button id="getToken" onclick="getToken()" disabled>
-                Get FCM Token
-            </button>
-            <button id="testNotification" onclick="testNotification()" disabled>
-                Test Notification
-            </button>
-            <button id="clearLog" onclick="clearLog()">
-                Clear Log
-            </button>
-        </div>
+      <div id="status" class="status info">Initializing Firebase...</div>
 
-        <div>
-            <h3>FCM Token:</h3>
-            <div id="tokenDisplay" class="log">Not available yet</div>
-        </div>
+      <div>
+        <button id="requestPermission" onclick="requestPermission()" disabled>
+          Request Notification Permission
+        </button>
+        <button id="getToken" onclick="getToken()" disabled>
+          Get FCM Token
+        </button>
+        <button id="testNotification" onclick="testNotification()" disabled>
+          Test Notification
+        </button>
+        <button id="clearLog" onclick="clearLog()">Clear Log</button>
+      </div>
 
-        <div>
-            <h3>Test Log:</h3>
-            <div id="log" class="log"></div>
-        </div>
+      <div>
+        <h3>FCM Token:</h3>
+        <div id="tokenDisplay" class="log">Not available yet</div>
+      </div>
+
+      <div>
+        <h3>Test Log:</h3>
+        <div id="log" class="log"></div>
+      </div>
     </div>
 
     <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getMessaging, getToken, onMessage, isSupported } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import {
+        getMessaging,
+        getToken,
+        onMessage,
+        isSupported,
+      } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: 'AIzaSyD3MDNNkmFKlWmkJmw8OBZl8sftkTq6aSQ',
-            authDomain: 'gymcoach-73528.firebaseapp.com',
-            projectId: 'gymcoach-73528',
-            storageBucket: 'gymcoach-73528.firebasestorage.app',
-            messagingSenderId: '460820256285',
-            appId: '1:460820256285:web:7f787f160e7894353b98f4',
-            measurementId: 'G-44P0Y1YDHR',
-        };
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: 'AIzaSyD3MDNNkmFKlWmkJmw8OBZl8sftkTq6aSQ',
+        authDomain: 'gymcoach-73528.firebaseapp.com',
+        projectId: 'gymcoach-73528',
+        storageBucket: 'gymcoach-73528.firebasestorage.app',
+        messagingSenderId: '460820256285',
+        appId: '1:460820256285:web:7f787f160e7894353b98f4',
+        measurementId: 'G-44P0Y1YDHR',
+      };
 
-        // VAPID key from environment
-        const vapidKey = 'BGslzo2LdA3FH_K_RoB4QHi5XBC-xO5cRjTtvPEAykq-A9LkPWz3YxcTMijQjW7I9PbFROIGgOhFg7LzkP623gE';
+      // VAPID key from environment
+      const vapidKey =
+        'BGslzo2LdA3FH_K_RoB4QHi5XBC-xO5cRjTtvPEAykq-A9LkPWz3YxcTMijQjW7I9PbFROIGgOhFg7LzkP623gE';
 
-        let messaging = null;
-        let fcmToken = null;
+      let messaging = null;
+      let fcmToken = null;
 
-        // Initialize Firebase
+      // Initialize Firebase
+      try {
+        const app = initializeApp(firebaseConfig);
+        log('✅ Firebase initialized successfully');
+
+        // Check if messaging is supported
+        isSupported().then((supported) => {
+          if (supported) {
+            messaging = getMessaging(app);
+            log('✅ Firebase Messaging is supported');
+            updateStatus('Firebase initialized successfully', 'success');
+            document.getElementById('requestPermission').disabled = false;
+          } else {
+            log('❌ Firebase Messaging is not supported in this browser');
+            updateStatus('Firebase Messaging not supported', 'error');
+          }
+        });
+      } catch (error) {
+        log('❌ Firebase initialization failed: ' + error.message);
+        updateStatus('Firebase initialization failed', 'error');
+      }
+
+      // Global functions
+      window.requestPermission = async function () {
         try {
-            const app = initializeApp(firebaseConfig);
-            log('✅ Firebase initialized successfully');
-            
-            // Check if messaging is supported
-            isSupported().then((supported) => {
-                if (supported) {
-                    messaging = getMessaging(app);
-                    log('✅ Firebase Messaging is supported');
-                    updateStatus('Firebase initialized successfully', 'success');
-                    document.getElementById('requestPermission').disabled = false;
-                } else {
-                    log('❌ Firebase Messaging is not supported in this browser');
-                    updateStatus('Firebase Messaging not supported', 'error');
-                }
-            });
+          log('🔔 Requesting notification permission...');
+          const permission = await Notification.requestPermission();
+
+          if (permission === 'granted') {
+            log('✅ Notification permission granted');
+            updateStatus(
+              'Permission granted! You can now get FCM token',
+              'success'
+            );
+            document.getElementById('getToken').disabled = false;
+          } else {
+            log('❌ Notification permission denied');
+            updateStatus(
+              'Permission denied. Please enable notifications in your browser settings',
+              'error'
+            );
+          }
         } catch (error) {
-            log('❌ Firebase initialization failed: ' + error.message);
-            updateStatus('Firebase initialization failed', 'error');
+          log('❌ Error requesting permission: ' + error.message);
+          updateStatus('Error requesting permission', 'error');
+        }
+      };
+
+      window.getToken = async function () {
+        try {
+          if (!messaging) {
+            log('❌ Messaging not initialized');
+            return;
+          }
+
+          log('🔑 Getting FCM token...');
+          const token = await getToken(messaging, { vapidKey });
+
+          if (token) {
+            fcmToken = token;
+            log('✅ FCM token received: ' + token.substring(0, 50) + '...');
+            document.getElementById('tokenDisplay').textContent = token;
+            updateStatus(
+              'FCM token received! You can now test notifications',
+              'success'
+            );
+            document.getElementById('testNotification').disabled = false;
+          } else {
+            log('❌ No FCM token available');
+            updateStatus('No FCM token available', 'error');
+          }
+        } catch (error) {
+          log('❌ Error getting FCM token: ' + error.message);
+          updateStatus('Error getting FCM token', 'error');
+        }
+      };
+
+      window.testNotification = function () {
+        if (!fcmToken) {
+          log('❌ No FCM token available. Please get token first.');
+          return;
         }
 
-        // Global functions
-        window.requestPermission = async function() {
-            try {
-                log('🔔 Requesting notification permission...');
-                const permission = await Notification.requestPermission();
-                
-                if (permission === 'granted') {
-                    log('✅ Notification permission granted');
-                    updateStatus('Permission granted! You can now get FCM token', 'success');
-                    document.getElementById('getToken').disabled = false;
-                } else {
-                    log('❌ Notification permission denied');
-                    updateStatus('Permission denied. Please enable notifications in your browser settings', 'error');
-                }
-            } catch (error) {
-                log('❌ Error requesting permission: ' + error.message);
-                updateStatus('Error requesting permission', 'error');
+        log(
+          '📤 Testing notification with token: ' +
+            fcmToken.substring(0, 20) +
+            '...'
+        );
+
+        // Send test notification to backend
+        fetch(
+          'https://2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-west-1.on.aws/api/notifications/send',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: 'test-user-web',
+              notification_type: 'test',
+              title: 'Test Notification from Web!',
+              body: 'This is a test notification from the web app Firebase integration.',
+              data: {
+                test: true,
+                platform: 'web',
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          }
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            if (response.ok) {
+              log('✅ Test notification sent successfully');
+              updateStatus('Test notification sent!', 'success');
+            } else {
+              log('❌ Test notification failed: ' + JSON.stringify(data));
+              updateStatus('Test notification failed', 'error');
             }
-        };
+          })
+          .catch((error) => {
+            log('❌ Error sending test notification: ' + error.message);
+            updateStatus('Error sending test notification', 'error');
+          });
+      };
 
-        window.getToken = async function() {
-            try {
-                if (!messaging) {
-                    log('❌ Messaging not initialized');
-                    return;
-                }
+      window.clearLog = function () {
+        document.getElementById('log').textContent = '';
+      };
 
-                log('🔑 Getting FCM token...');
-                const token = await getToken(messaging, { vapidKey });
-                
-                if (token) {
-                    fcmToken = token;
-                    log('✅ FCM token received: ' + token.substring(0, 50) + '...');
-                    document.getElementById('tokenDisplay').textContent = token;
-                    updateStatus('FCM token received! You can now test notifications', 'success');
-                    document.getElementById('testNotification').disabled = false;
-                } else {
-                    log('❌ No FCM token available');
-                    updateStatus('No FCM token available', 'error');
-                }
-            } catch (error) {
-                log('❌ Error getting FCM token: ' + error.message);
-                updateStatus('Error getting FCM token', 'error');
-            }
-        };
+      // Listen for incoming messages
+      if (messaging) {
+        onMessage(messaging, (payload) => {
+          log('📨 Received notification: ' + JSON.stringify(payload));
+          updateStatus('Notification received!', 'success');
+        });
+      }
 
-        window.testNotification = function() {
-            if (!fcmToken) {
-                log('❌ No FCM token available. Please get token first.');
-                return;
-            }
+      // Helper functions
+      function log(message) {
+        const logElement = document.getElementById('log');
+        const timestamp = new Date().toLocaleTimeString();
+        logElement.textContent += `[${timestamp}] ${message}\n`;
+        logElement.scrollTop = logElement.scrollHeight;
+      }
 
-            log('📤 Testing notification with token: ' + fcmToken.substring(0, 20) + '...');
-            
-            // Send test notification to backend
-            fetch('https://2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-north-1.on.aws/api/notifications/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: 'test-user-web',
-                    notification_type: 'test',
-                    title: 'Test Notification from Web!',
-                    body: 'This is a test notification from the web app Firebase integration.',
-                    data: {
-                        test: true,
-                        platform: 'web',
-                        timestamp: new Date().toISOString()
-                    }
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (response.ok) {
-                    log('✅ Test notification sent successfully');
-                    updateStatus('Test notification sent!', 'success');
-                } else {
-                    log('❌ Test notification failed: ' + JSON.stringify(data));
-                    updateStatus('Test notification failed', 'error');
-                }
-            })
-            .catch(error => {
-                log('❌ Error sending test notification: ' + error.message);
-                updateStatus('Error sending test notification', 'error');
-            });
-        };
-
-        window.clearLog = function() {
-            document.getElementById('log').textContent = '';
-        };
-
-        // Listen for incoming messages
-        if (messaging) {
-            onMessage(messaging, (payload) => {
-                log('📨 Received notification: ' + JSON.stringify(payload));
-                updateStatus('Notification received!', 'success');
-            });
-        }
-
-        // Helper functions
-        function log(message) {
-            const logElement = document.getElementById('log');
-            const timestamp = new Date().toLocaleTimeString();
-            logElement.textContent += `[${timestamp}] ${message}\n`;
-            logElement.scrollTop = logElement.scrollHeight;
-        }
-
-        function updateStatus(message, type) {
-            const statusElement = document.getElementById('status');
-            statusElement.textContent = message;
-            statusElement.className = `status ${type}`;
-        }
+      function updateStatus(message, type) {
+        const statusElement = document.getElementById('status');
+        statusElement.textContent = message;
+        statusElement.className = `status ${type}`;
+      }
     </script>
-</body>
+  </body>
 </html>

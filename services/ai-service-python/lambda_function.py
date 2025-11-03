@@ -12,6 +12,7 @@ from datetime import datetime
 # Import our services
 from auth_layer import AuthLayer
 from rate_limiter import RateLimiter
+from cache_service import CacheService
 from bedrock_service import BedrockService
 from conversation_service import ConversationService
 from user_data_service import UserDataService
@@ -34,12 +35,13 @@ logger.setLevel(logging.INFO)
 
 # Environment variables
 TABLE_NAME = os.environ.get('DYNAMODB_TABLE', 'gymcoach-ai-main')
-REGION = os.environ.get('AWS_REGION', 'us-east-1')
+REGION = os.environ.get('AWS_REGION', 'eu-west-1')
 
-# Initialize services
+# Initialize services with cache integration
 auth_layer = AuthLayer()
 rate_limiter = RateLimiter(TABLE_NAME)
-bedrock_service = BedrockService()
+cache_service = CacheService(TABLE_NAME)
+bedrock_service = BedrockService(cache_service=cache_service)
 conversation_service = ConversationService(TABLE_NAME)
 user_data_service = UserDataService(TABLE_NAME)
 rag_service = RAGService()
@@ -77,10 +79,10 @@ def emit_metric(metric_name: str, value: float, unit: str = 'Count', dimensions:
         logger.error(f"Failed to emit metric {metric_name}: {e}")
 
 def calculate_cost(input_tokens: int, output_tokens: int) -> float:
-    """Calculate estimated cost based on DeepSeek v3 pricing"""
-    # DeepSeek v3 pricing (approximate)
-    input_cost_per_1k = 0.00027  # $0.27 per 1M input tokens
-    output_cost_per_1k = 0.0011  # $1.10 per 1M output tokens
+    """Calculate estimated cost based on Amazon Nova Micro pricing (cheapest in eu-west-1)"""
+    # Amazon Nova Micro pricing in eu-west-1
+    input_cost_per_1k = 0.000075   # $0.075 per 1M input tokens
+    output_cost_per_1k = 0.0003    # $0.30 per 1M output tokens
     
     input_cost = (input_tokens / 1000) * input_cost_per_1k
     output_cost = (output_tokens / 1000) * output_cost_per_1k
@@ -250,6 +252,8 @@ def lambda_handler(event, context):
                 return asyncio.run(handle_conversation_analytics(user_id, body))
             elif '/proactive/insights' in path:
                 return asyncio.run(handle_proactive_insights(user_id, body))
+            elif '/cache/invalidate' in path:
+                return asyncio.run(handle_cache_invalidation(user_id, body))
         
         elif http_method == 'GET':
             if '/conversations' in path:
@@ -264,6 +268,8 @@ def lambda_handler(event, context):
                 return asyncio.run(handle_rag_debug())
             elif '/proactive/insights' in path:
                 return asyncio.run(handle_proactive_insights(user_id, {}))
+            elif '/cache/stats' in path:
+                return asyncio.run(handle_cache_stats(user_id))
             else:
                 return create_error_response(404, 'Endpoint not found')
         
@@ -377,8 +383,15 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         # Combine all parts
         prompt = "\n\n".join(prompt_parts)
         
-        # Invoke Bedrock
-        bedrock_result = bedrock_service.invoke_bedrock(prompt, user_context, max_tokens=1000)
+        # Invoke Bedrock with caching
+        bedrock_result = await bedrock_service.invoke_bedrock_with_cache(
+            prompt=prompt,
+            context=user_context,
+            max_tokens=1000,
+            endpoint_type='chat',
+            user_id=user_id,
+            bypass_cache=False
+        )
         
         if not bedrock_result['success']:
             return create_error_response(500, 'AI service temporarily unavailable')
@@ -405,9 +418,21 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         emit_metric('OutputTokens', bedrock_result['output_tokens'])
         emit_metric('RAGSources', len(rag_context['sources']))
         
-        # Calculate and emit cost
-        cost = calculate_cost(bedrock_result['input_tokens'], bedrock_result['output_tokens'])
-        emit_metric('EstimatedCost', cost, 'None')
+        # Emit cache metrics
+        if bedrock_result.get('cached'):
+            emit_metric('CacheHits', 1, dimensions={'Endpoint': 'chat'})
+            emit_metric('CacheHitRate', 100.0, 'Percent', dimensions={'Endpoint': 'chat'})
+        else:
+            emit_metric('CacheMisses', 1, dimensions={'Endpoint': 'chat'})
+        
+        # Calculate and emit cost (only for non-cached responses)
+        if not bedrock_result.get('cached'):
+            cost = calculate_cost(bedrock_result['input_tokens'], bedrock_result['output_tokens'])
+            emit_metric('EstimatedCost', cost, 'None')
+        else:
+            # Emit cost savings for cached responses
+            cost_saved = calculate_cost(bedrock_result['input_tokens'], bedrock_result['output_tokens'])
+            emit_metric('CostSaved', cost_saved, 'None', dimensions={'Endpoint': 'chat'})
         
         # Prepare RAG context for response
         rag_context_response = {
@@ -442,7 +467,10 @@ async def handle_chat(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
                 'resetAt': rate_limit_result['reset_at'],
                 'tier': user_tier,
                 'ragSources': len(rag_context['sources']),
-                'ragMetadata': rag_context['metadata']
+                'ragMetadata': rag_context['metadata'],
+                'cached': bedrock_result.get('cached', False),
+                'cacheSource': bedrock_result.get('cache_source', 'bedrock'),
+                'cacheAge': bedrock_result.get('cache_age_seconds', 0)
             }))
         }
         
@@ -485,8 +513,15 @@ Requirements:
 
 Format the response as a structured workout plan with weekly breakdowns."""
         
-        # Invoke Bedrock
-        bedrock_result = bedrock_service.invoke_bedrock(prompt, user_context, max_tokens=2000)
+        # Invoke Bedrock with caching
+        bedrock_result = await bedrock_service.invoke_bedrock_with_cache(
+            prompt=prompt,
+            context=user_context,
+            max_tokens=2000,
+            endpoint_type='workout-plan',
+            user_id=user_id,
+            bypass_cache=False
+        )
         
         if not bedrock_result['success']:
             return create_error_response(500, 'AI service temporarily unavailable')
@@ -554,8 +589,15 @@ Requirements:
 
 Format the response as a structured meal plan with daily breakdowns, recipes, and shopping list."""
         
-        # Invoke Bedrock
-        bedrock_result = bedrock_service.invoke_bedrock(prompt, user_context, max_tokens=2000)
+        # Invoke Bedrock with caching
+        bedrock_result = await bedrock_service.invoke_bedrock_with_cache(
+            prompt=prompt,
+            context=user_context,
+            max_tokens=2000,
+            endpoint_type='meal-plan',
+            user_id=user_id,
+            bypass_cache=False
+        )
         
         if not bedrock_result['success']:
             return create_error_response(500, 'AI service temporarily unavailable')
@@ -1939,7 +1981,7 @@ async def handle_conversation_analytics(user_id: str, body: Dict[str, Any]) -> D
     try:
         logger.info(f"Conversation analytics request for user {user_id}")
         
-        conversation_id = body.get('conversation_id', '')
+        conversation_id = body.get('conversationId', '')
         
         if not conversation_id:
             return create_error_response(400, 'Conversation ID is required')
@@ -2047,6 +2089,73 @@ async def handle_eventbridge_event(event: Dict[str, Any]) -> Dict[str, Any]:
                 'message': 'Failed to process proactive coaching event'
             })
         }
+
+async def handle_cache_stats(user_id: str) -> Dict[str, Any]:
+    """Get cache statistics"""
+    try:
+        logger.info(f"Cache stats request for user {user_id}")
+        
+        # Get cache statistics
+        cache_stats = cache_service.get_cache_stats()
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'success': True,
+                'data': cache_stats,
+                'timestamp': datetime.now().isoformat()
+            })
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return create_error_response(500, 'Failed to get cache statistics')
+
+async def handle_cache_invalidation(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Invalidate cache for user or specific endpoint"""
+    try:
+        logger.info(f"Cache invalidation request for user {user_id}")
+        
+        endpoint_type = body.get('endpointType')  # Optional - invalidate specific endpoint
+        invalidate_all = body.get('invalidateAll', False)
+        
+        if invalidate_all:
+            # Invalidate all cache for user
+            invalidated_count = await cache_service.invalidate_user_cache(user_id)
+        elif endpoint_type:
+            # Invalidate specific endpoint type
+            invalidated_count = await cache_service.invalidate_user_cache(user_id, endpoint_type)
+        else:
+            return create_error_response(400, 'Must specify endpointType or invalidateAll')
+        
+        logger.info(f"Invalidated {invalidated_count} cache entries for user {user_id}")
+        
+        # Emit metric
+        emit_metric('CacheInvalidations', invalidated_count, dimensions={'User': user_id})
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'success': True,
+                'message': f'Invalidated {invalidated_count} cache entries',
+                'invalidatedCount': invalidated_count,
+                'userId': user_id,
+                'endpointType': endpoint_type,
+                'timestamp': datetime.now().isoformat()
+            })
+        }
+        
+    except Exception as e:
+        logger.error(f"Error invalidating cache: {e}")
+        return create_error_response(500, 'Failed to invalidate cache')
 
 def create_error_response(status_code: int, message: str) -> Dict[str, Any]:
     """Create standardized error response"""

@@ -386,7 +386,11 @@ function SidebarContent({
                           const childLocalizedHref = getLocalizedHref(
                             child.href
                           );
-                          const isChildActive = pathname === childLocalizedHref;
+                          // Check if pathname matches or starts with the child href (for nested pages)
+                          const isChildActive = 
+                            pathname === childLocalizedHref || 
+                            pathname === `${childLocalizedHref}/` ||
+                            pathname.startsWith(`${childLocalizedHref}/`);
                           return (
                             <a
                               key={child.name}

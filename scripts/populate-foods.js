@@ -1,7 +1,7 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 
-const client = new DynamoDBClient({ region: 'eu-north-1' });
+const client = new DynamoDBClient({ region: 'eu-west-1' });
 const docClient = DynamoDBDocumentClient.from(client);
 
 const tableName = 'gymcoach-ai-main';

@@ -1,7 +1,7 @@
-use aws_sdk_dynamodb::{Client as DynamoDbClient, types::AttributeValue};
-use std::collections::HashMap;
 use anyhow::Result;
-use tracing::{info, error};
+use aws_sdk_dynamodb::{types::AttributeValue, Client as DynamoDbClient};
+use std::collections::HashMap;
+use tracing::{error, info};
 
 use crate::models::*;
 
@@ -18,70 +18,117 @@ impl FoodRepository {
 
     pub async fn create_food(&self, food: &Food) -> Result<Food> {
         let mut item = HashMap::new();
-        
+
         // Primary key
-        item.insert("PK".to_string(), AttributeValue::S(format!("FOOD#{}", food.id)));
-        item.insert("SK".to_string(), AttributeValue::S(format!("FOOD#{}", food.id)));
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!("FOOD#{}", food.id)),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("FOOD#{}", food.id)),
+        );
         // Name index for prefix search: fixed PK and nameLower in SK
         item.insert("GSI1PK".to_string(), AttributeValue::S("FOOD".to_string()));
-        item.insert("GSI1SK".to_string(), AttributeValue::S(format!("{}#{}", food.name.to_lowercase(), food.id)));
-        
-        if let Some(barcode) = &food.barcode {
-            item.insert("GSI2PK".to_string(), AttributeValue::S(format!("BARCODE#{}", barcode)));
-            item.insert("GSI2SK".to_string(), AttributeValue::S(format!("FOOD#{}", food.id)));
-        }
-        
+        item.insert(
+            "GSI1SK".to_string(),
+            AttributeValue::S(format!("{}#{}", food.name.to_lowercase(), food.id)),
+        );
+
         // Entity type
-        item.insert("EntityType".to_string(), AttributeValue::S("FOOD".to_string()));
-        
+        item.insert(
+            "EntityType".to_string(),
+            AttributeValue::S("FOOD".to_string()),
+        );
+
         // Food data
         item.insert("FoodId".to_string(), AttributeValue::S(food.id.clone()));
         item.insert("Name".to_string(), AttributeValue::S(food.name.clone()));
-        
+
         if let Some(brand) = &food.brand {
             item.insert("Brand".to_string(), AttributeValue::S(brand.clone()));
         }
-        
-        item.insert("Category".to_string(), AttributeValue::S(serde_json::to_string(&food.category)?));
-        
+
+        item.insert(
+            "Category".to_string(),
+            AttributeValue::S(serde_json::to_string(&food.category)?),
+        );
+
         if let Some(subcategory) = &food.subcategory {
-            item.insert("Subcategory".to_string(), AttributeValue::S(subcategory.clone()));
+            item.insert(
+                "Subcategory".to_string(),
+                AttributeValue::S(subcategory.clone()),
+            );
         }
-        
+
         if let Some(description) = &food.description {
-            item.insert("Description".to_string(), AttributeValue::S(description.clone()));
+            item.insert(
+                "Description".to_string(),
+                AttributeValue::S(description.clone()),
+            );
         }
-        
+
         if let Some(barcode) = &food.barcode {
             item.insert("Barcode".to_string(), AttributeValue::S(barcode.clone()));
         }
-        
+
         if let Some(upc) = &food.upc {
             item.insert("UPC".to_string(), AttributeValue::S(upc.clone()));
         }
-        
-        item.insert("NutritionFacts".to_string(), AttributeValue::S(serde_json::to_string(&food.nutrition_facts)?));
-        item.insert("ServingSize".to_string(), AttributeValue::N(food.serving_size.to_string()));
-        item.insert("ServingUnit".to_string(), AttributeValue::S(food.serving_unit.clone()));
-        
-        item.insert("CommonServings".to_string(), AttributeValue::S(serde_json::to_string(&food.common_servings)?));
-        item.insert("Allergens".to_string(), AttributeValue::S(serde_json::to_string(&food.allergens)?));
-        item.insert("DietaryTags".to_string(), AttributeValue::S(serde_json::to_string(&food.dietary_tags)?));
-        
-        item.insert("Verified".to_string(), AttributeValue::Bool(food.verified));
-        
-        if let Some(verified_by) = &food.verified_by {
-            item.insert("VerifiedBy".to_string(), AttributeValue::S(verified_by.clone()));
-        }
-        
-        if let Some(verified_at) = &food.verified_at {
-            item.insert("VerifiedAt".to_string(), AttributeValue::S(verified_at.to_rfc3339()));
-        }
-        
-        item.insert("CreatedAt".to_string(), AttributeValue::S(food.created_at.to_rfc3339()));
-        item.insert("UpdatedAt".to_string(), AttributeValue::S(food.updated_at.to_rfc3339()));
 
-        let request = self.client
+        item.insert(
+            "NutritionFacts".to_string(),
+            AttributeValue::S(serde_json::to_string(&food.nutrition_facts)?),
+        );
+        item.insert(
+            "ServingSize".to_string(),
+            AttributeValue::N(food.serving_size.to_string()),
+        );
+        item.insert(
+            "ServingUnit".to_string(),
+            AttributeValue::S(food.serving_unit.clone()),
+        );
+
+        item.insert(
+            "CommonServings".to_string(),
+            AttributeValue::S(serde_json::to_string(&food.common_servings)?),
+        );
+        item.insert(
+            "Allergens".to_string(),
+            AttributeValue::S(serde_json::to_string(&food.allergens)?),
+        );
+        item.insert(
+            "DietaryTags".to_string(),
+            AttributeValue::S(serde_json::to_string(&food.dietary_tags)?),
+        );
+
+        item.insert("Verified".to_string(), AttributeValue::Bool(food.verified));
+
+        if let Some(verified_by) = &food.verified_by {
+            item.insert(
+                "VerifiedBy".to_string(),
+                AttributeValue::S(verified_by.clone()),
+            );
+        }
+
+        if let Some(verified_at) = &food.verified_at {
+            item.insert(
+                "VerifiedAt".to_string(),
+                AttributeValue::S(verified_at.to_rfc3339()),
+            );
+        }
+
+        item.insert(
+            "CreatedAt".to_string(),
+            AttributeValue::S(food.created_at.to_rfc3339()),
+        );
+        item.insert(
+            "UpdatedAt".to_string(),
+            AttributeValue::S(food.updated_at.to_rfc3339()),
+        );
+
+        let request = self
+            .client
             .put_item()
             .table_name(&self.table_name)
             .set_item(Some(item))
@@ -100,7 +147,8 @@ impl FoodRepository {
     }
 
     pub async fn get_food_by_id(&self, food_id: &str) -> Result<Option<Food>> {
-        let request = self.client
+        let request = self
+            .client
             .get_item()
             .table_name(&self.table_name)
             .key("PK", AttributeValue::S(format!("FOOD#{}", food_id)))
@@ -121,12 +169,18 @@ impl FoodRepository {
         }
     }
 
-    pub async fn search_foods(&self, query: &str, limit: u32, cursor: Option<String>) -> Result<(Vec<Food>, Option<String>)> {
+    pub async fn search_foods(
+        &self,
+        query: &str,
+        limit: u32,
+        cursor: Option<String>,
+    ) -> Result<(Vec<Food>, Option<String>)> {
         // Use GSI1 with fixed PK and nameLower prefix in SK
         let prefix = query.to_lowercase();
         info!("Querying foods on GSI1 begins_with: {}", prefix);
 
-        let mut request = self.client
+        let mut request = self
+            .client
             .query()
             .table_name(&self.table_name)
             .index_name("GSI1")
@@ -138,8 +192,14 @@ impl FoodRepository {
         // Pagination support via ExclusiveStartKey using table PK/SK
         if let Some(last_food_id) = cursor {
             let mut eks = std::collections::HashMap::new();
-            eks.insert("PK".to_string(), AttributeValue::S(format!("FOOD#{}", last_food_id)));
-            eks.insert("SK".to_string(), AttributeValue::S(format!("FOOD#{}", last_food_id)));
+            eks.insert(
+                "PK".to_string(),
+                AttributeValue::S(format!("FOOD#{}", last_food_id)),
+            );
+            eks.insert(
+                "SK".to_string(),
+                AttributeValue::S(format!("FOOD#{}", last_food_id)),
+            );
             request = request.set_exclusive_start_key(Some(eks));
         }
 
@@ -154,11 +214,11 @@ impl FoodRepository {
                     }
                 }
                 // Build next cursor from LastEvaluatedKey (derive FoodId from PK)
-                let next_cursor = response.last_evaluated_key().and_then(|k|
+                let next_cursor = response.last_evaluated_key().and_then(|k| {
                     k.get("PK")
                         .and_then(|v| v.as_s().ok())
                         .and_then(|s| s.strip_prefix("FOOD#").map(|v| v.to_string()))
-                );
+                });
                 Ok((foods, next_cursor))
             }
             Err(e) => {
@@ -170,42 +230,51 @@ impl FoodRepository {
 
     // Helper method to convert DynamoDB item to Food
     fn item_to_food(&self, item: &HashMap<String, AttributeValue>) -> Result<Food> {
-        let id = item.get("FoodId")
+        let id = item
+            .get("FoodId")
             .and_then(|v| v.as_s().ok())
             .ok_or_else(|| anyhow::anyhow!("Missing FoodId"))?
             .clone();
 
-        let name = item.get("Name")
+        let name = item
+            .get("Name")
             .and_then(|v| v.as_s().ok())
             .ok_or_else(|| anyhow::anyhow!("Missing Name"))?
             .clone();
 
-        let brand = item.get("Brand")
+        let brand = item
+            .get("Brand")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.clone());
 
-        let category = item.get("Category")
+        let category = item
+            .get("Category")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<FoodCategory>(s).ok())
             .unwrap_or(FoodCategory::Other);
 
-        let subcategory = item.get("Subcategory")
+        let subcategory = item
+            .get("Subcategory")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.clone());
 
-        let description = item.get("Description")
+        let description = item
+            .get("Description")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.clone());
 
-        let barcode = item.get("Barcode")
+        let barcode = item
+            .get("Barcode")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.clone());
 
-        let upc = item.get("UPC")
+        let upc = item
+            .get("UPC")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.clone());
 
-        let nutrition_facts = item.get("NutritionFacts")
+        let nutrition_facts = item
+            .get("NutritionFacts")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<NutritionFacts>(s).ok())
             .unwrap_or_else(|| NutritionFacts {
@@ -247,52 +316,62 @@ impl FoodRepository {
                 molybdenum: 0.0,
             });
 
-        let serving_size = item.get("ServingSize")
+        let serving_size = item
+            .get("ServingSize")
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse::<f32>().ok())
             .unwrap_or(1.0);
 
-        let serving_unit = item.get("ServingUnit")
+        let serving_unit = item
+            .get("ServingUnit")
             .and_then(|v| v.as_s().ok())
             .map_or("serving", |v| v)
             .to_string();
 
-        let common_servings = item.get("CommonServings")
+        let common_servings = item
+            .get("CommonServings")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<Vec<CommonServing>>(s).ok())
             .unwrap_or_else(|| vec![]);
 
-        let allergens = item.get("Allergens")
+        let allergens = item
+            .get("Allergens")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
             .unwrap_or_else(|| vec![]);
 
-        let dietary_tags = item.get("DietaryTags")
+        let dietary_tags = item
+            .get("DietaryTags")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
             .unwrap_or_else(|| vec![]);
 
-        let verified = item.get("Verified")
+        let verified = item
+            .get("Verified")
             .and_then(|v| v.as_bool().ok())
             .copied()
             .unwrap_or(false);
 
-        let verified_by = item.get("VerifiedBy")
+        let verified_by = item
+            .get("VerifiedBy")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.clone());
 
-        let verified_at = item.get("VerifiedAt")
+        let verified_at = item
+            .get("VerifiedAt")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&chrono::Utc));
 
-        let created_at = item.get("CreatedAt")
+        let created_at = item
+            .get("CreatedAt")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .unwrap_or_else(|| chrono::Utc::now());
 
-        let updated_at = item.get("UpdatedAt")
+        let updated_at = item
+            .get("UpdatedAt")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&chrono::Utc))

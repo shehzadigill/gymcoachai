@@ -7,10 +7,10 @@ const getApiBaseUrl = () => {
     // Client-side: Use proxy in development, CloudFront in production
     return process.env.NODE_ENV === 'development'
       ? 'http://localhost:3001/api' // Proxy server
-      : 'https://d12pveuxxq3vvn.cloudfront.net/api'; // CloudFront
+      : 'https://d202qmtk8kkxra.cloudfront.net/api'; // CloudFront
   } else {
     // Server-side: Always use CloudFront
-    return 'https://d12pveuxxq3vvn.cloudfront.net/api';
+    return 'https://d202qmtk8kkxra.cloudfront.net/api';
   }
 };
 
@@ -85,4 +85,3 @@ export const config = {
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',
 };
-

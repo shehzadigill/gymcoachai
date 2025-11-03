@@ -13,6 +13,8 @@ import {
   Animated,
   Dimensions,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Icon} from '../components/common/Icon';
@@ -687,384 +689,410 @@ const AITrainerScreen: React.FC = () => {
   return (
     <SafeAreaView
       style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {backgroundColor: colors.card, borderBottomColor: colors.border},
-        ]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.iconContainer}>
-            <Icon name="smart-toy" size={24} color="#3b82f6" />
-          </View>
-          <View>
-            <Text style={[styles.headerTitle, {color: colors.text}]}>
-              {t('ai_trainer.title')}
-            </Text>
-            <Text style={[styles.headerSubtitle, {color: colors.subtext}]}>
-              {t('ai_trainer.subtitle')}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRight}>
-          {rateLimit && (
-            <View style={styles.rateLimitContainer}>
-              <Icon name="flash-on" size={16} color={getRateLimitColor()} />
-              <Text
-                style={[styles.rateLimitText, {color: getRateLimitColor()}]}>
-                {rateLimit.requestsRemaining}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{flex: 1}}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+        {/* Header */}
+        <View
+          style={[
+            styles.header,
+            {backgroundColor: colors.card, borderBottomColor: colors.border},
+          ]}>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconContainer}>
+              <Icon name="smart-toy" size={24} color="#3b82f6" />
+            </View>
+            <View>
+              <Text style={[styles.headerTitle, {color: colors.text}]}>
+                {t('ai_trainer.title')}
+              </Text>
+              <Text style={[styles.headerSubtitle, {color: colors.subtext}]}>
+                {t('ai_trainer.subtitle')}
               </Text>
             </View>
-          )}
-
-          <Pressable
-            onPress={() => setShowMemoryPanel(true)}
-            style={styles.headerButton}>
-            <Icon name="memory" size={20} color="#6b7280" />
-            {userMemories.length > 0 && <View style={styles.badgeDot} />}
-          </Pressable>
-
-          <Pressable
-            onPress={() => setShowInsightsPanel(true)}
-            style={styles.headerButton}>
-            <Icon name="lightbulb" size={20} color="#6b7280" />
-            {proactiveInsights.length > 0 && <View style={styles.badgeDot} />}
-          </Pressable>
-
-          <Pressable
-            onPress={() => setShowConversations(!showConversations)}
-            style={styles.headerButton}>
-            <Icon name="chat" size={20} color="#6b7280" />
-          </Pressable>
-
-          <Pressable onPress={startNewConversation} style={styles.headerButton}>
-            <Icon name="refresh" size={20} color="#6b7280" />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        {/* Conversations Drawer */}
-        <Animated.View
-          style={[
-            styles.drawer,
-            {
-              backgroundColor: colors.card,
-              borderRightColor: colors.border,
-              transform: [
-                {
-                  translateX: drawerAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-280, 0],
-                  }),
-                },
-              ],
-            },
-          ]}>
-          <View
-            style={[styles.sidebarHeader, {borderBottomColor: colors.border}]}>
-            <Text style={[styles.sidebarTitle, {color: colors.text}]}>
-              {t('ai_trainer.conversations')}
-            </Text>
-            <Pressable
-              onPress={() => setShowConversations(false)}
-              style={styles.closeButton}>
-              <Icon name="close" size={20} color={colors.subtext} />
-            </Pressable>
           </View>
-          <FlatList
-            data={conversations}
-            renderItem={renderConversation}
-            keyExtractor={item => item.id || item.conversationId || item.title}
-            style={styles.conversationsList}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  {t('ai_trainer.no_conversations')}
+
+          <View style={styles.headerRight}>
+            {rateLimit && (
+              <View style={styles.rateLimitContainer}>
+                <Icon name="flash-on" size={16} color={getRateLimitColor()} />
+                <Text
+                  style={[styles.rateLimitText, {color: getRateLimitColor()}]}>
+                  {rateLimit.requestsRemaining}
                 </Text>
               </View>
-            }
-          />
-        </Animated.View>
+            )}
 
-        {/* Overlay */}
-        {showConversations && (
-          <Pressable
-            style={styles.overlay}
-            onPress={() => setShowConversations(false)}
-          />
-        )}
+            <Pressable
+              onPress={() => setShowMemoryPanel(true)}
+              style={styles.headerButton}>
+              <Icon name="memory" size={20} color="#6b7280" />
+              {userMemories.length > 0 && <View style={styles.badgeDot} />}
+            </Pressable>
 
-        {/* Chat Area */}
-        <View style={styles.chatContainer}>
-          {messages.length === 0 ? (
-            <View style={styles.welcomeContainer}>
-              <Icon
-                name="smart-toy"
-                size={64}
-                color={isDark ? '#4b5563' : '#d1d5db'}
-              />
-              <Text style={[styles.welcomeTitle, {color: colors.text}]}>
-                {t('ai_trainer.welcome_title')}
+            <Pressable
+              onPress={() => setShowInsightsPanel(true)}
+              style={styles.headerButton}>
+              <Icon name="lightbulb" size={20} color="#6b7280" />
+              {proactiveInsights.length > 0 && <View style={styles.badgeDot} />}
+            </Pressable>
+
+            <Pressable
+              onPress={() => setShowConversations(!showConversations)}
+              style={styles.headerButton}>
+              <Icon name="chat" size={20} color="#6b7280" />
+            </Pressable>
+
+            <Pressable
+              onPress={startNewConversation}
+              style={styles.headerButton}>
+              <Icon name="refresh" size={20} color="#6b7280" />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.content}>
+          {/* Conversations Drawer */}
+          <Animated.View
+            style={[
+              styles.drawer,
+              {
+                backgroundColor: colors.card,
+                borderRightColor: colors.border,
+                transform: [
+                  {
+                    translateX: drawerAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-280, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}>
+            <View
+              style={[
+                styles.sidebarHeader,
+                {borderBottomColor: colors.border},
+              ]}>
+              <Text style={[styles.sidebarTitle, {color: colors.text}]}>
+                {t('ai_trainer.conversations')}
               </Text>
-              <Text style={[styles.welcomeSubtitle, {color: colors.subtext}]}>
-                {t('ai_trainer.welcome_subtitle')}
-              </Text>
-              <Text style={[styles.welcomeQuestion, {color: colors.text}]}>
-                {t('ai_trainer.welcome_question')}
-              </Text>
+              <Pressable
+                onPress={() => setShowConversations(false)}
+                style={styles.closeButton}>
+                <Icon name="close" size={20} color={colors.subtext} />
+              </Pressable>
             </View>
-          ) : (
             <FlatList
-              ref={scrollViewRef}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={item => item.id}
-              style={styles.messagesList}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              data={conversations}
+              renderItem={renderConversation}
+              keyExtractor={item =>
+                item.id || item.conversationId || item.title
               }
+              style={styles.conversationsList}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    {t('ai_trainer.no_conversations')}
+                  </Text>
+                </View>
+              }
+            />
+          </Animated.View>
+
+          {/* Overlay */}
+          {showConversations && (
+            <Pressable
+              style={styles.overlay}
+              onPress={() => setShowConversations(false)}
             />
           )}
 
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#3b82f6" />
-              <Text style={styles.loadingText}>{t('ai_trainer.thinking')}</Text>
-            </View>
-          )}
-        </View>
-      </View>
+          {/* Chat Area */}
+          <View style={styles.chatContainer}>
+            {messages.length === 0 ? (
+              <View style={styles.welcomeContainer}>
+                <Icon
+                  name="smart-toy"
+                  size={64}
+                  color={isDark ? '#4b5563' : '#d1d5db'}
+                />
+                <Text style={[styles.welcomeTitle, {color: colors.text}]}>
+                  {t('ai_trainer.welcome_title')}
+                </Text>
+                <Text style={[styles.welcomeSubtitle, {color: colors.subtext}]}>
+                  {t('ai_trainer.welcome_subtitle')}
+                </Text>
+                <Text style={[styles.welcomeQuestion, {color: colors.text}]}>
+                  {t('ai_trainer.welcome_question')}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={scrollViewRef}
+                data={messages}
+                renderItem={renderMessage}
+                keyExtractor={item => item.id}
+                style={styles.messagesList}
+                keyboardShouldPersistTaps="handled"
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                  />
+                }
+              />
+            )}
 
-      {/* Input Area */}
-      <View
-        style={[
-          styles.inputContainer,
-          {backgroundColor: colors.card, borderTopColor: colors.border},
-        ]}>
-        <TextInput
-          style={[
-            styles.textInput,
-            {
-              color: colors.text,
-              borderColor: colors.border,
-              backgroundColor: colors.surface,
-            },
-          ]}
-          value={inputMessage}
-          onChangeText={setInputMessage}
-          placeholder={t('ai_trainer.ask_anything')}
-          placeholderTextColor={colors.subtext}
-          multiline
-          maxLength={500}
-          editable={!isLoading}
-          accessible={true}
-          accessibilityLabel="AI Trainer message input"
-          accessibilityHint="Type your question or message for the AI trainer"
-        />
-        <Pressable
-          onPress={sendMessage}
-          disabled={!inputMessage.trim() || isLoading}
-          style={[
-            styles.sendButton,
-            (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled,
-          ]}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-          accessibilityHint="Send your message to the AI trainer"
-          accessibilityState={{disabled: !inputMessage.trim() || isLoading}}>
-          <Icon name="send" size={20} color="white" />
-        </Pressable>
-      </View>
-
-      {/* Memory Panel Modal */}
-      <Modal
-        visible={showMemoryPanel}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowMemoryPanel(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t('ai_trainer.your_memory')}
-              </Text>
-              <Pressable onPress={() => setShowMemoryPanel(false)}>
-                <Icon name="close" size={24} color="#6b7280" />
-              </Pressable>
-            </View>
-            <ScrollView style={styles.modalBody}>
-              <MemoryViewer memories={userMemories} maxItems={10} />
-            </ScrollView>
+            {isLoading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#3b82f6" />
+                <Text style={styles.loadingText}>
+                  {t('ai_trainer.thinking')}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
-      </Modal>
 
-      {/* Proactive Insights Panel Modal */}
-      <Modal
-        visible={showInsightsPanel}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowInsightsPanel(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('ai_trainer.insights')}</Text>
-              <Pressable onPress={() => setShowInsightsPanel(false)}>
-                <Icon name="close" size={24} color="#6b7280" />
-              </Pressable>
+        {/* Input Area */}
+        <View
+          style={[
+            styles.inputContainer,
+            {backgroundColor: colors.card, borderTopColor: colors.border},
+          ]}>
+          <TextInput
+            style={[
+              styles.textInput,
+              {
+                color: colors.text,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+              },
+            ]}
+            value={inputMessage}
+            onChangeText={setInputMessage}
+            placeholder={t('ai_trainer.ask_anything')}
+            placeholderTextColor={colors.subtext}
+            multiline
+            maxLength={500}
+            editable={!isLoading}
+            accessible={true}
+            accessibilityLabel="AI Trainer message input"
+            accessibilityHint="Type your question or message for the AI trainer"
+          />
+          <Pressable
+            onPress={sendMessage}
+            disabled={!inputMessage.trim() || isLoading}
+            style={[
+              styles.sendButton,
+              (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled,
+            ]}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+            accessibilityHint="Send your message to the AI trainer"
+            accessibilityState={{disabled: !inputMessage.trim() || isLoading}}>
+            <Icon name="send" size={20} color="white" />
+          </Pressable>
+        </View>
+
+        {/* Memory Panel Modal */}
+        <Modal
+          visible={showMemoryPanel}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowMemoryPanel(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {t('ai_trainer.your_memory')}
+                </Text>
+                <Pressable onPress={() => setShowMemoryPanel(false)}>
+                  <Icon name="close" size={24} color="#6b7280" />
+                </Pressable>
+              </View>
+              <ScrollView style={styles.modalBody}>
+                <MemoryViewer memories={userMemories} maxItems={10} />
+              </ScrollView>
             </View>
-            <ScrollView style={styles.modalBody}>
-              {proactiveInsights.length > 0 ? (
-                proactiveInsights.map((insight, index) => (
-                  <View key={insight.id || index} style={styles.insightCard}>
-                    <View style={styles.insightHeader}>
-                      <Icon
-                        name={
-                          insight.type === 'workout'
-                            ? 'fitness-center'
-                            : 'restaurant'
-                        }
-                        size={16}
-                        color="#3b82f6"
-                      />
-                      <Text style={styles.insightType}>{insight.type}</Text>
-                      <View
-                        style={[
-                          styles.priorityBadge,
-                          {
-                            backgroundColor:
-                              insight.priority === 'high'
-                                ? '#fef2f2'
-                                : '#f0f9ff',
-                          },
-                        ]}>
-                        <Text
+          </View>
+        </Modal>
+
+        {/* Proactive Insights Panel Modal */}
+        <Modal
+          visible={showInsightsPanel}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowInsightsPanel(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {t('ai_trainer.insights')}
+                </Text>
+                <Pressable onPress={() => setShowInsightsPanel(false)}>
+                  <Icon name="close" size={24} color="#6b7280" />
+                </Pressable>
+              </View>
+              <ScrollView style={styles.modalBody}>
+                {proactiveInsights.length > 0 ? (
+                  proactiveInsights.map((insight, index) => (
+                    <View key={insight.id || index} style={styles.insightCard}>
+                      <View style={styles.insightHeader}>
+                        <Icon
+                          name={
+                            insight.type === 'workout'
+                              ? 'fitness-center'
+                              : 'restaurant'
+                          }
+                          size={16}
+                          color="#3b82f6"
+                        />
+                        <Text style={styles.insightType}>{insight.type}</Text>
+                        <View
                           style={[
-                            styles.priorityText,
+                            styles.priorityBadge,
                             {
-                              color:
+                              backgroundColor:
                                 insight.priority === 'high'
-                                  ? '#ef4444'
-                                  : '#3b82f6',
+                                  ? '#fef2f2'
+                                  : '#f0f9ff',
                             },
                           ]}>
-                          {insight.priority}
+                          <Text
+                            style={[
+                              styles.priorityText,
+                              {
+                                color:
+                                  insight.priority === 'high'
+                                    ? '#ef4444'
+                                    : '#3b82f6',
+                              },
+                            ]}>
+                            {insight.priority}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.insightTitle}>{insight.title}</Text>
+                      <Text style={styles.insightContent}>
+                        {insight.content}
+                      </Text>
+                      {insight.actionable && (
+                        <Pressable style={styles.actionButton}>
+                          <Text style={styles.actionButtonText}>
+                            Take Action
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.emptyInsights}>
+                    <Icon name="lightbulb-outline" size={48} color="#d1d5db" />
+                    <Text style={styles.emptyText}>No insights yet</Text>
+                    <Text style={styles.emptySubtext}>
+                      Keep tracking your workouts and nutrition to get
+                      personalized insights
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Personalization Panel Modal */}
+        <Modal
+          visible={showPersonalizationPanel}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPersonalizationPanel(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {t('ai_trainer.personalization')}
+                </Text>
+                <Pressable onPress={() => setShowPersonalizationPanel(false)}>
+                  <Icon name="close" size={24} color="#6b7280" />
+                </Pressable>
+              </View>
+              <ScrollView style={styles.modalBody}>
+                {personalizationProfile ? (
+                  <View>
+                    <View style={styles.profileSection}>
+                      <Text style={styles.sectionTitle}>
+                        Your AI Coach Profile
+                      </Text>
+                      <View style={styles.profileItem}>
+                        <Text style={styles.profileLabel}>Coaching Style:</Text>
+                        <Text style={styles.profileValue}>
+                          {personalizationProfile.coachingStyle}
                         </Text>
                       </View>
-                    </View>
-                    <Text style={styles.insightTitle}>{insight.title}</Text>
-                    <Text style={styles.insightContent}>{insight.content}</Text>
-                    {insight.actionable && (
-                      <Pressable style={styles.actionButton}>
-                        <Text style={styles.actionButtonText}>Take Action</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                ))
-              ) : (
-                <View style={styles.emptyInsights}>
-                  <Icon name="lightbulb-outline" size={48} color="#d1d5db" />
-                  <Text style={styles.emptyText}>No insights yet</Text>
-                  <Text style={styles.emptySubtext}>
-                    Keep tracking your workouts and nutrition to get
-                    personalized insights
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Personalization Panel Modal */}
-      <Modal
-        visible={showPersonalizationPanel}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowPersonalizationPanel(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t('ai_trainer.personalization')}
-              </Text>
-              <Pressable onPress={() => setShowPersonalizationPanel(false)}>
-                <Icon name="close" size={24} color="#6b7280" />
-              </Pressable>
-            </View>
-            <ScrollView style={styles.modalBody}>
-              {personalizationProfile ? (
-                <View>
-                  <View style={styles.profileSection}>
-                    <Text style={styles.sectionTitle}>
-                      Your AI Coach Profile
-                    </Text>
-                    <View style={styles.profileItem}>
-                      <Text style={styles.profileLabel}>Coaching Style:</Text>
-                      <Text style={styles.profileValue}>
-                        {personalizationProfile.coachingStyle}
-                      </Text>
-                    </View>
-                    <View style={styles.profileItem}>
-                      <Text style={styles.profileLabel}>Communication:</Text>
-                      <Text style={styles.profileValue}>
-                        {personalizationProfile.communicationStyle}
-                      </Text>
-                    </View>
-                    <View style={styles.profileItem}>
-                      <Text style={styles.profileLabel}>Motivation Type:</Text>
-                      <Text style={styles.profileValue}>
-                        {personalizationProfile.motivationType}
-                      </Text>
-                    </View>
-                    <View style={styles.profileItem}>
-                      <Text style={styles.profileLabel}>Confidence:</Text>
-                      <ConfidenceIndicator
-                        score={personalizationProfile.confidence}
-                        size="md"
-                      />
-                    </View>
-                  </View>
-
-                  {ragStats && (
-                    <View style={styles.profileSection}>
-                      <Text style={styles.sectionTitle}>Knowledge Base</Text>
+                      <View style={styles.profileItem}>
+                        <Text style={styles.profileLabel}>Communication:</Text>
+                        <Text style={styles.profileValue}>
+                          {personalizationProfile.communicationStyle}
+                        </Text>
+                      </View>
                       <View style={styles.profileItem}>
                         <Text style={styles.profileLabel}>
-                          Total Data Points:
+                          Motivation Type:
                         </Text>
                         <Text style={styles.profileValue}>
-                          {ragStats.totalVectors}
+                          {personalizationProfile.motivationType}
                         </Text>
                       </View>
                       <View style={styles.profileItem}>
-                        <Text style={styles.profileLabel}>Categories:</Text>
-                        <Text style={styles.profileValue}>
-                          {ragStats.namespaces?.join(', ') || 'N/A'}
-                        </Text>
+                        <Text style={styles.profileLabel}>Confidence:</Text>
+                        <ConfidenceIndicator
+                          score={personalizationProfile.confidence}
+                          size="md"
+                        />
                       </View>
                     </View>
-                  )}
-                </View>
-              ) : (
-                <View style={styles.emptyProfile}>
-                  <Icon name="person-outline" size={48} color="#d1d5db" />
-                  <Text style={styles.emptyText}>Profile not available</Text>
-                  <Text style={styles.emptySubtext}>
-                    Chat with your AI trainer to build your personalization
-                    profile
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
-      <FloatingSettingsButton />
+                    {ragStats && (
+                      <View style={styles.profileSection}>
+                        <Text style={styles.sectionTitle}>Knowledge Base</Text>
+                        <View style={styles.profileItem}>
+                          <Text style={styles.profileLabel}>
+                            Total Data Points:
+                          </Text>
+                          <Text style={styles.profileValue}>
+                            {ragStats.totalVectors}
+                          </Text>
+                        </View>
+                        <View style={styles.profileItem}>
+                          <Text style={styles.profileLabel}>Categories:</Text>
+                          <Text style={styles.profileValue}>
+                            {ragStats.namespaces?.join(', ') || 'N/A'}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.emptyProfile}>
+                    <Icon name="person-outline" size={48} color="#d1d5db" />
+                    <Text style={styles.emptyText}>Profile not available</Text>
+                    <Text style={styles.emptySubtext}>
+                      Chat with your AI trainer to build your personalization
+                      profile
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        <FloatingSettingsButton />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

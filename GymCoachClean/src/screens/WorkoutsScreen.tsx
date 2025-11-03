@@ -12,6 +12,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import {Card, LoadingSpinner, Button} from '../components/common/UI';
@@ -1290,89 +1291,93 @@ export default function WorkoutsScreen({navigation}: any) {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowPlanDetail(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedPlan?.name || 'Plan Details'}
-              </Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowPlanDetail(false)}>
-                <Text style={styles.closeButtonText}>×</Text>
-              </TouchableOpacity>
-            </View>
-
-            {selectedPlan && (
-              <ScrollView style={{maxHeight: 400}}>
-                <View style={{marginBottom: 16}}>
-                  <Text style={styles.workoutDescription}>
-                    {selectedPlan.description || 'No description provided'}
+        <TouchableWithoutFeedback onPress={() => setShowPlanDetail(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    {selectedPlan?.name || 'Plan Details'}
                   </Text>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowPlanDetail(false)}>
+                    <Text style={styles.closeButtonText}>×</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <View style={styles.workoutInfo}>
-                  <Text style={styles.workoutDetail}>
-                    📋 {selectedPlan.exercises.length} exercises
-                  </Text>
-                  <Text style={styles.workoutDetail}>
-                    📅 {selectedPlan.durationWeeks} weeks
-                  </Text>
-                  <Text style={styles.workoutDetail}>
-                    🏃 {selectedPlan.frequencyPerWeek}x per week
-                  </Text>
-                  <Text style={styles.workoutDetail}>
-                    📊 {selectedPlan.difficulty} difficulty
-                  </Text>
-                </View>
-
-                <View style={{marginTop: 16}}>
-                  <Text style={styles.sectionTitle}>Exercises:</Text>
-                  {selectedPlan.exercises.map((exercise, index) => (
-                    <View key={index} style={styles.exerciseCard}>
-                      <Text style={styles.exerciseName}>
-                        {index + 1}. {exercise.name}
+                {selectedPlan && (
+                  <ScrollView style={{maxHeight: 400}}>
+                    <View style={{marginBottom: 16}}>
+                      <Text style={styles.workoutDescription}>
+                        {selectedPlan.description || 'No description provided'}
                       </Text>
-                      <Text style={styles.exerciseDetail}>
-                        {exercise.sets} sets × {exercise.reps} reps
-                        {exercise.weight ? ` @ ${exercise.weight}lbs` : ''}
-                      </Text>
-                      {exercise.notes && (
-                        <Text style={styles.exerciseDetail}>
-                          💡 {exercise.notes}
-                        </Text>
-                      )}
                     </View>
-                  ))}
-                </View>
 
-                <View style={styles.workoutActions}>
-                  <Button
-                    title="Start Workout"
-                    onPress={() => {
-                      setShowPlanDetail(false);
-                      navigation.navigate('Session', {
-                        workoutId: selectedPlan.id,
-                      });
-                    }}
-                    style={styles.actionButton}
-                  />
-                  <Button
-                    title="Edit Plan"
-                    variant="outline"
-                    onPress={() => {
-                      setShowPlanDetail(false);
-                      navigation.navigate('CreatePlan', {
-                        editPlan: selectedPlan,
-                      });
-                    }}
-                    style={styles.actionButton}
-                  />
-                </View>
-              </ScrollView>
-            )}
+                    <View style={styles.workoutInfo}>
+                      <Text style={styles.workoutDetail}>
+                        📋 {selectedPlan.exercises.length} exercises
+                      </Text>
+                      <Text style={styles.workoutDetail}>
+                        📅 {selectedPlan.durationWeeks} weeks
+                      </Text>
+                      <Text style={styles.workoutDetail}>
+                        🏃 {selectedPlan.frequencyPerWeek}x per week
+                      </Text>
+                      <Text style={styles.workoutDetail}>
+                        📊 {selectedPlan.difficulty} difficulty
+                      </Text>
+                    </View>
+
+                    <View style={{marginTop: 16}}>
+                      <Text style={styles.sectionTitle}>Exercises:</Text>
+                      {selectedPlan.exercises.map((exercise, index) => (
+                        <View key={index} style={styles.exerciseCard}>
+                          <Text style={styles.exerciseName}>
+                            {index + 1}. {exercise.name}
+                          </Text>
+                          <Text style={styles.exerciseDetail}>
+                            {exercise.sets} sets × {exercise.reps} reps
+                            {exercise.weight ? ` @ ${exercise.weight}lbs` : ''}
+                          </Text>
+                          {exercise.notes && (
+                            <Text style={styles.exerciseDetail}>
+                              💡 {exercise.notes}
+                            </Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+
+                    <View style={styles.workoutActions}>
+                      <Button
+                        title="Start Workout"
+                        onPress={() => {
+                          setShowPlanDetail(false);
+                          navigation.navigate('Session', {
+                            workoutId: selectedPlan.id,
+                          });
+                        }}
+                        style={styles.actionButton}
+                      />
+                      <Button
+                        title="Edit Plan"
+                        variant="outline"
+                        onPress={() => {
+                          setShowPlanDetail(false);
+                          navigation.navigate('CreatePlan', {
+                            editPlan: selectedPlan,
+                          });
+                        }}
+                        style={styles.actionButton}
+                      />
+                    </View>
+                  </ScrollView>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Schedule Modal */}

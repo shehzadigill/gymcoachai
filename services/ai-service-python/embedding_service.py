@@ -12,17 +12,15 @@ class EmbeddingService:
     """Service for generating embeddings using AWS Bedrock Titan Embeddings"""
     
     def __init__(self):
-        region = os.environ.get('AWS_REGION', 'us-east-1')
+        region = os.environ.get('AWS_REGION', 'eu-west-1')
         
-        # Use cross-region inference for eu-north-1
-        if region == 'eu-north-1':
-            # Use eu-central-1 for embedding models (closest region with Titan support)
-            self.bedrock_runtime = boto3.client('bedrock-runtime', region_name='eu-central-1')
-            self.embedding_model_id = 'amazon.titan-embed-text-v1'  # Use v1 for compatibility with stored vectors
-            logger.info("Using cross-region inference for embeddings (eu-central-1) with titan-embed-text-v1")
-        else:
-            self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=region)
-            self.embedding_model_id = 'amazon.titan-embed-text-v1'  # Use v1 for compatibility with stored vectors
+        # Use Titan Text Embeddings V2 - native support in eu-west-1, cheaper and more efficient
+        # V2 produces 1024 dimensions natively (matches stored vectors)
+        # Cost: ~$0.00002/1K tokens (80% cheaper than v1)
+        self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=region)
+        self.embedding_model_id = 'amazon.titan-embed-text-v2:0'
+        logger.info(f"Using Titan Text Embeddings V2 in {region} - optimized for cost and performance")
+        
         self.max_retries = 3
         self.retry_delay = 1  # seconds
         self.max_tokens = 8192  # Titan embedding model limit
@@ -43,17 +41,12 @@ class EmbeddingService:
                 text = text[:self.max_tokens]
                 logger.warning(f"Text truncated to {self.max_tokens} tokens")
             
-            # Prepare request body based on model type
-            if 'cohere' in self.embedding_model_id:
-                body = {
-                    "texts": [text],
-                    "input_type": "search_document"
-                }
-            else:
-                # Titan embeddings format
-                body = {
-                    "inputText": text
-                }
+            # Prepare request body for Titan V2
+            body = {
+                "inputText": text,
+                "dimensions": 1024,  # Use 1024 dimensions to match stored vectors
+                "normalize": True     # Normalize for better similarity search
+            }
             
             # Retry logic for rate limiting
             for attempt in range(self.max_retries):
@@ -66,31 +59,14 @@ class EmbeddingService:
                     
                     response_body = json.loads(response['body'].read())
                     
-                    # Parse response based on model type
-                    if 'cohere' in self.embedding_model_id:
-                        if 'embeddings' in response_body and response_body['embeddings']:
-                            embedding = response_body['embeddings'][0]
-                            logger.info(f"Generated Cohere embedding with {len(embedding)} dimensions")
-                            return embedding
-                        else:
-                            logger.error(f"Invalid Cohere response structure: {response_body}")
-                            return None
+                    # Parse Titan V2 response
+                    if 'embedding' in response_body:
+                        embedding = response_body['embedding']
+                        logger.info(f"Generated Titan V2 embedding with {len(embedding)} dimensions")
+                        return embedding
                     else:
-                        # Titan embeddings format
-                        if 'embedding' in response_body:
-                            embedding = response_body['embedding']
-                            logger.info(f"Generated Titan embedding with {len(embedding)} dimensions using model {self.embedding_model_id}")
-                            
-                            # Handle dimension mismatch: truncate to 1024 for compatibility with stored vectors
-                            if len(embedding) == 1536:
-                                embedding = embedding[:1024]
-                                logger.info(f"Truncated embedding from 1536 to 1024 dimensions for compatibility")
-                            
-                            logger.info(f"Final embedding dimensions: {len(embedding)}")
-                            return embedding
-                        else:
-                            logger.error(f"Invalid Titan response structure: {response_body}")
-                            return None
+                        logger.error(f"Invalid Titan V2 response structure: {response_body}")
+                        return None
                         
                 except ClientError as e:
                     error_code = e.response['Error']['Code']
@@ -355,16 +331,16 @@ class EmbeddingService:
     
     def get_embedding_dimensions(self) -> int:
         """
-        Get the number of dimensions for Titan embeddings
+        Get the number of dimensions for Titan V2 embeddings
         
         Returns:
-            Number of dimensions (1536 for Titan v1)
+            Number of dimensions (1024 for compatibility with stored vectors)
         """
-        return 1536
+        return 1024
     
     def estimate_embedding_cost(self, text_length: int) -> float:
         """
-        Estimate the cost of generating an embedding
+        Estimate the cost of generating an embedding using Titan V2
         
         Args:
             text_length: Length of text in characters
@@ -372,10 +348,10 @@ class EmbeddingService:
         Returns:
             Estimated cost in USD
         """
-        # Titan Embeddings pricing: $0.0001 per 1K tokens
+        # Titan Embeddings V2 pricing: $0.00002 per 1K tokens (80% cheaper than V1)
         # Rough estimate: 1 token ≈ 4 characters
         estimated_tokens = text_length / 4
-        cost_per_1k_tokens = 0.0001
+        cost_per_1k_tokens = 0.00002
         
         return (estimated_tokens / 1000) * cost_per_1k_tokens
     

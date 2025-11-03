@@ -69,7 +69,7 @@ app.get('/health', (req, res) => {
 
 // Proxy configuration for CloudFront API
 const proxyOptions = {
-  target: 'https://d12pveuxxq3vvn.cloudfront.net',
+  target: 'https://d202qmtk8kkxra.cloudfront.net',
   changeOrigin: true,
   secure: true,
   logLevel: 'debug',
@@ -186,7 +186,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 GymCoach AI Proxy Server running on port ${PORT}`);
   console.log(
-    `📡 Proxying API requests to: https://d12pveuxxq3vvn.cloudfront.net`
+    `📡 Proxying API requests to: https://d202qmtk8kkxra.cloudfront.net`
   );
   console.log(`🌐 CORS enabled for: http://localhost:3000`);
   console.log(`💚 Health check: http://localhost:${PORT}/health`);

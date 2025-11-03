@@ -47,7 +47,7 @@ LEGACY_GLOBAL_STS_REGIONS = [
     'aws-global',
     'ca-central-1',
     'eu-central-1',
-    'eu-north-1',
+    'eu-west-1',
     'eu-west-1',
     'eu-west-2',
     'eu-west-3',

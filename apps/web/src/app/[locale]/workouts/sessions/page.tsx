@@ -179,7 +179,6 @@ export default function WorkoutSessionsPage() {
         return t('this_month');
       default:
         return t('all_time');
-        return 'All Time';
     }
   };
 
@@ -300,7 +299,7 @@ export default function WorkoutSessionsPage() {
       console.error('Error completing session:', error);
       alert(t('failed_to_complete'));
 
-      alert('Failed to complete session. Please try again.');
+      alert(t('failed_to_complete'));
     }
   };
 
@@ -370,7 +369,7 @@ export default function WorkoutSessionsPage() {
             <Dumbbell className="h-8 w-8 text-blue-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Sessions
+                {t('total_sessions')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {sessions.length}
@@ -383,14 +382,14 @@ export default function WorkoutSessionsPage() {
             <CheckCircle className="h-8 w-8 text-green-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Completed
+                {t('completed')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {completedSessions}
               </p>
               {totalSessions > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-500">
-                  {completionRate.toFixed(0)}% completion rate
+                  {t('completion_rate', { rate: completionRate.toFixed(0) })}
                 </p>
               )}
             </div>
@@ -401,7 +400,7 @@ export default function WorkoutSessionsPage() {
             <Clock className="h-8 w-8 text-orange-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Time
+                {t('total_time')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {formatDuration(totalMinutes)}
@@ -409,7 +408,7 @@ export default function WorkoutSessionsPage() {
               {totalMinutes > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-500">
                   {completedSessions > 0 &&
-                    `Avg: ${formatDuration(Math.round(totalMinutes / completedSessions))} per session`}
+                    t('avg_time_per_session', { time: formatDuration(Math.round(totalMinutes / completedSessions)) })}
                 </p>
               )}
             </div>
@@ -420,13 +419,13 @@ export default function WorkoutSessionsPage() {
             <Star className="h-8 w-8 text-yellow-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Avg Rating
+                {t('avg_rating')}
               </p>
               {avgRating > 0 ? (
                 <div className="mt-1">
                   {renderStarRating(avgRating)}
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    {ratedSessions.length} of {totalSessions} sessions rated
+                    {t('ratings_info', { rated: ratedSessions.length, total: totalSessions })}
                   </p>
                 </div>
               ) : (
@@ -435,7 +434,7 @@ export default function WorkoutSessionsPage() {
                     -
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500">
-                    No ratings yet
+                    {t('no_ratings_yet')}
                   </p>
                 </div>
               )}
@@ -450,7 +449,7 @@ export default function WorkoutSessionsPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
             type="text"
-            placeholder="Search sessions..."
+            placeholder={t('search_sessions')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -465,9 +464,9 @@ export default function WorkoutSessionsPage() {
           }
           className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          <option value="all">All Sessions</option>
-          <option value="completed">Completed</option>
-          <option value="incomplete">Incomplete</option>
+          <option value="all">{t('all_sessions')}</option>
+          <option value="completed">{t('completed')}</option>
+          <option value="incomplete">{t('incomplete')}</option>
         </select>
       </div>
 
@@ -482,17 +481,17 @@ export default function WorkoutSessionsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
           <Dumbbell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No workout sessions found
+            {t('no_sessions_found')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Get started by creating your first workout session.
+            {t('create_first_session')}
           </p>
           <button
             onClick={handleNewSession}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Session
+            {t('new_session')}
           </button>
         </div>
       ) : (
@@ -506,17 +505,17 @@ export default function WorkoutSessionsPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {session.name || 'Workout Session'}
+                      {session.name || t('workout_session')}
                     </h3>
                     {session.completed ? (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400">
                         <CheckCircle className="w-3 h-3 mr-1" />
-                        Completed
+                        {t('completed')}
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400">
                         <Clock className="w-3 h-3 mr-1" />
-                        In Progress
+                        {t('in_progress')}
                       </span>
                     )}
                   </div>
@@ -536,7 +535,7 @@ export default function WorkoutSessionsPage() {
                     )}
                     <div className="flex items-center gap-1">
                       <Dumbbell className="w-4 h-4" />
-                      {session.exercises?.length || 0} exercises
+                      {t('exercises_count', { count: session.exercises?.length || 0 })}
                     </div>
                     {session.rating && (
                       <div className="flex items-center gap-1">
@@ -576,7 +575,7 @@ export default function WorkoutSessionsPage() {
                     <button
                       onClick={() => handleStartSession(session.id)}
                       className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                      title="Start Session"
+                      title={t('start_session')}
                     >
                       <Play className="h-4 w-4" />
                     </button>
@@ -585,7 +584,7 @@ export default function WorkoutSessionsPage() {
                     <button
                       onClick={() => handleCompleteSession(session.id)}
                       className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
-                      title="Mark as Complete"
+                      title={t('mark_as_complete')}
                     >
                       <CheckCircle className="h-4 w-4" />
                     </button>
@@ -617,7 +616,7 @@ export default function WorkoutSessionsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {editingSession ? 'Edit Session' : 'New Session'}
+                {editingSession ? t('edit_session') : t('new_session')}
               </h3>
               <button
                 onClick={() => {
@@ -637,12 +636,12 @@ export default function WorkoutSessionsPage() {
                   if (editingSession) {
                     await api.updateWorkoutSession(editingSession.id, {
                       ...sessionData,
-                      name: sessionData.name || 'Workout Session',
+                      name: sessionData.name || t('workout_session'),
                     });
                   } else {
                     await api.createWorkoutSession({
                       ...sessionData,
-                      name: sessionData.name || 'Workout Session',
+                      name: sessionData.name || t('workout_session'),
                       exercises: sessionData.exercises || [],
                     });
                   }

@@ -9,7 +9,7 @@ const https = require('https');
 const http = require('http');
 
 const PROXY_URL = 'http://localhost:3001';
-const CLOUDFRONT_URL = 'https://d12pveuxxq3vvn.cloudfront.net';
+const CLOUDFRONT_URL = 'https://d202qmtk8kkxra.cloudfront.net';
 
 // Test functions
 async function testHealthCheck() {
@@ -172,4 +172,3 @@ runTests().catch((error) => {
   console.error('💥 Test runner error:', error);
   process.exit(1);
 });
-

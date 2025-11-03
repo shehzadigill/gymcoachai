@@ -3,7 +3,7 @@ const https = require('https');
 // Test notification with proper authentication
 const testNotificationWithAuth = async () => {
   const notificationServiceUrl =
-    'https://2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-north-1.on.aws';
+    'https://2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-west-1.on.aws';
 
   // You'll need to get a real JWT token from your auth service
   // For now, let's test the endpoints without auth to see what we get
@@ -21,7 +21,7 @@ const testNotificationWithAuth = async () => {
   const postData = JSON.stringify(testData);
 
   const options = {
-    hostname: '2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-north-1.on.aws',
+    hostname: '2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-west-1.on.aws',
     port: 443,
     path: '/api/notifications/send',
     method: 'POST',
@@ -71,7 +71,7 @@ const testNotificationWithAuth = async () => {
 // Test device token registration with proper endpoint
 const testDeviceTokenRegistration = async () => {
   const userProfileServiceUrl =
-    'https://tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-north-1.on.aws';
+    'https://tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-west-1.on.aws';
 
   const testData = {
     token: 'test-device-token-12345',
@@ -81,7 +81,7 @@ const testDeviceTokenRegistration = async () => {
   const postData = JSON.stringify(testData);
 
   const options = {
-    hostname: 'tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-north-1.on.aws',
+    hostname: 'tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-west-1.on.aws',
     port: 443,
     path: '/api/user-profiles/device-token',
     method: 'POST',

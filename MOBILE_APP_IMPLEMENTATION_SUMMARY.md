@@ -195,7 +195,7 @@ npm start
 ```env
 EXPO_PUBLIC_USER_POOL_ID=your_user_pool_id
 EXPO_PUBLIC_USER_POOL_CLIENT_ID=your_client_id
-EXPO_PUBLIC_AWS_REGION=eu-north-1
+EXPO_PUBLIC_AWS_REGION=eu-west-1
 EXPO_PUBLIC_CLOUDFRONT_URL=https://your-cloudfront-url
 ```
 

@@ -6,15 +6,15 @@
 
 **AWS Cognito:**
 
-- User Pool ID: `eu-north-1_dE19nCAjn`
-- Client ID: `10ukk27kmnj1ba86dpmqc6amu6`
-- Region: `eu-north-1`
-- Domain: `gymcoach-ai-345868259891.auth.eu-north-1.amazoncognito.com`
+- User Pool ID: `eu-west-1_PjxjqOwho`
+- Client ID: `2pigu1tu2it4aablmg1cgis1eo`
+- Region: `eu-west-1`
+- Domain: `https://gymcoach-ai-dev-288259390928.auth.eu-west-1.amazoncognito.com`
 
 **API Configuration:**
 
-- CloudFront URL: `https://d12pveuxxq3vvn.cloudfront.net`
-- API Base URL: `https://d12pveuxxq3vvn.cloudfront.net`
+- CloudFront URL: `https://d202qmtk8kkxra.cloudfront.net`
+- API Base URL: `https://d202qmtk8kkxra.cloudfront.net`
 
 ### 📁 **Files Updated:**
 

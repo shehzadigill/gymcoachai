@@ -117,22 +117,19 @@ jobs:
 
       - name: Check formatting
         run: |
-          cd services/user-service && cargo fmt -- --check
-          cd ../workout-service && cargo fmt -- --check
+          cd services/workout-service && cargo fmt -- --check
           cd ../nutrition-service && cargo fmt -- --check
           cd ../ai-service && cargo fmt -- --check
 
       - name: Run clippy
         run: |
-          cd services/user-service && cargo clippy -- -D warnings
-          cd ../workout-service && cargo clippy -- -D warnings
+          cd services/workout-service && cargo clippy -- -D warnings
           cd ../nutrition-service && cargo clippy -- -D warnings
           cd ../ai-service && cargo clippy -- -D warnings
 
       - name: Build Rust services
         run: |
-          cd services/user-service && cargo build
-          cd ../workout-service && cargo build
+          cd services/workout-service && cargo build
           cd ../nutrition-service && cargo build
           cd ../ai-service && cargo build
 
@@ -191,7 +188,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-north-1
+          aws-region: eu-west-1
 
       - name: Deploy to Staging
         run: pnpm cdk:deploy
@@ -226,7 +223,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-north-1
+          aws-region: eu-west-1
 
       - name: Deploy to Production
         run: pnpm cdk:deploy

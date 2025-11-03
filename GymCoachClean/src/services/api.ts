@@ -18,7 +18,7 @@ import {
 } from '../types';
 
 // Use the same CloudFront URL as configured in our auth service
-const baseUrl = 'https://d12pveuxxq3vvn.cloudfront.net';
+const baseUrl = 'https://d202qmtk8kkxra.cloudfront.net';
 
 class ApiClient {
   private async isDemoMode(): Promise<boolean> {
@@ -583,7 +583,7 @@ class ApiClient {
     const id = userId || (await this.getCurrentUserId());
     const params = new URLSearchParams({userId: id});
     if (period) params.append('period', period);
-    return this.apiFetch<any>(`/api/analytics/workout-analytics?${params}`);
+    return this.apiFetch<any>(`/api/analytics/workout/${id}?${params}`);
   }
 
   async getPerformanceTrends(
@@ -1150,7 +1150,7 @@ class ApiClient {
     } catch (error) {
       // Fallback to Lambda URL
       const lambdaUrl =
-        'https://omk3alczw57uum2gv5ouwbseym0ymyut.lambda-url.eu-north-1.on.aws';
+        'https://omk3alczw57uum2gv5ouwbseym0ymyut.lambda-url.eu-west-1.on.aws';
       const lambdaFetchOptions: RequestInit = {
         ...fetchOptions,
         mode: 'cors',

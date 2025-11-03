@@ -428,7 +428,7 @@ The application integrates with multiple Rust-based microservices:
    NEXT_PUBLIC_USER_POOL_ID=your_user_pool_id
    NEXT_PUBLIC_USER_POOL_CLIENT_ID=your_client_id
    NEXT_PUBLIC_USER_POOL_DOMAIN=your_cognito_domain
-   NEXT_PUBLIC_AWS_REGION=eu-north-1
+   NEXT_PUBLIC_AWS_REGION=eu-west-1
    NEXT_PUBLIC_CLOUDFRONT_URL=your_cloudfront_url
    ```
 

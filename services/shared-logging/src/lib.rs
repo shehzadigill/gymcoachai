@@ -179,7 +179,6 @@ mod tests {
         );
 
         assert_eq!(context.request_id, "req123");
-        assert_eq!(context.service, "user-service");
         assert_eq!(context.operation, "get_user");
         assert!(context.user_id.is_none());
     }

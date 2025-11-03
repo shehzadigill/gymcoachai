@@ -8,10 +8,16 @@ set -e
 
 echo "🚀 Starting S3 Vectors Knowledge Population Deployment..."
 
+# Set AWS profile if not already set
+if [ -z "$AWS_PROFILE" ]; then
+    export AWS_PROFILE=shehzadi
+    echo "Using AWS profile: $AWS_PROFILE"
+fi
+
 # Set environment variables
-export VECTORS_BUCKET="gymcoach-ai-vectors"
-export DYNAMODB_TABLE="gymcoach-ai-main"
-export AWS_REGION="us-east-1"
+export VECTORS_BUCKET="gymcoach-ai-vectors-dev"
+export DYNAMODB_TABLE="gymcoach-ai-main-dev"
+export AWS_REGION="eu-west-1"
 
 # Make scripts executable
 chmod +x scripts/exercise-knowledge-builder.py
@@ -22,13 +28,13 @@ echo "✅ Scripts made executable"
 
 # Install required Python packages
 echo "📦 Installing required packages..."
-pip install boto3 botocore asyncio
+pip3 install boto3 botocore asyncio
 
 echo "✅ Packages installed"
 
 # Check AWS credentials
 echo "🔐 Checking AWS credentials..."
-aws sts get-caller-identity
+aws sts get-caller-identity --region $AWS_REGION
 
 if [ $? -eq 0 ]; then
     echo "✅ AWS credentials verified"
@@ -37,9 +43,15 @@ else
     exit 1
 fi
 
+# Get account ID for bucket name
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --region $AWS_REGION)
+VECTORS_BUCKET="gymcoach-ai-vectors-dev-${ACCOUNT_ID}"
+
+echo "Using bucket: $VECTORS_BUCKET"
+
 # Check if S3 bucket exists
 echo "🪣 Checking S3 vectors bucket..."
-aws s3 ls s3://$VECTORS_BUCKET
+aws s3 ls s3://$VECTORS_BUCKET --region $AWS_REGION
 
 if [ $? -eq 0 ]; then
     echo "✅ S3 vectors bucket exists"
@@ -65,7 +77,7 @@ echo "✅ Knowledge population completed!"
 
 # Verify population
 echo "🔍 Verifying knowledge population..."
-aws s3 ls s3://$VECTORS_BUCKET --recursive | wc -l
+aws s3 ls s3://$VECTORS_BUCKET --recursive --region $AWS_REGION | wc -l
 
 echo "🎉 S3 Vectors knowledge population deployment completed successfully!"
 echo "📊 Check the logs above for detailed results."

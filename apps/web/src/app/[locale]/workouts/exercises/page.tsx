@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
+import { useTranslations } from 'next-intl';
 import {
   Plus,
   Search,
@@ -40,10 +41,24 @@ const difficulties = ['All', 'beginner', 'intermediate', 'advanced'];
 export default function ExerciseLibraryPage() {
   const router = useRouter();
   const user = useCurrentUser();
+  const t = useTranslations('workout_exercises');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Helper functions to translate categories and difficulties
+  const translateCategory = (category: string): string => {
+    if (category === 'All') return t('all_categories');
+    const key = category.toLowerCase();
+    return t(key);
+  };
+
+  const translateDifficulty = (difficulty: string): string => {
+    if (difficulty === 'All') return t('all_levels');
+    const key = difficulty.toLowerCase();
+    return t(key);
+  };
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,7 +118,7 @@ export default function ExerciseLibraryPage() {
         );
         setExercises(transformedExercises);
       } else {
-        setError('No exercises found');
+        setError(t('no_exercises_found'));
         setExercises([]);
       }
     } catch (e: any) {
@@ -157,14 +172,14 @@ export default function ExerciseLibraryPage() {
   };
 
   const deleteExercise = async (exerciseId: string) => {
-    if (!confirm('Are you sure you want to delete this exercise?')) return;
+    if (!confirm(t('confirm_delete'))) return;
 
     try {
       await api.deleteExercise(exerciseId);
       setExercises(exercises.filter((e) => e.id !== exerciseId));
     } catch (e: any) {
       console.error('Failed to delete exercise:', e);
-      alert('Failed to delete exercise');
+      alert(t('failed_to_delete'));
     }
   };
 
@@ -216,18 +231,16 @@ export default function ExerciseLibraryPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Exercise Library
+            {t('title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Browse and manage your exercise database
-          </p>
+          <p className="text-gray-600 dark:text-gray-400">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => router.push('/workouts/exercises/create')}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Exercise</span>
+          <span>{t('add_exercise')}</span>
         </button>
       </div>
 
@@ -240,7 +253,7 @@ export default function ExerciseLibraryPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search exercises..."
+                placeholder={t('search_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -257,9 +270,7 @@ export default function ExerciseLibraryPage() {
             >
               {categories.map((category) => (
                 <option key={category} value={category}>
-                  {category === 'All'
-                    ? 'All Categories'
-                    : category.charAt(0).toUpperCase() + category.slice(1)}
+                  {translateCategory(category)}
                 </option>
               ))}
             </select>
@@ -274,9 +285,7 @@ export default function ExerciseLibraryPage() {
             >
               {difficulties.map((difficulty) => (
                 <option key={difficulty} value={difficulty}>
-                  {difficulty === 'All'
-                    ? 'All Levels'
-                    : difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                  {translateDifficulty(difficulty)}
                 </option>
               ))}
             </select>
@@ -292,7 +301,7 @@ export default function ExerciseLibraryPage() {
               {allMuscleGroups.map((muscle) => (
                 <option key={muscle} value={muscle}>
                   {muscle === 'All'
-                    ? 'All Muscles'
+                    ? t('all_muscles')
                     : muscle.charAt(0).toUpperCase() + muscle.slice(1)}
                 </option>
               ))}
@@ -308,7 +317,7 @@ export default function ExerciseLibraryPage() {
             <Dumbbell className="h-8 w-8 text-blue-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Exercises
+                {t('total_exercises')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {exercises.length}
@@ -321,7 +330,7 @@ export default function ExerciseLibraryPage() {
             <Target className="h-8 w-8 text-green-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Filtered Results
+                {t('filtered_results')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {filteredExercises.length}
@@ -334,7 +343,7 @@ export default function ExerciseLibraryPage() {
             <Filter className="h-8 w-8 text-orange-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Categories
+                {t('categories')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {new Set(exercises.map((e) => e.category)).size}
@@ -347,7 +356,7 @@ export default function ExerciseLibraryPage() {
             <Clock className="h-8 w-8 text-purple-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Muscle Groups
+                {t('muscle_groups')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {allMuscleGroups.length - 1}
@@ -362,10 +371,10 @@ export default function ExerciseLibraryPage() {
         <div className="text-center py-12">
           <Dumbbell className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-            No exercises found
+            {t('no_exercises_found')}
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Try adjusting your filters or add a new exercise.
+            {t('try_adjusting_filters')}
           </p>
         </div>
       ) : (
@@ -394,19 +403,19 @@ export default function ExerciseLibraryPage() {
                 <span
                   className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(exercise.category)}`}
                 >
-                  {exercise.category}
+                  {translateCategory(exercise.category)}
                 </span>
                 <span
                   className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(exercise.difficulty)}`}
                 >
-                  {exercise.difficulty}
+                  {translateDifficulty(exercise.difficulty)}
                 </span>
               </div>
 
               {/* Muscle Groups */}
               <div className="mb-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Muscle Groups:
+                  {t('muscle_groups_label')}:
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {exercise.muscle_groups.map((muscle, index) => (
@@ -424,7 +433,7 @@ export default function ExerciseLibraryPage() {
               {exercise.equipment.length > 0 && (
                 <div className="mb-4">
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    Equipment:
+                    {t('equipment_label')}:
                   </div>
                   <div className="text-sm text-gray-700 dark:text-gray-300">
                     {exercise.equipment.join(', ')}
@@ -439,7 +448,7 @@ export default function ExerciseLibraryPage() {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center space-x-1"
                 >
                   <Info className="h-4 w-4" />
-                  <span>Details</span>
+                  <span>{t('details')}</span>
                 </button>
                 <button
                   onClick={() =>

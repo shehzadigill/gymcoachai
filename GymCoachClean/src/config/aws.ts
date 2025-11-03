@@ -1,8 +1,8 @@
 export const awsConfig = {
   Auth: {
     Cognito: {
-      userPoolId: 'eu-north-1_dE19nCAjn',
-      userPoolClientId: '10ukk27kmnj1ba86dpmqc6amu6',
+      userPoolId: 'eu-west-1_PjxjqOwho',
+      userPoolClientId: '2pigu1tu2it4aablmg1cgis1eo',
       loginWith: {
         email: true,
         username: true,
@@ -11,4 +11,4 @@ export const awsConfig = {
   },
 };
 
-export const API_BASE_URL = 'https://d12pveuxxq3vvn.cloudfront.net';
+export const API_BASE_URL = 'https://d202qmtk8kkxra.cloudfront.net';

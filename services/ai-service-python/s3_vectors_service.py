@@ -16,11 +16,10 @@ class S3VectorsService:
     def __init__(self):
         self.s3_client = boto3.client('s3')
         self.vectors_bucket = os.environ.get('VECTORS_BUCKET', 'gymcoach-ai-vectors')
-        self.region = os.environ.get('AWS_REGION', 'us-east-1')
+        self.region = os.environ.get('AWS_REGION', 'eu-west-1')
         
-        # Vector dimensions for Titan Embeddings (v1 = 1024, v2 = 1536)
-        # Use v1 dimensions for compatibility with stored vectors
-        self.vector_dimensions = 1024  # Use v1 dimensions for consistency
+        # Vector dimensions for Titan Embeddings V2 = 1024 (configured for 1024)
+        self.vector_dimensions = 1024  # Titan V2 with 1024 dimensions
         self.legacy_dimensions = 1024  # Support legacy v1 vectors
         
         # Index structure

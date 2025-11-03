@@ -1,18 +1,41 @@
 #!/bin/bash
 set -e
 
-echo "🔧 Updating Analytics Service Lambda with CloudFront Domain..."
+# Get environment from argument (default to 'dev')
+ENVIRONMENT=${1:-dev}
+
+# Validate environment
+if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
+    echo "❌ Invalid environment: $ENVIRONMENT. Must be 'dev' or 'prod'"
+    exit 1
+fi
+
+echo "🔧 Updating Analytics Service Lambda with CloudFront Domain ($ENVIRONMENT environment)..."
+
+# Set AWS profile if not already set
+if [ -z "$AWS_PROFILE" ]; then
+    export AWS_PROFILE=shehzadi
+    echo "Using AWS profile: $AWS_PROFILE"
+fi
+
+# Set region
+export AWS_REGION=eu-west-1
 
 # Get AWS account ID
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --region $AWS_REGION)
 echo "Account ID: $ACCOUNT_ID"
+
+# Stack name based on environment
+STACK_NAME="GymCoachAIStack-${ENVIRONMENT}"
+echo "Stack: $STACK_NAME"
 
 # Get CloudFront domain from stack outputs
 echo "Fetching CloudFront domain from CloudFormation..."
 CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
-  --stack-name GymCoachAIStack \
+  --stack-name $STACK_NAME \
   --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainForAnalytics`].OutputValue' \
-  --output text 2>/dev/null || echo "")
+  --output text \
+  --region $AWS_REGION 2>/dev/null || echo "")
 
 if [ -z "$CLOUDFRONT_DOMAIN" ]; then
   echo "⚠️  CloudFront domain not found in stack outputs."
@@ -36,7 +59,8 @@ echo "Fetching current environment variables..."
 CURRENT_ENV=$(aws lambda get-function-configuration \
   --function-name AnalyticsServiceLambda \
   --query 'Environment.Variables' \
-  --output json)
+  --output json \
+  --region $AWS_REGION)
 
 # Update with CloudFront domain
 echo "Updating Lambda environment variables..."
@@ -45,7 +69,8 @@ NEW_ENV=$(echo $CURRENT_ENV | jq --arg cf "$CLOUDFRONT_DOMAIN" '. + {CLOUDFRONT_
 aws lambda update-function-configuration \
   --function-name AnalyticsServiceLambda \
   --environment "Variables=$NEW_ENV" \
-  --output json > /dev/null
+  --output json \
+  --region $AWS_REGION > /dev/null
 
 echo "✅ Successfully updated AnalyticsServiceLambda with CLOUDFRONT_DOMAIN=$CLOUDFRONT_DOMAIN"
 
@@ -55,7 +80,8 @@ echo "Verification:"
 aws lambda get-function-configuration \
   --function-name AnalyticsServiceLambda \
   --query 'Environment.Variables.CLOUDFRONT_DOMAIN' \
-  --output text
+  --output text \
+  --region $AWS_REGION
 
 echo ""
 echo "🎉 Done! The Analytics Service can now generate CloudFront URLs for progress photos."

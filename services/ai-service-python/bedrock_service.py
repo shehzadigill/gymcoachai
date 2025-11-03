@@ -9,13 +9,115 @@ from botocore.exceptions import ClientError, BotoCoreError
 logger = logging.getLogger(__name__)
 
 class BedrockService:
-    """Service for interacting with Amazon Bedrock"""
+    """Service for interacting with Amazon Bedrock with intelligent caching"""
     
-    def __init__(self):
-        self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'us-east-1'))
+    def __init__(self, cache_service=None):
+        self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'eu-west-1'))
+        # Claude 3 Haiku - well-supported, reliable model in eu-west-1
+        # Cost: ~$0.00025/1K input tokens, ~$0.00125/1K output tokens
+        # Native support in eu-west-1 with on-demand throughput
         self.model_id = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-haiku-20240307-v1:0')
         self.max_retries = 3
         self.retry_delay = 1  # seconds
+        
+        # Cache service integration
+        self.cache_service = cache_service
+        self.cache_enabled = os.environ.get('CACHE_ENABLED', 'true').lower() == 'true'
+    
+    async def invoke_bedrock_with_cache(self, 
+                                       prompt: str, 
+                                       context: Optional[Dict] = None, 
+                                       max_tokens: int = 1000,
+                                       endpoint_type: str = 'chat',
+                                       user_id: str = None,
+                                       bypass_cache: bool = False) -> Dict[str, any]:
+        """
+        Invoke Bedrock model with intelligent caching
+        
+        Args:
+            prompt: The main prompt for the AI
+            context: Additional context (user profile, workout history, etc.)
+            max_tokens: Maximum tokens to generate
+            endpoint_type: Type of endpoint for cache TTL
+            user_id: User ID for cache key generation
+            bypass_cache: Force bypass cache and call Bedrock directly
+            
+        Returns:
+            Dict with 'response', 'tokens_used', 'model', 'cached' keys
+        """
+        # If cache is enabled and we have a cache service and user_id, try cache first
+        if self.cache_enabled and self.cache_service and user_id and not bypass_cache:
+            try:
+                # Generate cache key
+                cache_key = self.cache_service.generate_cache_key(
+                    user_id=user_id,
+                    prompt=prompt,
+                    context=context or {},
+                    endpoint_type=endpoint_type,
+                    model_id=self.model_id
+                )
+                
+                # Try to get cached response
+                cached_response = await self.cache_service.get_cached_response(
+                    cache_key=cache_key,
+                    user_id=user_id,
+                    endpoint_type=endpoint_type
+                )
+                
+                if cached_response:
+                    logger.info(f"✓ Cache HIT for {endpoint_type} (source: {cached_response.get('cache_source')})")
+                    return cached_response
+                
+                logger.info(f"✗ Cache MISS for {endpoint_type}, calling Bedrock...")
+                
+            except Exception as e:
+                logger.error(f"Cache error (falling back to Bedrock): {e}")
+        
+        # Cache miss or disabled - call Bedrock
+        bedrock_result = self.invoke_bedrock(prompt, context, max_tokens)
+        
+        # Cache the response if successful
+        if (self.cache_enabled and 
+            self.cache_service and 
+            user_id and 
+            bedrock_result.get('success')):
+            try:
+                cache_key = self.cache_service.generate_cache_key(
+                    user_id=user_id,
+                    prompt=prompt,
+                    context=context or {},
+                    endpoint_type=endpoint_type,
+                    model_id=self.model_id
+                )
+                
+                await self.cache_service.cache_response(
+                    cache_key=cache_key,
+                    user_id=user_id,
+                    endpoint_type=endpoint_type,
+                    prompt=prompt,
+                    response=bedrock_result['response'],
+                    tokens={
+                        'input': bedrock_result['input_tokens'],
+                        'output': bedrock_result['output_tokens'],
+                        'total': bedrock_result['tokens_used']
+                    },
+                    model=self.model_id,
+                    metadata={
+                        'max_tokens': max_tokens,
+                        'context_keys': list(context.keys()) if context else []
+                    }
+                )
+                
+                logger.info(f"✓ Cached response for {endpoint_type}")
+                
+            except Exception as e:
+                logger.error(f"Failed to cache response: {e}")
+        
+        # Mark as not cached
+        bedrock_result['cached'] = False
+        bedrock_result['cache_source'] = 'bedrock'
+        
+        return bedrock_result
     
     def invoke_bedrock(self, prompt: str, context: Optional[Dict] = None, max_tokens: int = 1000) -> Dict[str, any]:
         """

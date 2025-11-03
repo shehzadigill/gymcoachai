@@ -5,7 +5,7 @@ export const testCognitoConnectivity = async () => {
 
     // Test basic network connectivity
     const response = await fetch(
-      'https://cognito-idp.eu-north-1.amazonaws.com/',
+      'https://cognito-idp.eu-west-1.amazonaws.com/',
       {
         method: 'GET',
         headers: {
@@ -29,7 +29,7 @@ export const testAPIConnectivity = async () => {
     console.log('Testing API connectivity...');
 
     const response = await fetch(
-      'https://d12pveuxxq3vvn.cloudfront.net/health',
+      'https://d202qmtk8kkxra.cloudfront.net/health',
       {
         method: 'GET',
       },

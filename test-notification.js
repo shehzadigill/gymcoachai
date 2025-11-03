@@ -3,7 +3,7 @@ const https = require('https');
 // Test notification to the deployed notification service
 const testNotification = async () => {
   const notificationServiceUrl =
-    'https://2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-north-1.on.aws';
+    'https://2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-west-1.on.aws';
 
   const testData = {
     user_id: 'test-user-123',
@@ -19,7 +19,7 @@ const testNotification = async () => {
   const postData = JSON.stringify(testData);
 
   const options = {
-    hostname: '2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-north-1.on.aws',
+    hostname: '2bapmwpgyh5ownhk622ycoku7e0odhfw.lambda-url.eu-west-1.on.aws',
     port: 443,
     path: '/api/notifications/send',
     method: 'POST',
@@ -64,7 +64,7 @@ const testNotification = async () => {
 // Test device token registration
 const testDeviceTokenRegistration = async () => {
   const userProfileServiceUrl =
-    'https://tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-north-1.on.aws';
+    'https://tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-west-1.on.aws';
 
   const testData = {
     token: 'test-device-token-12345',
@@ -74,7 +74,7 @@ const testDeviceTokenRegistration = async () => {
   const postData = JSON.stringify(testData);
 
   const options = {
-    hostname: 'tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-north-1.on.aws',
+    hostname: 'tsqeldyalolwbzkub6v6dybbbi0lfavi.lambda-url.eu-west-1.on.aws',
     port: 443,
     path: '/api/user-profiles/device-token',
     method: 'POST',

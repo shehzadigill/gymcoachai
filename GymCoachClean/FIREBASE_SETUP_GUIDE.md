@@ -97,7 +97,7 @@ Device token registered successfully: ABCD1234...
 ### 3. Test via Backend API
 
 ```bash
-curl -X POST https://d12pveuxxq3vvn.cloudfront.net/api/notifications/send \
+curl -X POST https://d202qmtk8kkxra.cloudfront.net/api/notifications/send \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{

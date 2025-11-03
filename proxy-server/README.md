@@ -32,7 +32,7 @@ A simple Express.js proxy server to handle CORS issues when calling the GymCoach
 
    ```javascript
    // Instead of calling CloudFront directly:
-   // const response = await fetch('https://d12pveuxxq3vvn.cloudfront.net/api/users');
+   // const response = await fetch('https://d202qmtk8kkxra.cloudfront.net/api/users');
 
    // Call the proxy server:
    const response = await fetch('http://localhost:3001/api/users');
@@ -46,7 +46,7 @@ A simple Express.js proxy server to handle CORS issues when calling the GymCoach
 
 ### Proxy Routes
 
-- **ALL** `/api/*` - Proxies to `https://d12pveuxxq3vvn.cloudfront.net/api/*`
+- **ALL** `/api/*` - Proxies to `https://d202qmtk8kkxra.cloudfront.net/api/*`
 
 ## Configuration
 
@@ -76,7 +76,7 @@ Update your API client to use the proxy server:
 const API_BASE_URL =
   process.env.NODE_ENV === 'development'
     ? 'http://localhost:3001/api' // Use proxy in development
-    : 'https://d12pveuxxq3vvn.cloudfront.net/api'; // Use CloudFront in production
+    : 'https://d202qmtk8kkxra.cloudfront.net/api'; // Use CloudFront in production
 
 export const apiFetch = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -142,7 +142,7 @@ For production deployment, consider:
 
    ```bash
    PORT=3001
-   TARGET_URL=https://d12pveuxxq3vvn.cloudfront.net
+   TARGET_URL=https://d202qmtk8kkxra.cloudfront.net
    ```
 
 2. **Process management:**
@@ -155,4 +155,3 @@ For production deployment, consider:
 3. **Reverse proxy:**
    - Use nginx or similar to handle SSL termination
    - Configure proper CORS origins for production domains
-

@@ -34,7 +34,7 @@ The API client now automatically detects the environment:
 
 ```env
 # NEXT_EXPORT=true  # Disabled for development
-NEXT_PUBLIC_CLOUDFRONT_URL=https://d12pveuxxq3vvn.cloudfront.net
+NEXT_PUBLIC_CLOUDFRONT_URL=https://d202qmtk8kkxra.cloudfront.net
 # ... other vars
 ```
 
@@ -42,7 +42,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=https://d12pveuxxq3vvn.cloudfront.net
 
 ```env
 NEXT_EXPORT=true  # Enabled for production static builds
-NEXT_PUBLIC_CLOUDFRONT_URL=https://d12pveuxxq3vvn.cloudfront.net
+NEXT_PUBLIC_CLOUDFRONT_URL=https://d202qmtk8kkxra.cloudfront.net
 # ... other vars
 ```
 

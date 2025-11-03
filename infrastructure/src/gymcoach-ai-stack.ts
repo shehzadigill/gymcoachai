@@ -15,6 +15,10 @@ import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
 // Removed MonitoringStack import to avoid CloudWatch costs
 
+export interface GymCoachAIStackProps extends cdk.StackProps {
+  environment?: 'dev' | 'prod';
+}
+
 export class GymCoachAIStack extends cdk.Stack {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
@@ -29,13 +33,17 @@ export class GymCoachAIStack extends cdk.Stack {
   public readonly vectorsBucket: s3.Bucket;
   private authLayer?: lambda.LayerVersion;
   private pythonAuthLayer?: lambda.LayerVersion;
+  private readonly env: string;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: GymCoachAIStackProps) {
     super(scope, id, props);
+
+    // Set environment (default to 'dev')
+    this.env = props?.environment || 'dev';
 
     // DynamoDB Table with Single Table Design
     this.mainTable = new dynamodb.Table(this, 'GymCoachAITable', {
-      tableName: 'gymcoach-ai-main',
+      tableName: `gymcoach-ai-main-${this.env}`,
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -50,15 +58,9 @@ export class GymCoachAIStack extends cdk.Stack {
       sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
     });
 
-    this.mainTable.addGlobalSecondaryIndex({
-      indexName: 'GSI2',
-      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
-    });
-
     // Create Cognito User Pool
     this.userPool = new cognito.UserPool(this, 'GymCoachAIUserPool', {
-      userPoolName: 'gymcoach-ai-users',
+      userPoolName: `gymcoach-ai-users-${this.env}`,
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -121,7 +123,7 @@ export class GymCoachAIStack extends cdk.Stack {
     // Create User Pool Client for Web App
     this.userPoolClient = new cognito.UserPoolClient(this, 'WebAppClient', {
       userPool: this.userPool,
-      userPoolClientName: 'gymcoach-ai-web-client',
+      userPoolClientName: `gymcoach-ai-web-client-${this.env}`,
       generateSecret: false,
       authFlows: {
         userPassword: true,
@@ -156,7 +158,7 @@ export class GymCoachAIStack extends cdk.Stack {
     // Create User Pool Domain
     this.userPoolDomain = this.userPool.addDomain('CognitoDomain', {
       cognitoDomain: {
-        domainPrefix: `gymcoach-ai-${this.account}`,
+        domainPrefix: `gymcoach-ai-${this.env}-${this.account}`,
       },
     });
 
@@ -184,7 +186,7 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Create SNS Topics for different notification types
     const workoutRemindersTopic = new sns.Topic(this, 'WorkoutRemindersTopic', {
-      topicName: 'gymcoach-ai-workout-reminders',
+      topicName: `gymcoach-ai-workout-reminders-${this.env}`,
       displayName: 'Workout Reminders',
     });
 
@@ -192,24 +194,24 @@ export class GymCoachAIStack extends cdk.Stack {
       this,
       'NutritionRemindersTopic',
       {
-        topicName: 'gymcoach-ai-nutrition-reminders',
+        topicName: `gymcoach-ai-nutrition-reminders-${this.env}`,
         displayName: 'Nutrition Reminders',
       }
     );
 
     const achievementTopic = new sns.Topic(this, 'AchievementTopic', {
-      topicName: 'gymcoach-ai-achievements',
+      topicName: `gymcoach-ai-achievements-${this.env}`,
       displayName: 'Achievement Notifications',
     });
 
     const aiSuggestionsTopic = new sns.Topic(this, 'AISuggestionsTopic', {
-      topicName: 'gymcoach-ai-suggestions',
+      topicName: `gymcoach-ai-suggestions-${this.env}`,
       displayName: 'AI Suggestions',
     });
 
     // Create EventBridge Rules for scheduled notifications
     const workoutReminderRule = new events.Rule(this, 'WorkoutReminderRule', {
-      ruleName: 'gymcoach-ai-workout-reminders',
+      ruleName: `gymcoach-ai-workout-reminders-${this.env}`,
       description: 'Triggers workout reminder notifications',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -221,7 +223,7 @@ export class GymCoachAIStack extends cdk.Stack {
       this,
       'NutritionReminderRule',
       {
-        ruleName: 'gymcoach-ai-nutrition-reminders',
+        ruleName: `gymcoach-ai-nutrition-reminders-${this.env}`,
         description: 'Triggers nutrition reminder notifications',
         schedule: events.Schedule.cron({
           minute: '0',
@@ -231,7 +233,7 @@ export class GymCoachAIStack extends cdk.Stack {
     );
 
     const waterReminderRule = new events.Rule(this, 'WaterReminderRule', {
-      ruleName: 'gymcoach-ai-water-reminders',
+      ruleName: `gymcoach-ai-water-reminders-${this.env}`,
       description: 'Triggers water intake reminder notifications',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -240,7 +242,7 @@ export class GymCoachAIStack extends cdk.Stack {
     });
 
     const progressPhotoRule = new events.Rule(this, 'ProgressPhotoRule', {
-      ruleName: 'gymcoach-ai-progress-photos',
+      ruleName: `gymcoach-ai-progress-photos-${this.env}`,
       description: 'Triggers weekly progress photo reminders',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -251,7 +253,7 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Proactive Coaching EventBridge Rules
     const proactiveCheckInRule = new events.Rule(this, 'ProactiveCheckInRule', {
-      ruleName: 'gymcoach-ai-proactive-checkins',
+      ruleName: `gymcoach-ai-proactive-checkins-${this.env}`,
       description: 'Triggers proactive AI coach check-ins',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -260,7 +262,7 @@ export class GymCoachAIStack extends cdk.Stack {
     });
 
     const progressMonitorRule = new events.Rule(this, 'ProgressMonitorRule', {
-      ruleName: 'gymcoach-ai-progress-monitoring',
+      ruleName: `gymcoach-ai-progress-monitoring-${this.env}`,
       description: 'Monitors user progress and triggers interventions',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -269,7 +271,7 @@ export class GymCoachAIStack extends cdk.Stack {
     });
 
     const plateauDetectionRule = new events.Rule(this, 'PlateauDetectionRule', {
-      ruleName: 'gymcoach-ai-plateau-detection',
+      ruleName: `gymcoach-ai-plateau-detection-${this.env}`,
       description: 'Detects workout plateaus and suggests changes',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -279,7 +281,7 @@ export class GymCoachAIStack extends cdk.Stack {
     });
 
     const motivationBoostRule = new events.Rule(this, 'MotivationBoostRule', {
-      ruleName: 'gymcoach-ai-motivation-boost',
+      ruleName: `gymcoach-ai-motivation-boost-${this.env}`,
       description: 'Sends motivational messages based on user patterns',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -289,7 +291,7 @@ export class GymCoachAIStack extends cdk.Stack {
     });
 
     const weeklyReviewRule = new events.Rule(this, 'WeeklyReviewRule', {
-      ruleName: 'gymcoach-ai-weekly-review',
+      ruleName: `gymcoach-ai-weekly-review-${this.env}`,
       description: 'Generates weekly progress reviews and recommendations',
       schedule: events.Schedule.cron({
         minute: '0',
@@ -300,14 +302,9 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Create S3 Buckets (needed by Lambdas)
     this.userUploadsBucket = new s3.Bucket(this, 'UserUploadsBucket', {
-      bucketName: `gymcoach-ai-user-uploads-${this.account}`,
+      bucketName: `gymcoach-ai-user-uploads-${this.env}-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
-      blockPublicAccess: new s3.BlockPublicAccess({
-        blockPublicAcls: false,
-        blockPublicPolicy: false,
-        ignorePublicAcls: false,
-        restrictPublicBuckets: false,
-      }),
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block all public access - only CloudFront can access
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       cors: [
         {
@@ -350,18 +347,8 @@ export class GymCoachAIStack extends cdk.Stack {
       ],
     });
 
-    // Add bucket policy to allow public read access to uploaded images
-    this.userUploadsBucket.addToResourcePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        principals: [new iam.AnyPrincipal()],
-        actions: ['s3:GetObject'],
-        resources: [`${this.userUploadsBucket.bucketArn}/user-profiles/*`],
-      })
-    );
-
     this.staticAssetsBucket = new s3.Bucket(this, 'StaticAssetsBucket', {
-      bucketName: `gymcoach-ai-static-assets-${this.account}`,
+      bucketName: `gymcoach-ai-static-assets-${this.env}-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -369,7 +356,7 @@ export class GymCoachAIStack extends cdk.Stack {
     });
 
     this.processedImagesBucket = new s3.Bucket(this, 'ProcessedImagesBucket', {
-      bucketName: `gymcoach-ai-processed-images-${this.account}`,
+      bucketName: `gymcoach-ai-processed-images-${this.env}-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -377,7 +364,7 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Create dedicated Progress Photos S3 Bucket with enhanced security
     this.progressPhotosBucket = new s3.Bucket(this, 'ProgressPhotosBucket', {
-      bucketName: `gymcoach-ai-progress-photos-${this.account}`,
+      bucketName: `gymcoach-ai-progress-photos-${this.env}-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -422,7 +409,26 @@ export class GymCoachAIStack extends cdk.Stack {
       ],
     });
 
-    // Create CloudFront Origin Access Identity for secure S3 access
+    // Create CloudFront Origin Access Identity for user uploads bucket
+    const userUploadsOAI = new cloudfront.OriginAccessIdentity(
+      this,
+      'UserUploadsOAI',
+      {
+        comment: 'Origin Access Identity for User Uploads bucket',
+      }
+    );
+
+    // Grant CloudFront OAI access to user uploads bucket
+    this.userUploadsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [userUploadsOAI.grantPrincipal],
+        actions: ['s3:GetObject'],
+        resources: [`${this.userUploadsBucket.bucketArn}/*`],
+      })
+    );
+
+    // Create CloudFront Origin Access Identity for progress photos bucket
     const progressPhotosOAI = new cloudfront.OriginAccessIdentity(
       this,
       'ProgressPhotosOAI',
@@ -452,7 +458,7 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Create Frontend S3 Bucket for static assets
     this.frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
-      bucketName: `gymcoach-ai-frontend-${this.account}`,
+      bucketName: `gymcoach-ai-frontend-${this.env}-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
       publicReadAccess: false, // Only CloudFront OAI should access
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block all public access
@@ -471,7 +477,7 @@ export class GymCoachAIStack extends cdk.Stack {
 
     // Create S3 Vectors Bucket for AI Knowledge Base
     this.vectorsBucket = new s3.Bucket(this, 'VectorsBucket', {
-      bucketName: `gymcoach-ai-vectors-${this.account}`,
+      bucketName: `gymcoach-ai-vectors-${this.env}-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -607,7 +613,7 @@ export class GymCoachAIStack extends cdk.Stack {
       'analytics-service',
       {
         // Add CloudFront domain placeholder - will be updated after deployment
-        CLOUDFRONT_DOMAIN: `d12pveuxxq3vvn.cloudfront.net`, // Update manually after first deployment
+        CLOUDFRONT_DOMAIN: `d202qmtk8kkxra.cloudfront.net`, // Update manually after first deployment
       }
     );
     const nutritionServiceLambda = this.createLambdaFunction(
@@ -1004,6 +1010,32 @@ export class GymCoachAIStack extends cdk.Stack {
               }
             ),
           },
+          '/user-uploads/*': {
+            origin: origins.S3BucketOrigin.withOriginAccessIdentity(
+              this.userUploadsBucket,
+              {
+                originAccessIdentity: userUploadsOAI,
+              }
+            ),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+            cachePolicy: new cloudfront.CachePolicy(
+              this,
+              'UserUploadsCachePolicy',
+              {
+                cachePolicyName: 'user-uploads-cache-policy',
+                defaultTtl: cdk.Duration.hours(24),
+                maxTtl: cdk.Duration.days(365),
+                minTtl: cdk.Duration.seconds(0),
+                headerBehavior: cloudfront.CacheHeaderBehavior.allowList(
+                  'CloudFront-Viewer-Country'
+                ),
+                queryStringBehavior: cloudfront.CacheQueryStringBehavior.none(),
+                cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+              }
+            ),
+          },
         },
         comment: 'GymCoach AI CloudFront Distribution',
       }
@@ -1068,7 +1100,10 @@ export class GymCoachAIStack extends cdk.Stack {
           'bedrock:InvokeModelWithResponseStream',
         ],
         resources: [
-          'arn:aws:bedrock:*::foundation-model/deepseek.v3-v1:0',
+          'arn:aws:bedrock:*::foundation-model/amazon.nova-micro-v1:0',
+          'arn:aws:bedrock:*::foundation-model/amazon.nova-lite-v1:0',
+          'arn:aws:bedrock:*::foundation-model/amazon.nova-pro-v1:0',
+          'arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0',
           'arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v1',
           'arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0',
           'arn:aws:bedrock:*::foundation-model/cohere.embed-english-v3',
@@ -1330,7 +1365,8 @@ export class GymCoachAIStack extends cdk.Stack {
       environment: envVars,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256, // Optimized for cold starts
-      reservedConcurrentExecutions: 20, // Increased for development/testing
+      // Removed reservedConcurrentExecutions due to low account limit (10 total)
+      // reservedConcurrentExecutions: 20, // Increased for development/testing
       // Removed log retention to use free tier defaults (5GB/month free)
       // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
       layers: [this.createAuthLayer()],
@@ -1359,7 +1395,7 @@ export class GymCoachAIStack extends cdk.Stack {
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
         PYTHONPATH: '/var/runtime:/var/task',
         // AI Service specific environment variables
-        BEDROCK_MODEL_ID: 'deepseek.v3-v1:0', // DeepSeek model available in eu-north-1
+        BEDROCK_MODEL_ID: 'anthropic.claude-3-haiku-20240307-v1:0', // Claude 3 Haiku - reliable and well-supported in eu-west-1
         RATE_LIMIT_FREE_TIER: '10', // Requests per day for free tier
         RATE_LIMIT_PREMIUM_TIER: '50', // Requests per day for premium tier
         RATE_LIMIT_HARD_LIMIT: '100', // Hard limit to prevent abuse
@@ -1368,7 +1404,8 @@ export class GymCoachAIStack extends cdk.Stack {
       },
       timeout: cdk.Duration.minutes(5), // AI functions may need more time
       memorySize: 1024, // AI functions need more memory
-      reservedConcurrentExecutions: 20, // Increased for development/testing
+      // Removed reservedConcurrentExecutions due to low account limit (10 total)
+      // reservedConcurrentExecutions: 20, // Increased for development/testing
       // Removed log retention to use free tier defaults (5GB/month free)
       // Removed X-Ray tracing to avoid costs ($5 per 1M traces)
       // layers: [this.createPythonAuthLayer()], // Temporarily disabled

@@ -10,9 +10,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration matching the web app
-const REGION = 'eu-north-1';
-const USER_POOL_ID = 'eu-north-1_dE19nCAjn';
-const CLIENT_ID = '10ukk27kmnj1ba86dpmqc6amu6';
+const REGION = 'eu-west-1';
+const USER_POOL_ID = 'eu-west-1_PjxjqOwho';
+const CLIENT_ID = '2pigu1tu2it4aablmg1cgis1eo';
 
 // Create Cognito client
 const cognitoClient = new CognitoIdentityProviderClient({
