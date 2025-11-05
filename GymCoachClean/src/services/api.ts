@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CognitoAuthService from './cognitoAuth';
+import {getUserIdFromToken, safeDecodeJWT} from '../utils/jwtUtils';
 import {
   User,
   UserProfile,
@@ -50,22 +51,23 @@ class ApiClient {
           },
         );
         return headers;
+      } else {
+        console.error(
+          'API Client: No tokens found in AsyncStorage - user may need to re-authenticate',
+        );
       }
     } catch (error) {
       console.error('Failed to get auth headers:', error);
     }
+    console.warn(
+      'API Client: Returning headers without Authorization - APIs will fail',
+    );
     return {
       'Content-Type': 'application/json',
     };
   }
 
-  async getCurrentUserId(): Promise<string> {
-    const isDemo = await this.isDemoMode();
-    if (isDemo) {
-      // Return demo user ID without calling AWS
-      return 'demo-user-1';
-    }
-
+  async getCurrentUserId(): Promise<string | undefined> {
     try {
       // Get ID token and extract user ID (sub) from it
       const idToken = await AsyncStorage.getItem('idToken');
@@ -74,13 +76,14 @@ class ApiClient {
           'API Client: Retrieved idToken for user ID extraction:',
           idToken ? `${idToken.substring(0, 20)}...` : 'null',
         );
-        const payload = this.parseJwtPayload(idToken);
-        console.log(
-          'API Client: Parsed token payload for user ID:',
-          payload ? {sub: payload.sub, username: payload.username} : 'null',
-        );
-        if (payload?.sub) {
-          return payload.sub; // Return the actual user ID (sub) from token
+
+        const userId = getUserIdFromToken(idToken);
+        if (userId) {
+          console.log(
+            'API Client: Successfully extracted userId from idToken:',
+            userId,
+          );
+          return userId;
         }
       }
 
@@ -88,13 +91,10 @@ class ApiClient {
       const accessToken = await AsyncStorage.getItem('accessToken');
       if (accessToken) {
         console.log('API Client: Trying access token for user ID extraction');
-        const accessPayload = this.parseJwtPayload(accessToken);
-        if (accessPayload?.sub) {
-          console.log(
-            'API Client: Found userId in access token:',
-            accessPayload.sub,
-          );
-          return accessPayload.sub;
+        const userId = getUserIdFromToken(accessToken);
+        if (userId) {
+          console.log('API Client: Found userId in access token:', userId);
+          return userId;
         }
       }
 
@@ -103,63 +103,6 @@ class ApiClient {
       );
     } catch (error) {
       console.error('Failed to get current user ID:', error);
-    }
-
-    // Fallback to demo user ID
-    return 'demo-user-1';
-  }
-
-  private parseJwtPayload(token: string): any {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-
-      // Add padding if needed
-      const paddedBase64 = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-
-      // Simple base64 decode for React Native using the polyfill approach
-      const binaryString = this.base64Decode(paddedBase64);
-      const jsonPayload = decodeURIComponent(
-        binaryString
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join(''),
-      );
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      console.error('Error parsing JWT payload:', error);
-      return null;
-    }
-  }
-
-  private base64Decode(str: string): string {
-    try {
-      // Base64 character set
-      const chars =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-      let result = '';
-
-      // Remove any characters not in the base64 character set
-      str = str.replace(/[^A-Za-z0-9+/]/g, '');
-
-      for (let i = 0; i < str.length; i += 4) {
-        const encoded1 = chars.indexOf(str.charAt(i));
-        const encoded2 = chars.indexOf(str.charAt(i + 1));
-        const encoded3 = chars.indexOf(str.charAt(i + 2));
-        const encoded4 = chars.indexOf(str.charAt(i + 3));
-
-        const bitmap =
-          (encoded1 << 18) | (encoded2 << 12) | (encoded3 << 6) | encoded4;
-
-        result += String.fromCharCode((bitmap >> 16) & 255);
-        if (encoded3 !== 64) result += String.fromCharCode((bitmap >> 8) & 255);
-        if (encoded4 !== 64) result += String.fromCharCode(bitmap & 255);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in base64Decode:', error);
-      return '';
     }
   }
 
@@ -327,15 +270,6 @@ class ApiClient {
 
   // Authentication methods
   async getCurrentUser(): Promise<User | null> {
-    const isDemo = await this.isDemoMode();
-    if (isDemo) {
-      // Return demo user data
-      return {
-        id: 'demo-user-1',
-        email: 'demo@gymcoach.ai',
-      };
-    }
-
     try {
       // Get user info from AsyncStorage (stored by CognitoAuthService)
       const username = await AsyncStorage.getItem('username');
@@ -581,7 +515,7 @@ class ApiClient {
 
   async getWorkoutAnalytics(userId?: string, period?: string): Promise<any> {
     const id = userId || (await this.getCurrentUserId());
-    const params = new URLSearchParams({userId: id});
+    const params = new URLSearchParams(id ? {userId: id} : {});
     if (period) params.append('period', period);
     return this.apiFetch<any>(`/api/analytics/workout/${id}?${params}`);
   }
@@ -592,7 +526,7 @@ class ApiClient {
     metrics?: string[],
   ): Promise<any> {
     const id = userId || (await this.getCurrentUserId());
-    const params = new URLSearchParams({userId: id});
+    const params = new URLSearchParams(id ? {userId: id} : {});
     if (timeRange) params.append('timeRange', timeRange);
     if (metrics && metrics.length > 0) {
       metrics.forEach(metric => params.append('metrics', metric));
@@ -900,7 +834,7 @@ class ApiClient {
   // Sleep tracking methods
   async getSleepData(date?: string, userId?: string): Promise<any> {
     const id = userId || (await this.getCurrentUserId());
-    const params = new URLSearchParams({userId: id});
+    const params = new URLSearchParams(id ? {userId: id} : {});
     if (date) params.append('date', date);
     return this.apiFetch<any>(`/api/user-profiles/sleep?${params}`);
   }

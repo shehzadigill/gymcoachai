@@ -13,10 +13,10 @@ class BedrockService:
     
     def __init__(self, cache_service=None):
         self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'eu-west-1'))
-        # Claude 3 Haiku - well-supported, reliable model in eu-west-1
-        # Cost: ~$0.00025/1K input tokens, ~$0.00125/1K output tokens
-        # Native support in eu-west-1 with on-demand throughput
-        self.model_id = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-haiku-20240307-v1:0')
+        # OpenAI GPT-OSS-20B - Cheapest model with great performance
+        # Cost: ~$0.00008/1K input tokens, ~$0.00035/1K output tokens (5-10x cheaper than Titan!)
+        # Native support in eu-west-1 with on-demand throughput, no approval needed
+        self.model_id = os.environ.get('BEDROCK_MODEL_ID', 'openai.gpt-oss-20b-1:0')
         self.max_retries = 3
         self.retry_delay = 1  # seconds
         
@@ -136,7 +136,11 @@ class BedrockService:
             full_prompt = self._build_prompt(prompt, context)
             
             # Prepare request body based on model
-            if 'deepseek' in self.model_id:
+            if 'gpt' in self.model_id or 'openai' in self.model_id:
+                body = self._build_openai_request(full_prompt, max_tokens)
+            elif 'titan' in self.model_id:
+                body = self._build_titan_request(full_prompt, max_tokens)
+            elif 'deepseek' in self.model_id:
                 body = self._build_deepseek_request(full_prompt, max_tokens)
             elif 'nova' in self.model_id:
                 body = self._build_nova_request(full_prompt, max_tokens)
@@ -148,13 +152,21 @@ class BedrockService:
             # Retry logic for rate limiting
             for attempt in range(self.max_retries):
                 try:
+                    logger.info(f"Invoking Bedrock model {self.model_id} (attempt {attempt + 1}/{self.max_retries})")
+                    logger.info(f"Request body keys: {body.keys()}")
+                    logger.info(f"Prompt length: {len(full_prompt)} characters")
+                    
+                    import time
+                    start_time = time.time()
+                    
                     response = self.bedrock_runtime.invoke_model(
                         modelId=self.model_id,
                         body=json.dumps(body),
                         contentType='application/json'
                     )
                     
-                    logger.info(f"Bedrock response: {response}")
+                    elapsed_time = time.time() - start_time
+                    logger.info(f"✓ Bedrock responded in {elapsed_time:.2f}s")
                     logger.info(f"Response body type: {type(response.get('body'))}")
                     
                     if not response or 'body' not in response:
@@ -166,7 +178,19 @@ class BedrockService:
                     if not response_body:
                         raise Exception("Empty response from Bedrock")
                     
-                    if 'deepseek' in self.model_id:
+                    if 'gpt' in self.model_id or 'openai' in self.model_id:
+                        if 'choices' not in response_body or not response_body['choices']:
+                            raise Exception("Invalid response structure: missing choices")
+                        content = response_body['choices'][0]['message']['content']
+                        input_tokens = response_body.get('usage', {}).get('prompt_tokens', 0)
+                        output_tokens = response_body.get('usage', {}).get('completion_tokens', 0)
+                    elif 'titan' in self.model_id:
+                        if 'results' not in response_body or not response_body['results']:
+                            raise Exception("Invalid response structure: missing results")
+                        content = response_body['results'][0]['outputText']
+                        input_tokens = response_body.get('inputTextTokenCount', 0)
+                        output_tokens = response_body['results'][0].get('tokenCount', 0)
+                    elif 'deepseek' in self.model_id:
                         if 'choices' not in response_body or not response_body['choices']:
                             raise Exception("Invalid response structure: missing choices")
                         content = response_body['choices'][0]['message']['content']
@@ -248,11 +272,7 @@ Guidelines:
 - Consider the user's experience level, goals, and available equipment
 - Always prioritize safety and proper form
 - Keep responses concise but comprehensive
-- Use motivational language when appropriate
-
-CRITICAL: You will receive detailed user context below including their profile, goals, preferences, equipment, workout history, and measurements. ALWAYS use this information to personalize your responses. DO NOT ask the user for information that is already provided in their context. Reference their specific goals, experience level, and available equipment in your recommendations.
-
-Respond in a helpful, friendly tone as a personal trainer would."""
+- Use motivational language when appropriate"""
         
         if context:
             # Log the context to debug
@@ -273,17 +293,23 @@ Respond in a helpful, friendly tone as a personal trainer would."""
             
             logger.info(f"Formatted context length: {len(context_str)} characters")
             
-            # Add context with explicit reminder to use it
+            # Add context with explicit reminder to use it - VERY DIRECTIVE for Titan
             return f"""{system_prompt}
 
-=== USER CONTEXT ===
+=== USER CONTEXT (READ THIS CAREFULLY) ===
 {context_str}
 
-=== IMPORTANT ===
-Use the above user context to provide PERSONALIZED advice. The user has already shared their profile, goals, equipment, and preferences. Do not ask them to repeat this information.
+=== CRITICAL INSTRUCTIONS ===
+1. The user information above is COMPLETE and CURRENT
+2. DO NOT ask the user for information that is ALREADY PROVIDED above
+3. You MUST use the user's profile, goals, equipment, and experience level in your response
+4. If the user asks for a workout plan, create it based on their goals and equipment listed above
+5. If information is missing from the context above, you may ask, but ONLY if it's truly not there
 
 User Question/Request:
-{prompt}"""
+{prompt}
+
+YOUR RESPONSE (use the context above):"""
         else:
             logger.warning("No context provided to _build_prompt")
             return f"{system_prompt}\n\nUser Question/Request:\n{prompt}"
@@ -640,6 +666,32 @@ User Question/Request:
                     context_parts.append(f"Risk Factors: {', '.join(risks[:2])}")
         
         return '\n'.join(context_parts)
+    
+    def _build_openai_request(self, prompt: str, max_tokens: int) -> Dict:
+        """Build request body for OpenAI GPT models via Bedrock"""
+        return {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": max_tokens,
+            "temperature": 0.7,
+            "top_p": 0.9
+        }
+    
+    def _build_titan_request(self, prompt: str, max_tokens: int) -> Dict:
+        """Build request body for Amazon Titan models"""
+        return {
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "maxTokenCount": max_tokens,
+                "temperature": 0.7,
+                "topP": 0.9,
+                "stopSequences": []
+            }
+        }
     
     def _build_deepseek_request(self, prompt: str, max_tokens: int) -> Dict:
         """Build request body for DeepSeek models"""

@@ -9,6 +9,15 @@ import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 
+// Add base64 polyfill for JWT decoding
+import base64 from 'react-native-base64';
+if (!global.atob) {
+  global.atob = base64.decode;
+}
+if (!global.btoa) {
+  global.btoa = base64.encode;
+}
+
 // Add ReadableStream polyfill for AWS SDK v3 compatibility
 import {
   ReadableStream,

@@ -75,6 +75,240 @@ interface RateLimit {
   tier: string;
 }
 
+// Helper function to process and clean content
+function processContent(content: string): string {
+  // Replace HTML line breaks with markdown line breaks
+  let processed = content.replace(/<br\s*\/?>/gi, '\n');
+
+  // Handle common HTML entities
+  processed = processed
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–')
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&');
+
+  return processed;
+}
+
+// Reasoning Section Component with animations
+function ReasoningSection({ reasoning }: { reasoning: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-600">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 text-xs text-gray-600 dark:text-gray-400 group"
+        aria-label={isExpanded ? 'Hide reasoning' : 'Show reasoning'}
+      >
+        <span className="font-medium flex items-center gap-2">
+          <Brain className="h-3 w-3" />
+          Reasoning
+        </span>
+        <ChevronDown
+          className={`h-3 w-3 transition-transform duration-200 ${
+            isExpanded ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          isExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div
+          className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-xs text-gray-500 dark:text-gray-400 italic leading-relaxed"
+          style={{
+            filter: 'blur(0.3px)',
+            WebkitFilter: 'blur(0.3px)',
+          }}
+        >
+          {processContent(reasoning)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Summary Modal Component
+interface SummaryModalProps {
+  isOpen: boolean;
+  summary: string | null;
+  onClose: () => void;
+}
+
+function SummaryModal({ isOpen, summary, onClose }: SummaryModalProps) {
+  if (!isOpen || !summary) return null;
+
+  // Extract reasoning from summary if present
+  const reasoningMatch = summary.match(/<reasoning>([\s\S]*?)<\/reasoning>/);
+  const reasoning = reasoningMatch ? reasoningMatch[1].trim() : null;
+  let mainContent = summary
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/, '')
+    .trim();
+  // Process HTML entities and special characters
+  mainContent = processContent(mainContent);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Conversation Summary
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Close summary"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="overflow-y-auto flex-1 p-6">
+          <div className="max-w-none">
+            {/* Reasoning Section */}
+            {reasoning && <ReasoningSection reasoning={reasoning} />}
+
+            {/* Main Summary Content */}
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: ({ ...props }) => (
+                    <h1
+                      className="text-2xl font-bold mb-4 text-gray-900 dark:text-white"
+                      {...props}
+                    />
+                  ),
+                  h2: ({ ...props }) => (
+                    <h2
+                      className="text-xl font-bold mb-3 mt-4 text-gray-900 dark:text-white"
+                      {...props}
+                    />
+                  ),
+                  h3: ({ ...props }) => (
+                    <h3
+                      className="text-lg font-bold mb-2 mt-3 text-gray-900 dark:text-white"
+                      {...props}
+                    />
+                  ),
+                  p: ({ ...props }) => (
+                    <p
+                      className="mb-3 text-gray-700 dark:text-gray-300 leading-relaxed"
+                      {...props}
+                    />
+                  ),
+                  ul: ({ ...props }) => (
+                    <ul
+                      className="mb-3 ml-4 list-disc list-inside text-gray-700 dark:text-gray-300"
+                      {...props}
+                    />
+                  ),
+                  ol: ({ ...props }) => (
+                    <ol
+                      className="mb-3 ml-4 list-decimal list-inside text-gray-700 dark:text-gray-300"
+                      {...props}
+                    />
+                  ),
+                  li: ({ ...props }) => <li className="mb-1" {...props} />,
+                  table: ({ ...props }) => (
+                    <div className="mb-4 overflow-x-auto">
+                      <table
+                        className="w-full border-collapse border border-gray-300 dark:border-gray-600"
+                        {...props}
+                      />
+                    </div>
+                  ),
+                  thead: ({ ...props }) => (
+                    <thead
+                      className="bg-gray-100 dark:bg-gray-700"
+                      {...props}
+                    />
+                  ),
+                  tbody: ({ ...props }) => (
+                    <tbody
+                      className="divide-y divide-gray-200 dark:divide-gray-600"
+                      {...props}
+                    />
+                  ),
+                  tr: ({ ...props }) => (
+                    <tr
+                      className="divide-x divide-gray-200 dark:divide-gray-600"
+                      {...props}
+                    />
+                  ),
+                  th: ({ ...props }) => (
+                    <th
+                      className="p-2 text-left font-semibold text-gray-900 dark:text-white"
+                      {...props}
+                    />
+                  ),
+                  td: ({ ...props }) => (
+                    <td
+                      className="p-2 text-gray-700 dark:text-gray-300"
+                      {...props}
+                    />
+                  ),
+                  blockquote: ({ ...props }) => (
+                    <blockquote
+                      className="mb-3 pl-4 border-l-4 border-blue-500 text-gray-600 dark:text-gray-400 italic"
+                      {...props}
+                    />
+                  ),
+                  code: ({ ...props }) => (
+                    <code
+                      className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-900 dark:text-white"
+                      {...props}
+                    />
+                  ),
+                  pre: ({ ...props }) => (
+                    <pre
+                      className="mb-3 p-3 bg-gray-900 dark:bg-gray-950 rounded-lg overflow-x-auto"
+                      {...props}
+                    />
+                  ),
+                }}
+              >
+                {mainContent}
+              </ReactMarkdown>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-700/50">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-500 transition-colors font-medium"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AITrainerPage() {
   const user = useCurrentUser();
   const t = useTranslations('ai_trainer');
@@ -117,6 +351,11 @@ export default function AITrainerPage() {
   // User context state for enhanced personalization
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userPreferences, setUserPreferences] = useState<any>(null);
+
+  // Summary modal state with caching
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [cachedSummary, setCachedSummary] = useState<string | null>(null);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -405,6 +644,10 @@ export default function AITrainerPage() {
     setInputMessage('');
     setIsLoading(true);
 
+    // Clear cached summary when new message is sent
+    setCachedSummary(null);
+    setShowSummaryModal(false);
+
     try {
       console.log(
         'Sending message:',
@@ -527,9 +770,12 @@ export default function AITrainerPage() {
       const response = await aiService.summarizeConversation(
         currentConversationId
       );
+      console.log('Summarize conversation response:', response.summary);
       if (response.success) {
-        // Show summary in a modal or notification
-        alert(t('conversation_summary', { summary: response.data.summary }));
+        // Cache the summary and show modal
+        setCachedSummary(response.summary);
+        setLastMessageCount(messages.length);
+        setShowSummaryModal(true);
       }
     } catch (error) {
       console.error('Failed to summarize conversation:', error);
@@ -1229,155 +1475,211 @@ export default function AITrainerPage() {
               </div>
             ) : (
               <div className="mx-auto w-full max-w-3xl space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {message.role === 'assistant' && (
-                      <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                    )}
+                {messages.map((message) => {
+                  // Extract reasoning from message content
+                  const reasoningMatch = message.content.match(
+                    /<reasoning>([\s\S]*?)<\/reasoning>/
+                  );
+                  const reasoning = reasoningMatch
+                    ? reasoningMatch[1].trim()
+                    : null;
+                  let mainContent = message.content
+                    .replace(/<reasoning>[\s\S]*?<\/reasoning>/, '')
+                    .trim();
+                  // Process HTML entities and special characters
+                  mainContent = processContent(mainContent);
+
+                  return (
                     <div
-                      className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                        message.role === 'user'
-                          ? 'bg-blue-600 text-white rounded-br-sm'
-                          : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-bl-sm'
-                      }`}
+                      key={message.id}
+                      className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      {message.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              p: ({ children }) => (
-                                <p className="mb-2 last:mb-0">{children}</p>
-                              ),
-                              ul: ({ children }) => (
-                                <ul className="mb-2 last:mb-0">{children}</ul>
-                              ),
-                              ol: ({ children }) => (
-                                <ol className="mb-2 last:mb-0">{children}</ol>
-                              ),
-                              li: ({ children }) => (
-                                <li className="mb-1">{children}</li>
-                              ),
-                              strong: ({ children }) => (
-                                <strong className="font-semibold">
-                                  {children}
-                                </strong>
-                              ),
-                              em: ({ children }) => (
-                                <em className="italic">{children}</em>
-                              ),
-                              code: ({ children }) => (
-                                <code className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-1 py-0.5 rounded text-sm">
-                                  {children}
-                                </code>
-                              ),
-                              pre: ({ children }) => (
-                                <pre className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded overflow-x-auto">
-                                  {children}
-                                </pre>
-                              ),
-                              blockquote: ({ children }) => (
-                                <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-700 dark:text-gray-300">
-                                  {children}
-                                </blockquote>
-                              ),
-                            }}
-                          >
-                            {message.content}
-                          </ReactMarkdown>
-
-                          {/* Enhanced AI Features */}
-                          <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
-                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center gap-3">
-                                {/* Confidence Indicator */}
-                                {message.confidence !== undefined && (
-                                  <ConfidenceIndicator
-                                    score={message.confidence}
-                                    size="sm"
-                                    showLabel={false}
-                                  />
-                                )}
-
-                                {/* Personalization Style */}
-                                {message.personalizationStyle && (
-                                  <div className="flex items-center gap-1">
-                                    <span>
-                                      {getCoachingStyleIcon(
-                                        message.personalizationStyle
-                                      )}
-                                    </span>
-                                    <span className="capitalize">
-                                      {message.personalizationStyle}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* RAG Sources Toggle */}
-                              {message.ragContext &&
-                                message.ragContext.sources.length > 0 && (
-                                  <button
-                                    onClick={() =>
-                                      setShowRAGSources(!showRAGSources)
-                                    }
-                                    className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
-                                  >
-                                    <Brain className="h-3 w-3" />
-                                    <span>
-                                      {message.ragContext.sources.length}{' '}
-                                      sources
-                                    </span>
-                                    {showRAGSources ? (
-                                      <ChevronUp className="h-3 w-3" />
-                                    ) : (
-                                      <ChevronDown className="h-3 w-3" />
-                                    )}
-                                  </button>
-                                )}
-                            </div>
-
-                            {/* RAG Sources Display */}
-                            {message.ragContext &&
-                              message.ragContext.sources.length > 0 &&
-                              showRAGSources && (
-                                <div className="mt-2">
-                                  <RAGSourcesDisplay
-                                    sources={message.ragContext.sources}
-                                    showDetails={true}
-                                    maxSources={3}
-                                  />
-                                </div>
-                              )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="whitespace-pre-wrap">
-                          {message.content}
+                      {message.role === 'assistant' && (
+                        <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                          <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
                       )}
                       <div
-                        className={`text-xs mt-1 ${
+                        className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
                           message.role === 'user'
-                            ? 'text-blue-100'
-                            : 'text-gray-500 dark:text-gray-400'
+                            ? 'bg-blue-600 text-white rounded-br-sm'
+                            : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-bl-sm'
                         }`}
                       >
-                        {formatTime(message.timestamp)}
+                        {message.role === 'assistant' ? (
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            {/* Reasoning Section (Collapsible, Blurred, Small Text) */}
+                            {reasoning && (
+                              <ReasoningSection reasoning={reasoning} />
+                            )}
+
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                p: ({ children }) => (
+                                  <p className="mb-2 last:mb-0">{children}</p>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="list-disc list-inside mb-2 last:mb-0 space-y-1">
+                                    {children}
+                                  </ul>
+                                ),
+                                ol: ({ children }) => (
+                                  <ol className="list-decimal list-inside mb-2 last:mb-0 space-y-1">
+                                    {children}
+                                  </ol>
+                                ),
+                                li: ({ children }) => (
+                                  <li className="mb-1">{children}</li>
+                                ),
+                                strong: ({ children }) => (
+                                  <strong className="font-semibold">
+                                    {children}
+                                  </strong>
+                                ),
+                                em: ({ children }) => (
+                                  <em className="italic">{children}</em>
+                                ),
+                                code: ({ children }) => (
+                                  <code className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-1 py-0.5 rounded text-sm font-mono">
+                                    {children}
+                                  </code>
+                                ),
+                                pre: ({ children }) => (
+                                  <pre className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded overflow-x-auto mb-2 last:mb-0 text-sm">
+                                    {children}
+                                  </pre>
+                                ),
+                                blockquote: ({ children }) => (
+                                  <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-700 dark:text-gray-300 my-2">
+                                    {children}
+                                  </blockquote>
+                                ),
+                                table: ({ children }) => (
+                                  <div className="overflow-x-auto my-3 rounded-lg border border-gray-300 dark:border-gray-600">
+                                    <table className="w-full text-sm border-collapse">
+                                      {children}
+                                    </table>
+                                  </div>
+                                ),
+                                thead: ({ children }) => (
+                                  <thead className="bg-gray-100 dark:bg-gray-700 border-b-2 border-gray-300 dark:border-gray-600">
+                                    {children}
+                                  </thead>
+                                ),
+                                tbody: ({ children }) => (
+                                  <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                                    {children}
+                                  </tbody>
+                                ),
+                                tr: ({ children }) => (
+                                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    {children}
+                                  </tr>
+                                ),
+                                td: ({ children }) => (
+                                  <td className="px-3 py-2 text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-600 last:border-r-0">
+                                    {children}
+                                  </td>
+                                ),
+                                th: ({ children }) => (
+                                  <th className="px-3 py-2 text-gray-900 dark:text-gray-100 font-semibold border-r border-gray-300 dark:border-gray-600 last:border-r-0 text-left">
+                                    {children}
+                                  </th>
+                                ),
+                              }}
+                            >
+                              {mainContent}
+                            </ReactMarkdown>
+
+                            {/* Enhanced AI Features */}
+                            <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+                              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center gap-3">
+                                  {/* Confidence Indicator */}
+                                  {message.confidence !== undefined && (
+                                    <ConfidenceIndicator
+                                      score={message.confidence}
+                                      size="sm"
+                                      showLabel={false}
+                                    />
+                                  )}
+
+                                  {/* Personalization Style */}
+                                  {message.personalizationStyle && (
+                                    <div className="flex items-center gap-1">
+                                      <span>
+                                        {getCoachingStyleIcon(
+                                          message.personalizationStyle
+                                        )}
+                                      </span>
+                                      <span className="capitalize">
+                                        {message.personalizationStyle}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* RAG Sources Toggle */}
+                                {message.ragContext &&
+                                  message.ragContext.sources.length > 0 && (
+                                    <button
+                                      onClick={() =>
+                                        setShowRAGSources(!showRAGSources)
+                                      }
+                                      className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
+                                    >
+                                      <Brain className="h-3 w-3" />
+                                      <span>
+                                        {message.ragContext.sources.length}{' '}
+                                        sources
+                                      </span>
+                                      {showRAGSources ? (
+                                        <ChevronUp className="h-3 w-3" />
+                                      ) : (
+                                        <ChevronDown className="h-3 w-3" />
+                                      )}
+                                    </button>
+                                  )}
+                              </div>
+
+                              {/* RAG Sources Display */}
+                              {message.ragContext &&
+                                message.ragContext.sources.length > 0 &&
+                                showRAGSources && (
+                                  <div className="mt-2">
+                                    <RAGSourcesDisplay
+                                      sources={message.ragContext.sources}
+                                      showDetails={true}
+                                      maxSources={3}
+                                    />
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap">
+                            {message.content}
+                          </div>
+                        )}
+                        <div
+                          className={`text-xs mt-1 ${
+                            message.role === 'user'
+                              ? 'text-blue-100'
+                              : 'text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          {formatTime(message.timestamp)}
+                        </div>
                       </div>
+                      {message.role === 'user' && (
+                        <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200">
+                          {user?.name?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                      )}
                     </div>
-                    {message.role === 'user' && (
-                      <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200">
-                        {user?.name?.[0]?.toUpperCase() || 'U'}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {isLoading && (
@@ -1530,6 +1832,13 @@ export default function AITrainerPage() {
           <MemoryViewer userId={user.id} />
         </div>
       )}
+
+      {/* Summary Modal */}
+      <SummaryModal
+        isOpen={showSummaryModal}
+        summary={cachedSummary}
+        onClose={() => setShowSummaryModal(false)}
+      />
     </div>
   );
 }

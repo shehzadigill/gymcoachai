@@ -25,6 +25,7 @@ import ConfidenceIndicator from '../components/ai/ConfidenceIndicator';
 import RAGSourcesDisplay from '../components/ai/RAGSourcesDisplay';
 import MemoryViewer from '../components/ai/MemoryViewer';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
+import MessageItem from '../components/ai/MessageItem';
 import {useTheme} from '../theme';
 
 interface RAGSource {
@@ -480,6 +481,26 @@ const AITrainerScreen: React.FC = () => {
     return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
   };
 
+  // Helper function to process and clean content
+  const processContent = (content: string): string => {
+    // Replace HTML line breaks with newlines
+    let processed = content.replace(/<br\s*\/?>/gi, '\n');
+
+    // Handle common HTML entities
+    processed = processed
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&mdash;/g, '—')
+      .replace(/&ndash;/g, '–')
+      .replace(/&ldquo;/g, '"')
+      .replace(/&rdquo;/g, '"')
+      .replace(/&lsquo;/g, "'")
+      .replace(/&rsquo;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&');
+
+    return processed;
+  };
+
   const getRateLimitColor = () => {
     if (!rateLimit) return '#9ca3af';
     const percentage =
@@ -534,6 +555,7 @@ const AITrainerScreen: React.FC = () => {
     },
     list_item: {
       marginBottom: 4,
+      marginLeft: 8,
     },
     bullet_list: {
       marginBottom: 8,
@@ -551,50 +573,52 @@ const AITrainerScreen: React.FC = () => {
       color: '#3b82f6',
       textDecorationLine: 'underline' as const,
     },
+    table: {
+      marginVertical: 8,
+      borderWidth: 1,
+      borderColor: '#d1d5db',
+      borderRadius: 8,
+    } as any,
+    thead: {
+      backgroundColor: '#f3f4f6',
+    } as any,
+    tbody: {
+      backgroundColor: 'white',
+    } as any,
+    tr: {
+      borderBottomWidth: 1,
+      borderBottomColor: '#e5e7eb',
+      flexDirection: 'row' as const,
+    } as any,
+    th: {
+      fontWeight: '600' as const,
+      flex: 1,
+      padding: 8,
+      backgroundColor: '#f3f4f6',
+      color: '#111827',
+      fontSize: 13,
+    } as any,
+    td: {
+      flex: 1,
+      padding: 8,
+      color: '#374151',
+      fontSize: 12,
+      borderRightWidth: 1,
+      borderRightColor: '#e5e7eb',
+    } as any,
   };
 
-  const renderMessage = ({item}: {item: Message}) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.role === 'user' ? styles.userMessage : styles.assistantMessage,
-      ]}>
-      {item.role === 'assistant' ? (
-        <>
-          <Markdown style={markdownStyles}>{item.content}</Markdown>
-
-          {/* Confidence Indicator */}
-          {item.confidence !== undefined && (
-            <View style={styles.messageMetadata}>
-              <ConfidenceIndicator
-                score={item.confidence}
-                size="sm"
-                showLabel={true}
-              />
-            </View>
-          )}
-
-          {/* RAG Sources */}
-          {item.ragContext && (
-            <RAGSourcesDisplay ragContext={item.ragContext} maxSources={3} />
-          )}
-        </>
-      ) : (
-        <Text style={[styles.messageText, styles.userMessageText]}>
-          {item.content}
-        </Text>
-      )}
-      <Text
-        style={[
-          styles.messageTime,
-          item.role === 'user'
-            ? styles.userMessageTime
-            : styles.assistantMessageTime,
-        ]}>
-        {formatTime(item.timestamp)}
-      </Text>
-    </View>
-  );
+  const renderMessage = ({item}: {item: Message}) => {
+    return (
+      <MessageItem
+        item={item}
+        styles={styles}
+        markdownStyles={markdownStyles}
+        formatTime={formatTime}
+        processContent={processContent}
+      />
+    );
+  };
 
   const renderConversation = ({item}: {item: Conversation}) => {
     const conversationId = item.id || item.conversationId || '';
@@ -1546,6 +1570,49 @@ const styles = StyleSheet.create({
   emptyProfile: {
     alignItems: 'center',
     padding: 32,
+  },
+  // Reasoning section styles
+  reasoningContainer: {
+    marginTop: 8,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  reasoningToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  reasoningToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reasoningToggleText: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  reasoningContentWrapper: {
+    overflow: 'hidden',
+  },
+  reasoningContent: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 4,
+  },
+  reasoningText: {
+    fontSize: 12,
+    color: '#9ca3af',
+    lineHeight: 18,
+    fontStyle: 'italic',
   },
 });
 

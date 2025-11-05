@@ -531,10 +531,10 @@ export class AIServiceClient {
   // Conversation Management APIs
   async summarizeConversation(
     conversationId: string
-  ): Promise<AIResponse<ConversationSummary>> {
+  ): Promise<ConversationSummary> {
     const response = await apiFetch('/api/ai/conversation/summarize', {
       method: 'POST',
-      body: JSON.stringify({ conversationId }),
+      body: JSON.stringify({ conversation_id: conversationId }),
     });
     return response;
   }

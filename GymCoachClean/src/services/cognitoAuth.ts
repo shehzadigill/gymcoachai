@@ -28,9 +28,22 @@ export interface AuthUser {
 }
 
 export class CognitoAuthService {
+  // Mutex to prevent concurrent refresh attempts
+  private static refreshPromise: Promise<AuthUser | null> | null = null;
+
   static async signIn(email: string, password: string): Promise<AuthUser> {
     try {
       console.log('CognitoAuthService: Starting sign in for:', email);
+
+      // Clear any old tokens first to prevent confusion
+      await AsyncStorage.multiRemove([
+        'accessToken',
+        'refreshToken',
+        'idToken',
+        'username',
+        'userEmail',
+      ]);
+      console.log('CognitoAuthService: Cleared old tokens before login');
 
       const command = new InitiateAuthCommand({
         AuthFlow: 'USER_PASSWORD_AUTH',
@@ -46,6 +59,7 @@ export class CognitoAuthService {
       console.log('CognitoAuthService: InitiateAuth response:', {
         challengeName: response.ChallengeName,
         hasAuthResult: !!response.AuthenticationResult,
+        hasRefreshToken: !!response.AuthenticationResult?.RefreshToken,
       });
 
       if (response.AuthenticationResult) {
@@ -55,6 +69,13 @@ export class CognitoAuthService {
         if (!AccessToken || !RefreshToken || !IdToken) {
           throw new Error('Missing tokens in authentication result');
         }
+
+        console.log('CognitoAuthService: Received tokens:', {
+          accessTokenLength: AccessToken.length,
+          refreshTokenLength: RefreshToken.length,
+          idTokenLength: IdToken.length,
+          refreshTokenPreview: RefreshToken.substring(0, 20) + '...',
+        });
 
         // Store tokens and user info
         await AsyncStorage.setItem('accessToken', AccessToken);
@@ -207,6 +228,27 @@ export class CognitoAuthService {
   }
 
   static async refreshTokens(): Promise<AuthUser | null> {
+    // If a refresh is already in progress, wait for it instead of starting another
+    if (this.refreshPromise) {
+      console.log(
+        'CognitoAuthService: Refresh already in progress, waiting...',
+      );
+      return this.refreshPromise;
+    }
+
+    // Start new refresh and store the promise
+    this.refreshPromise = this.performRefresh();
+
+    try {
+      const result = await this.refreshPromise;
+      return result;
+    } finally {
+      // Clear the promise after completion (success or failure)
+      this.refreshPromise = null;
+    }
+  }
+
+  private static async performRefresh(): Promise<AuthUser | null> {
     try {
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       const username = await AsyncStorage.getItem('username');
@@ -217,6 +259,11 @@ export class CognitoAuthService {
       }
 
       console.log('CognitoAuthService: Refreshing tokens...');
+      console.log('CognitoAuthService: Using refresh token:', {
+        username,
+        refreshTokenPreview: refreshToken.substring(0, 20) + '...',
+        refreshTokenLength: refreshToken.length,
+      });
 
       const command = new InitiateAuthCommand({
         AuthFlow: 'REFRESH_TOKEN_AUTH',
@@ -256,8 +303,43 @@ export class CognitoAuthService {
       }
     } catch (error: any) {
       console.error('CognitoAuthService: Token refresh error:', error);
-      // Clear invalid tokens
-      await this.signOut();
+
+      // CRITICAL FIX: Only clear tokens if they're actually invalid
+      // NOT if refresh failed due to rate limits or network issues
+      // Check for specific error patterns that indicate truly invalid tokens
+      const isInvalidToken =
+        error.name === 'NotAuthorizedException' ||
+        error.message?.includes('Invalid Refresh Token') ||
+        error.message?.includes('Refresh Token has expired') ||
+        error.message?.includes('Refresh token has been revoked');
+
+      if (isInvalidToken) {
+        console.warn(
+          'CognitoAuthService: Refresh token is invalid or expired - clearing tokens',
+        );
+        await this.signOut();
+      } else {
+        console.warn(
+          'CognitoAuthService: Token refresh failed but keeping existing tokens. Error:',
+          error.name || error.message,
+        );
+        // Return current user data from storage to keep session alive
+        const username = await AsyncStorage.getItem('username');
+        const email = (await AsyncStorage.getItem('userEmail')) || '';
+        const accessToken = await AsyncStorage.getItem('accessToken');
+        const idToken = await AsyncStorage.getItem('idToken');
+        const refreshToken = await AsyncStorage.getItem('refreshToken');
+
+        if (accessToken && idToken && refreshToken && username) {
+          return {
+            username,
+            email,
+            accessToken,
+            refreshToken,
+            idToken,
+          };
+        }
+      }
       return null;
     }
   }

@@ -186,45 +186,60 @@ export default function DashboardScreen() {
     try {
       setLoading(true);
 
-      // Load dashboard data in parallel
+      // Load critical data first (batch 1)
+      console.log('Loading critical dashboard data (batch 1)...');
+      const [userProfileData, workoutPlans, workoutSessions] =
+        await Promise.allSettled([
+          apiClient.getUserProfile(user?.id || ''),
+          apiClient.getWorkouts(),
+          apiClient.getWorkoutSessions(),
+        ]);
+
+      // Small delay before next batch to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Load secondary data (batch 2)
+      console.log('Loading secondary dashboard data (batch 2)...');
+      const [nutritionStats, todaysMeals, waterIntake] =
+        await Promise.allSettled([
+          apiClient.getNutritionStats(),
+          apiClient.getMealsByDate(new Date().toISOString().split('T')[0]),
+          apiClient.getWater(new Date().toISOString().split('T')[0]),
+        ]);
+
+      // Another small delay
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Load analytics and achievements (batch 3)
+      console.log('Loading analytics dashboard data (batch 3)...');
       const [
-        workoutSessions,
-        nutritionStats,
         strengthProgress,
         achievements,
-        workoutPlans,
-        userProfileData,
-        todaysMeals,
-        waterIntake,
         sleepData,
         progressPhotos,
         workoutAnalytics,
-        // AI Service calls (optional - won't break if they fail)
+      ] = await Promise.allSettled([
+        apiClient.getStrengthProgress(),
+        apiClient.getAchievements(),
+        apiClient.getSleepData(),
+        apiClient.getProgressPhotos(),
+        apiClient.getWorkoutAnalytics(),
+      ]);
+
+      // Load AI insights in background (batch 4 - optional, non-blocking)
+      console.log('Loading AI insights (batch 4 - optional)...');
+      const [
         aiInsightsPromise,
         weeklyReviewPromise,
         performancePredictionsPromise,
         personalizationPromise,
         performanceAnalysisPromise,
-        // nutritionIntelligencePromise,
       ] = await Promise.allSettled([
-        apiClient.getWorkoutSessions(),
-        apiClient.getNutritionStats(),
-        apiClient.getStrengthProgress(),
-        apiClient.getAchievements(),
-        apiClient.getWorkouts(),
-        apiClient.getUserProfile(user?.id || ''),
-        apiClient.getMealsByDate(new Date().toISOString().split('T')[0]),
-        apiClient.getWater(new Date().toISOString().split('T')[0]),
-        apiClient.getSleepData(),
-        apiClient.getProgressPhotos(),
-        apiClient.getWorkoutAnalytics(),
-        // AI Service calls
         apiClient.getProactiveInsights().catch(() => []),
         apiClient.getWeeklyReview().catch(() => null),
         apiClient.predictPerformance(user?.id).catch(() => []),
         apiClient.analyzeUserPreferences().catch(() => null),
         apiClient.analyzePerformance({}).catch(() => null),
-        // apiClient.analyzeNutritionAdherence({days: 14, includeHydration: true, includeTiming: true}).catch(() => null),
       ]);
 
       console.log('Dashboard data loaded:', {

@@ -360,6 +360,7 @@ export interface ConversationSummary {
   nextSteps: string[];
   sentiment: 'positive' | 'neutral' | 'negative';
   createdAt: string;
+  success: boolean;
 }
 
 // API Response wrappers
