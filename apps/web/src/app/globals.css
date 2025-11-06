@@ -7,6 +7,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Prevent horizontal scroll */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+* {
+  max-width: 100%;
+}
+
 /* RTL Support */
 [dir='rtl'] {
   text-align: right;

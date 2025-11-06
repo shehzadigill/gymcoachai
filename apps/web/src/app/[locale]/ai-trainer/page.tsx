@@ -322,8 +322,7 @@ export default function AITrainerPage() {
     string | null
   >(null);
   const [rateLimit, setRateLimit] = useState<RateLimit | null>(null);
-  const [showConversations, setShowConversations] = useState(true);
-  const [conversationsCollapsed, setConversationsCollapsed] = useState(false);
+  const [showConversations, setShowConversations] = useState(false); // Start hidden on mobile
   const [editingConversationId, setEditingConversationId] = useState<
     string | null
   >(null);
@@ -515,7 +514,7 @@ export default function AITrainerPage() {
 
       setMessages(formattedMessages);
       setCurrentConversationId(conversationId);
-      setShowConversations(false);
+      setShowConversations(false); // Close sidebar on mobile after selecting
 
       // Load conversation analytics
       loadConversationAnalytics(conversationId);
@@ -809,27 +808,27 @@ export default function AITrainerPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-900/60 sticky top-0 z-10">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-            <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+      <div className="flex items-center justify-between gap-2 p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl shadow-md flex-shrink-0">
+            <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
               {t('title')}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate hidden sm:block">
               {t('subtitle')}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Coaching Style Indicator */}
           {personalizationProfile && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
               <span className="text-sm">
                 {getCoachingStyleIcon(coachingStyle)}
               </span>
@@ -838,155 +837,125 @@ export default function AITrainerPage() {
               </span>
             </div>
           )}
-          {/* RAG Stats */}
-          {ragStats && (
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-              <Brain className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-xs font-medium text-green-700 dark:text-green-200">
-                {ragStats.totalVectors.toLocaleString()} sources
-              </span>
-            </div>
-          )}{' '}
+
           {/* Rate Limit Indicator */}
           {rateLimit && (
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
               <Zap className="h-4 w-4 text-yellow-500" />
-              <div className="w-40">
-                <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                   <div
-                    className="h-2 bg-blue-600 dark:bg-blue-400 transition-all"
+                    className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
                     style={{ width: `${getRateLimitPercent()}%` }}
                   />
                 </div>
-                <div className={`text-xs mt-1 ${getRateLimitColor()}`}>
-                  {rateLimit.requestsRemaining} requests left
-                </div>
+                <span className={`text-xs font-medium ${getRateLimitColor()}`}>
+                  {rateLimit.requestsRemaining}
+                </span>
               </div>
             </div>
           )}
-          {/* AI Features Toggle */}
-          <button
-            onClick={() => setShowAnalytics(!showAnalytics)}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title="Toggle AI Analytics"
-          >
-            <TrendingUp className="h-5 w-5" />
-          </button>
-          {/* Personalization Toggle */}
-          <button
-            onClick={() => setShowPersonalization(!showPersonalization)}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title="Toggle Personalization"
-          >
-            <Settings className="h-5 w-5" />
-          </button>
-          {/* Conversations Button */}
-          <button
-            onClick={() => setShowConversations(!showConversations)}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <MessageCircle className="h-5 w-5" />
-          </button>
-          {/* New Conversation Button */}
-          <button
-            onClick={startNewConversation}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <RefreshCw className="h-5 w-5" />
-          </button>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowConversations(!showConversations)}
+              className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+                showConversations
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title="Conversations"
+            >
+              <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+
+            <button
+              onClick={startNewConversation}
+              className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="New Conversation"
+            >
+              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Conversations Sidebar */}
         {showConversations && (
-          <div
-            className={`border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-all duration-300 ${conversationsCollapsed ? 'w-16' : 'w-80'}`}
-          >
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                {!conversationsCollapsed && (
+          <>
+            {/* Overlay for mobile */}
+            <div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setShowConversations(false)}
+            />
+
+            <div className="fixed md:relative inset-y-0 left-0 z-50 md:z-0 w-80 md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col flex-shrink-0 shadow-xl md:shadow-none">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-3">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {t('conversations')}
                   </h2>
-                )}
-                <button
-                  onClick={() =>
-                    setConversationsCollapsed(!conversationsCollapsed)
-                  }
-                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                  title={
-                    conversationsCollapsed
-                      ? t('expand_conversations')
-                      : t('collapse_conversations')
-                  }
-                >
-                  <Menu className="h-4 w-4" />
-                </button>
-              </div>
-              {!conversationsCollapsed && (
-                <div className="mt-3">
-                  <input
-                    type="text"
-                    value={conversationSearch}
-                    onChange={(e) => setConversationSearch(e.target.value)}
-                    placeholder={t('search_conversations')}
-                    className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <button
+                    onClick={() => setShowConversations(false)}
+                    className="md:hidden p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="overflow-y-auto">
-              {conversations.length === 0 ? (
-                !conversationsCollapsed && (
-                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                    {t('no_conversations')}
+                <input
+                  type="text"
+                  value={conversationSearch}
+                  onChange={(e) => setConversationSearch(e.target.value)}
+                  placeholder={t('search_conversations')}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2">
+                {conversations.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <MessageCircle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {t('no_conversations')}
+                    </p>
                   </div>
-                )
-              ) : (
-                <div className="space-y-1 p-2">
-                  {conversations
-                    .filter((c) =>
-                      conversationSearch
-                        ? (c.title || c.firstMessage)
-                            .toLowerCase()
-                            .includes(conversationSearch.toLowerCase())
-                        : true
-                    )
-                    .map((conversation) => (
-                      <div
-                        key={conversation.conversationId}
-                        className={`${conversationsCollapsed ? 'p-2' : 'p-3'} rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 group ${
-                          currentConversationId === conversation.conversationId
-                            ? 'bg-blue-100 dark:bg-blue-900/50'
-                            : ''
-                        }`}
-                        onClick={() =>
-                          loadConversation(conversation.conversationId)
-                        }
-                        title={
-                          conversationsCollapsed
-                            ? getConversationTitle(conversation)
-                            : undefined
-                        }
-                      >
-                        {conversationsCollapsed ? (
-                          <div className="flex justify-center">
-                            <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
+                ) : (
+                  <div className="space-y-1">
+                    {conversations
+                      .filter((c) =>
+                        conversationSearch
+                          ? (c.title || c.firstMessage)
+                              .toLowerCase()
+                              .includes(conversationSearch.toLowerCase())
+                          : true
+                      )
+                      .map((conversation) => (
+                        <div
+                          key={conversation.conversationId}
+                          className={`p-3 rounded-lg cursor-pointer transition-all ${
+                            currentConversationId ===
+                            conversation.conversationId
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent'
+                          } group`}
+                          onClick={() =>
+                            loadConversation(conversation.conversationId)
+                          }
+                        >
+                          <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               {editingConversationId ===
                               conversation.conversationId ? (
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-2">
                                   <input
                                     type="text"
                                     value={editingTitle}
                                     onChange={(e) =>
                                       setEditingTitle(e.target.value)
                                     }
-                                    className="text-sm font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500"
+                                    className="flex-1 text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     onKeyPress={(e) => {
                                       if (e.key === 'Enter') {
                                         saveConversationTitle(
@@ -996,6 +965,7 @@ export default function AITrainerPage() {
                                         cancelEditingConversation();
                                       }
                                     }}
+                                    onClick={(e) => e.stopPropagation()}
                                     autoFocus
                                   />
                                   <button
@@ -1005,322 +975,105 @@ export default function AITrainerPage() {
                                         conversation.conversationId
                                       );
                                     }}
-                                    className="p-1 text-green-500 hover:text-green-700"
+                                    className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                                   >
-                                    <Check className="h-3 w-3" />
+                                    <Check className="h-4 w-4" />
                                   </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       cancelEditingConversation();
                                     }}
-                                    className="p-1 text-red-500 hover:text-red-700"
+                                    className="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                   >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-4 w-4" />
                                   </button>
                                 </div>
                               ) : (
-                                <div className="flex items-center space-x-2">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                    {getConversationTitle(conversation)}
-                                  </p>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      startEditingConversation(
-                                        conversation.conversationId,
-                                        conversation.title || ''
-                                      );
-                                    }}
-                                    className="p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </button>
-                                </div>
+                                <>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">
+                                      {getConversationTitle(conversation)}
+                                    </p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEditingConversation(
+                                          conversation.conversationId,
+                                          conversation.title || ''
+                                        );
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {conversation.lastMessageAt
+                                        ? new Date(
+                                            conversation.lastMessageAt
+                                          ).toLocaleDateString()
+                                        : t('unknown_date')}
+                                    </p>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                      {conversation.messageCount} msgs
+                                    </span>
+                                  </div>
+                                </>
                               )}
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {conversation.lastMessageAt
-                                  ? new Date(
-                                      conversation.lastMessageAt
-                                    ).toLocaleDateString()
-                                  : t('unknown_date')}
-                              </p>
                             </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteConversation(conversation.conversationId);
+                                if (confirm(t('confirm_delete'))) {
+                                  deleteConversation(
+                                    conversation.conversationId
+                                  );
+                                }
                               }}
-                              className="p-1 text-gray-400 hover:text-red-500"
+                              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* AI Analytics Panel */}
-        {showAnalytics && (
-          <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                {t('ai_analytics')}
-              </h3>
-            </div>
-            <div className="p-4 space-y-4 overflow-y-auto">
-              {/* Conversation Analytics */}
-              {conversationAnalytics && (
-                <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    {t('conversation_insights')}
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        {t('messages')}:
-                      </span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {conversationAnalytics.engagementMetrics.messageCount}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        {t('satisfaction')}:
-                      </span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {
-                          conversationAnalytics.engagementMetrics
-                            .userSatisfaction
-                        }
-                        /5
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        {t('sentiment')}:
-                      </span>
-                      <span
-                        className={`font-medium ${
-                          conversationAnalytics.sentimentAnalysis.overall ===
-                          'positive'
-                            ? 'text-green-600 dark:text-green-400'
-                            : conversationAnalytics.sentimentAnalysis
-                                  .overall === 'negative'
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        {conversationAnalytics.sentimentAnalysis.overall}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Proactive Insights */}
-              {proactiveInsights.length > 0 && (
-                <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    {t('proactive_insights')}
-                  </h4>
-                  <div className="space-y-2">
-                    {proactiveInsights.slice(0, 3).map((insight) => (
-                      <div
-                        key={insight.id}
-                        className="text-sm p-2 bg-blue-50 dark:bg-blue-900/20 rounded"
-                      >
-                        <div className="font-medium text-blue-900 dark:text-blue-300">
-                          {insight.title}
                         </div>
-                        <div className="text-blue-700 dark:text-blue-400 text-xs mt-1">
-                          {insight.message}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
-                </div>
-              )}
-
-              {/* RAG Sources Summary */}
-              {ragStats && (
-                <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    {t('knowledge_base')}
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('total_sources')}:
-                      </span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {ragStats.totalVectors.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="text-gray-600 dark:text-gray-400">
-                      <span className="text-xs">{t('namespaces')}:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {ragStats.namespaces.map((ns) => (
-                          <span
-                            key={ns}
-                            className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-xs"
-                          >
-                            {ns}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Personalization Panel */}
-        {showPersonalization && (
-          <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                {t('personalization')}
-              </h3>
-            </div>
-            <div className="p-4 space-y-4 overflow-y-auto">
-              {/* Coaching Style Selector */}
-              <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                  {t('coaching_style')}
-                </h4>
-                <div className="space-y-2">
-                  {[
-                    'motivational',
-                    'analytical',
-                    'educational',
-                    'supportive',
-                    'challenging',
-                    'adaptive',
-                  ].map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => handleCoachingStyleChange(style)}
-                      className={`w-full text-left p-2 rounded text-sm flex items-center gap-2 transition-colors ${
-                        coachingStyle === style
-                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-200'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      <span>{getCoachingStyleIcon(style)}</span>
-                      <span className="capitalize">{style}</span>
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
-
-              {/* User Memories - Full List */}
-              {userMemories.length > 0 && (
-                <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                    <Brain className="h-4 w-4" />
-                    {t('all_ai_memories', { count: userMemories.length })}
-                  </h4>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {userMemories.map((memory) => (
-                      <div
-                        key={memory.id}
-                        className="text-sm p-2 bg-gray-50 dark:bg-gray-600 rounded border border-gray-200 dark:border-gray-500"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-gray-900 dark:text-white capitalize text-xs">
-                            {memory.type}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {Math.round(memory.importance * 100)}%
-                          </span>
-                        </div>
-                        <div className="text-gray-600 dark:text-gray-300 text-xs">
-                          {memory.content}
-                        </div>
-                        {memory.metadata?.category && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {memory.metadata.category}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Personalization Profile */}
-              {personalizationProfile && (
-                <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    {t('profile')}
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('communication')}:
-                      </span>
-                      <span className="font-medium capitalize text-gray-900 dark:text-white">
-                        {personalizationProfile.communicationStyle}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('motivation')}:
-                      </span>
-                      <span className="font-medium capitalize text-gray-900 dark:text-white">
-                        {personalizationProfile.motivationType}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('confidence')}:
-                      </span>
-                      <ConfidenceIndicator
-                        score={personalizationProfile.confidence}
-                        size="sm"
-                        showLabel={false}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
+          </>
         )}
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-w-0">
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <Bot className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg mb-6">
+                  <Bot className="h-16 w-16 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                   {t('welcome_title')}
                 </h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
                   {t('welcome_message')}
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl w-full">
                   <button
                     onClick={() =>
                       setInputMessage(t('quick_action_workout_plan'))
                     }
-                    className="p-4 text-left bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors"
+                    className="group p-6 text-left bg-white dark:bg-gray-800 rounded-xl hover:shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all"
                   >
-                    <div className="flex items-center space-x-3 mb-2">
-                      <Dumbbell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg group-hover:scale-110 transition-transform">
+                        <Dumbbell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
                         {t('smart_workout_plan_title')}
                       </div>
                     </div>
@@ -1331,11 +1084,13 @@ export default function AITrainerPage() {
 
                   <button
                     onClick={() => setInputMessage(t('quick_action_meal_plan'))}
-                    className="p-4 text-left bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200 dark:border-green-800 transition-colors"
+                    className="group p-6 text-left bg-white dark:bg-gray-800 rounded-xl hover:shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-500 transition-all"
                   >
-                    <div className="flex items-center space-x-3 mb-2">
-                      <Apple className="h-6 w-6 text-green-600 dark:text-green-400" />
-                      <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg group-hover:scale-110 transition-transform">
+                        <Apple className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
                         {t('nutrition_intelligence_title')}
                       </div>
                     </div>
@@ -1348,11 +1103,13 @@ export default function AITrainerPage() {
                     onClick={() =>
                       setInputMessage(t('quick_action_progress_analysis'))
                     }
-                    className="p-4 text-left bg-purple-50 dark:bg-purple-900/30 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 transition-colors"
+                    className="group p-6 text-left bg-white dark:bg-gray-800 rounded-xl hover:shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 transition-all"
                   >
-                    <div className="flex items-center space-x-3 mb-2">
-                      <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                      <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg group-hover:scale-110 transition-transform">
+                        <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
                         {t('performance_analysis_title')}
                       </div>
                     </div>
@@ -1365,11 +1122,13 @@ export default function AITrainerPage() {
                     onClick={() =>
                       setInputMessage(t('quick_action_motivation'))
                     }
-                    className="p-4 text-left bg-orange-50 dark:bg-orange-900/30 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 border border-orange-200 dark:border-orange-800 transition-colors"
+                    className="group p-6 text-left bg-white dark:bg-gray-800 rounded-xl hover:shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-500 transition-all"
                   >
-                    <div className="flex items-center space-x-3 mb-2">
-                      <Target className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                      <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg group-hover:scale-110 transition-transform">
+                        <Target className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
                         {t('personalized_coaching_title')}
                       </div>
                     </div>
@@ -1378,57 +1137,6 @@ export default function AITrainerPage() {
                     </div>
                   </button>
                 </div>
-
-                {/* Enhanced Features Showcase */}
-                {(personalizationProfile || ragStats) && (
-                  <div className="mt-8 max-w-2xl">
-                    <div className="text-center mb-4">
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {t('powered_by_advanced_ai')}
-                      </h4>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                      {personalizationProfile && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <div className="text-2xl mb-1">
-                            {getCoachingStyleIcon(coachingStyle)}
-                          </div>
-                          <div className="text-xs font-medium text-blue-900 dark:text-blue-200 capitalize">
-                            {coachingStyle} {t('style')}
-                          </div>
-                          <div className="text-xs text-blue-700 dark:text-blue-300">
-                            {t('personalized_coaching_desc')}
-                          </div>
-                        </div>
-                      )}
-
-                      {ragStats && (
-                        <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-                          <div className="text-2xl mb-1">🧠</div>
-                          <div className="text-xs font-medium text-green-900 dark:text-green-200">
-                            {ragStats.totalVectors.toLocaleString()}+{' '}
-                            {t('sources')}
-                          </div>
-                          <div className="text-xs text-green-700 dark:text-green-300">
-                            {t('knowledge_base_desc')}
-                          </div>
-                        </div>
-                      )}
-
-                      {userMemories.length > 0 && (
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
-                          <div className="text-2xl mb-1">💭</div>
-                          <div className="text-xs font-medium text-purple-900 dark:text-purple-200">
-                            {userMemories.length} {t('memories')}
-                          </div>
-                          <div className="text-xs text-purple-700 dark:text-purple-300">
-                            {t('long_term_context')}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="mx-auto w-full max-w-3xl space-y-4">
@@ -1449,15 +1157,15 @@ export default function AITrainerPage() {
                   return (
                     <div
                       key={message.id}
-                      className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-end gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       {message.role === 'assistant' && (
-                        <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                          <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                          <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                         </div>
                       )}
                       <div
-                        className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
+                        className={`max-w-[85%] sm:max-w-[75%] px-3 sm:px-4 py-2 rounded-2xl shadow-sm ${
                           message.role === 'user'
                             ? 'bg-blue-600 text-white rounded-br-sm'
                             : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-bl-sm'
@@ -1630,7 +1338,7 @@ export default function AITrainerPage() {
                         </div>
                       </div>
                       {message.role === 'user' && (
-                        <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200">
+                        <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200 flex-shrink-0">
                           {user?.name?.[0]?.toUpperCase() || 'U'}
                         </div>
                       )}
@@ -1653,142 +1361,72 @@ export default function AITrainerPage() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-            {/* Memory Section - Collapsible */}
-            {userMemories.length > 0 && (
-              <div className="mx-auto w-full max-w-3xl mb-3">
-                <details className="group bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <summary className="cursor-pointer p-3 flex items-center justify-between hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors">
-                    <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
-                      <Brain className="h-4 w-4" />
-                      <span>
-                        {t('ai_memories', { count: userMemories.length })}
-                      </span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400 group-open:rotate-180 transition-transform" />
-                  </summary>
-                  <div className="p-3 pt-0 space-y-2 max-h-48 overflow-y-auto">
-                    {userMemories.slice(0, 5).map((memory) => (
-                      <div
-                        key={memory.id}
-                        className="text-sm p-2 bg-white dark:bg-gray-800 rounded border border-blue-100 dark:border-gray-700"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-blue-900 dark:text-blue-200 capitalize text-xs">
-                            {memory.type}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {Math.round(memory.importance * 100)}%{' '}
-                            {t('importance')}
-                          </span>
-                        </div>
-                        <div className="text-gray-700 dark:text-gray-300 text-xs">
-                          {memory.content}
-                        </div>
-                      </div>
-                    ))}
-                    {userMemories.length > 5 && (
-                      <button
-                        onClick={() => setShowPersonalization(true)}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline w-full text-center py-1"
-                      >
-                        {t('view_all_memories', { count: userMemories.length })}
-                      </button>
-                    )}
-                  </div>
-                </details>
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4">
+            <div className="mx-auto w-full max-w-4xl">
+              <div className="flex gap-2 sm:gap-3">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={t('input_placeholder')}
+                  className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md transition-all hover:shadow-lg flex-shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                  <span className="hidden sm:inline font-medium">Send</span>
+                </button>
               </div>
-            )}
 
-            <div className="mx-auto w-full max-w-3xl flex space-x-2">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={t('input_placeholder')}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                disabled={isLoading}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!inputMessage.trim() || isLoading}
-                className="px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mx-auto mt-3 w-full max-w-3xl">
-              {/* Enhanced Quick Actions */}
-              <div className="flex flex-wrap gap-2 text-xs mb-3">
+              {/* Quick Actions */}
+              <div className="mt-2 sm:mt-3 flex flex-wrap gap-1.5 sm:gap-2">
                 {[
                   t('quick_action_1'),
                   t('quick_action_2'),
                   t('quick_action_3'),
                   t('quick_action_4'),
-                ].map((s) => (
+                ].map((action) => (
                   <button
-                    key={s}
-                    onClick={() => setInputMessage(s)}
-                    className="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+                    key={action}
+                    onClick={() => setInputMessage(action)}
+                    className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
                   >
-                    {s}
+                    {action}
                   </button>
                 ))}
               </div>
 
-              {/* AI Features Status */}
-              <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                <div className="flex items-center gap-4">
-                  {personalizationProfile && (
-                    <div className="flex items-center gap-1">
-                      <span>{getCoachingStyleIcon(coachingStyle)}</span>
-                      <span className="capitalize">{coachingStyle}</span>
-                    </div>
-                  )}
-
-                  {ragStats && (
-                    <div className="flex items-center gap-1">
-                      <Brain className="h-3 w-3" />
-                      <span>
-                        {ragStats.totalVectors.toLocaleString()}+ sources
-                      </span>
-                    </div>
-                  )}
-
-                  {userMemories.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span>💭</span>
-                      <span>{userMemories.length} memories</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Conversation Actions */}
-                {currentConversationId && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={summarizeConversation}
-                      className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                      title="Summarize conversation"
-                    >
-                      <Lightbulb className="h-3 w-3" />
-                      <span>{t('summarize')}</span>
-                    </button>
+              {/* Status Bar */}
+              {currentConversationId && (
+                <div className="mt-2 sm:mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {personalizationProfile && (
+                      <div className="flex items-center gap-1">
+                        <span>{getCoachingStyleIcon(coachingStyle)}</span>
+                        <span className="hidden sm:inline capitalize">
+                          {coachingStyle}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                  <button
+                    onClick={summarizeConversation}
+                    className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    <Lightbulb className="h-3 w-3" />
+                    <span className="hidden sm:inline">{t('summarize')}</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Memory Viewer Section */}
-      {user?.id && (
-        <div className="mt-8">
-          <MemoryViewer userId={user.id} />
-        </div>
-      )}
 
       {/* Summary Modal */}
       <SummaryModal

@@ -226,6 +226,13 @@ impl UserProfileRepository {
         if let Some(last_name) = update_data.get("lastName").and_then(|v| v.as_str()) {
             profile.last_name = last_name.to_string();
         }
+        // Keep email from current profile (email should not be updated via profile endpoint)
+        // Email updates should go through dedicated auth/account endpoints
+        if let Some(email) = update_data.get("email").and_then(|v| v.as_str()) {
+            if !email.is_empty() && email != profile.email {
+                profile.email = email.to_string();
+            }
+        }
         if let Some(bio) = update_data.get("bio").and_then(|v| v.as_str()) {
             profile.bio = Some(bio.to_string());
         }
@@ -598,6 +605,32 @@ impl UserProfileRepository {
             "progressSharing".to_string(),
             AttributeValue::Bool(preferences.privacy.progress_sharing),
         );
+
+        // Handle daily goals
+        if let Some(ref daily_goals) = preferences.daily_goals {
+            let mut goals_map = std::collections::HashMap::new();
+            goals_map.insert(
+                "calories".to_string(),
+                AttributeValue::N(daily_goals.calories.to_string()),
+            );
+            goals_map.insert(
+                "water".to_string(),
+                AttributeValue::N(daily_goals.water.to_string()),
+            );
+            goals_map.insert(
+                "protein".to_string(),
+                AttributeValue::N(daily_goals.protein.to_string()),
+            );
+            goals_map.insert(
+                "carbs".to_string(),
+                AttributeValue::N(daily_goals.carbs.to_string()),
+            );
+            goals_map.insert(
+                "fat".to_string(),
+                AttributeValue::N(daily_goals.fat.to_string()),
+            );
+            item.insert("dailyGoals".to_string(), AttributeValue::M(goals_map));
+        }
 
         // Handle AI Trainer preferences
         if let Some(ref ai_trainer) = preferences.ai_trainer {

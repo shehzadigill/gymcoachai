@@ -217,6 +217,8 @@ export default function ProfilePage() {
         setProfile({
           ...createDefaultProfile(user),
           ...profileData,
+          // Ensure email is always set from user object if not in profile
+          email: profileData.email || user?.email || '',
           preferences: {
             ...createDefaultProfile(user).preferences,
             ...profileData.preferences,
@@ -663,8 +665,10 @@ function ProfileTab({
           <input
             type="email"
             value={profile.email || ''}
-            onChange={(e) => onUpdate({ email: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            readOnly
+            disabled
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+            title="Email cannot be changed"
           />
         </div>
 

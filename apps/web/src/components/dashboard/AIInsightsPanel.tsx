@@ -112,13 +112,14 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
 
   const getInsightColor = (priority: string) => {
     const colors = {
-      low: 'bg-blue-50 border-blue-200 text-blue-800',
-      medium: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-      high: 'bg-red-50 border-red-200 text-red-800',
+      low: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200',
+      medium:
+        'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200',
+      high: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200',
     };
     return (
       colors[priority as keyof typeof colors] ||
-      'bg-gray-50 border-gray-200 text-gray-800'
+      'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200'
     );
   };
 
@@ -138,19 +139,19 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
   if (loading) {
     return (
       <div
-        className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}
+        className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 ${className}`}
       >
         <div className="flex items-center gap-2 mb-4">
-          <Brain className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900">
+          <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             AI Coach Insights
           </h3>
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
             </div>
           ))}
         </div>
@@ -167,18 +168,18 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
 
   return (
     <div
-      className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}
+      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 ${className}`}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900">
+          <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             AI Coach Insights
           </h3>
         </div>
         <button
           onClick={loadAIInsights}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded"
+          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
           title="Refresh insights"
         >
           <TrendingUp className="h-4 w-4" />
@@ -189,7 +190,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
         {/* Proactive Insights */}
         {displayInsights.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Proactive Coaching
             </h4>
             <div className="space-y-2">
@@ -251,7 +252,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                                     (action, index) => (
                                       <div
                                         key={index}
-                                        className="text-xs bg-white/50 p-2 rounded"
+                                        className="text-xs bg-white/50 dark:bg-gray-800/50 p-2 rounded"
                                       >
                                         {action}
                                       </div>
@@ -270,7 +271,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                         size="sm"
                         showLabel={false}
                       />
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {insight.createdAt
                           ? new Date(insight.createdAt).toLocaleDateString()
                           : 'Recently'}
@@ -284,7 +285,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
             {hasMoreInsights && (
               <button
                 onClick={() => setShowAllInsights(!showAllInsights)}
-                className="w-full mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center justify-center gap-1"
+                className="w-full mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center justify-center gap-1"
               >
                 {showAllInsights
                   ? 'Show less'
@@ -301,14 +302,14 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
 
         {/* Weekly Review */}
         {weeklyReview && (
-          <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Weekly Review
             </h4>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="h-4 w-4 text-green-600" />
-                <h5 className="font-medium text-green-900">
+                <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <h5 className="font-medium text-green-900 dark:text-green-200">
                   Week of {weeklyReview.weekStart || 'This Week'}
                 </h5>
                 <ConfidenceIndicator
@@ -317,7 +318,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                   showLabel={false}
                 />
               </div>
-              <p className="text-sm text-green-800 mb-3">
+              <p className="text-sm text-green-800 dark:text-green-200 mb-3">
                 {weeklyReview.summary || 'Weekly review summary'}
               </p>
 
@@ -325,7 +326,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                 Array.isArray(weeklyReview.achievements) &&
                 weeklyReview.achievements.length > 0 && (
                   <div className="mb-3">
-                    <h6 className="text-xs font-medium text-green-900 mb-1">
+                    <h6 className="text-xs font-medium text-green-900 dark:text-green-200 mb-1">
                       Achievements:
                     </h6>
                     <div className="space-y-1">
@@ -334,7 +335,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                         .map((achievement, index) => (
                           <div
                             key={index}
-                            className="text-xs text-green-700 flex items-center gap-1"
+                            className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1"
                           >
                             <Star className="h-3 w-3" />
                             {typeof achievement === 'string'
@@ -351,7 +352,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                 Array.isArray(weeklyReview.nextWeekGoals) &&
                 weeklyReview.nextWeekGoals.length > 0 && (
                   <div>
-                    <h6 className="text-xs font-medium text-green-900 mb-1">
+                    <h6 className="text-xs font-medium text-green-900 dark:text-green-200 mb-1">
                       Next Week Goals:
                     </h6>
                     <div className="space-y-1">
@@ -360,7 +361,7 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                         .map((goal, index) => (
                           <div
                             key={index}
-                            className="text-xs text-green-700 flex items-center gap-1"
+                            className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1"
                           >
                             <Target className="h-3 w-3" />
                             {goal || 'Goal'}
@@ -375,18 +376,18 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
 
         {/* Performance Predictions */}
         {predictions.length > 0 && (
-          <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Performance Predictions
             </h4>
             <div className="space-y-2">
               {predictions.slice(0, 3).map((prediction, index) => (
                 <div
                   key={index}
-                  className="bg-blue-50 border border-blue-200 rounded-lg p-3"
+                  className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium text-blue-900 text-sm">
+                    <h5 className="font-medium text-blue-900 dark:text-blue-200 text-sm">
                       {prediction.metric}
                     </h5>
                     <ConfidenceIndicator
@@ -396,15 +397,15 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
                     />
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-blue-800">
+                    <span className="text-blue-800 dark:text-blue-200">
                       Current: {prediction.currentValue}
                     </span>
-                    <ArrowRight className="h-3 w-3 text-blue-600" />
-                    <span className="text-blue-800 font-medium">
+                    <ArrowRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <span className="text-blue-800 dark:text-blue-200 font-medium">
                       Predicted: {prediction.predictedValue}
                     </span>
                   </div>
-                  <div className="text-xs text-blue-700 mt-1">
+                  <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
                     Timeframe: {prediction.timeframe}
                   </div>
                 </div>
@@ -415,36 +416,46 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
 
         {/* Personalization Summary */}
         {personalizationProfile && (
-          <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Personalization
             </h4>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Brain className="h-4 w-4 text-purple-600" />
-                <h5 className="font-medium text-purple-900">Your AI Profile</h5>
+                <Brain className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <h5 className="font-medium text-purple-900 dark:text-purple-200">
+                  Your AI Profile
+                </h5>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <span className="text-purple-700">Style:</span>
-                  <span className="font-medium text-purple-900 ml-1 capitalize">
+                  <span className="text-purple-700 dark:text-purple-300">
+                    Style:
+                  </span>
+                  <span className="font-medium text-purple-900 dark:text-purple-100 ml-1 capitalize">
                     {personalizationProfile.coachingStyle}
                   </span>
                 </div>
                 <div>
-                  <span className="text-purple-700">Communication:</span>
-                  <span className="font-medium text-purple-900 ml-1 capitalize">
+                  <span className="text-purple-700 dark:text-purple-300">
+                    Communication:
+                  </span>
+                  <span className="font-medium text-purple-900 dark:text-purple-100 ml-1 capitalize">
                     {personalizationProfile.communicationStyle}
                   </span>
                 </div>
                 <div>
-                  <span className="text-purple-700">Motivation:</span>
-                  <span className="font-medium text-purple-900 ml-1 capitalize">
+                  <span className="text-purple-700 dark:text-purple-300">
+                    Motivation:
+                  </span>
+                  <span className="font-medium text-purple-900 dark:text-purple-100 ml-1 capitalize">
                     {personalizationProfile.motivationType}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-purple-700">Confidence:</span>
+                  <span className="text-purple-700 dark:text-purple-300">
+                    Confidence:
+                  </span>
                   <ConfidenceIndicator
                     score={personalizationProfile.confidence}
                     size="sm"
@@ -457,16 +468,16 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
         )}
 
         {/* Quick Actions */}
-        <div className="border-t border-gray-200 pt-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Quick Actions
           </h4>
           <div className="grid grid-cols-2 gap-2">
-            <button className="p-2 text-xs bg-blue-50 hover:bg-blue-100 text-blue-800 rounded border border-blue-200 transition-colors">
+            <button className="p-2 text-xs bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-800 transition-colors">
               <MessageSquare className="h-3 w-3 mx-auto mb-1" />
               Ask AI Coach
             </button>
-            <button className="p-2 text-xs bg-green-50 hover:bg-green-100 text-green-800 rounded border border-green-200 transition-colors">
+            <button className="p-2 text-xs bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-800 dark:text-green-200 rounded border border-green-200 dark:border-green-800 transition-colors">
               <BarChart3 className="h-3 w-3 mx-auto mb-1" />
               View Analytics
             </button>
