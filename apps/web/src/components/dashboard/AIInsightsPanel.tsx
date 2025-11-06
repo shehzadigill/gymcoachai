@@ -68,11 +68,6 @@ export function AIInsightsPanel({ className = '' }: AIInsightsPanelProps) {
       } else {
         setInsights([]);
       }
-      console.log('AI Insights:', {
-        weeklyReviewResponse,
-        predictionsResponse,
-        profileResponse,
-      });
       if (weeklyReviewResponse) {
         setWeeklyReview(weeklyReviewResponse);
       }

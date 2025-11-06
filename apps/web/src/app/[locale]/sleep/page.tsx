@@ -29,7 +29,6 @@ export default function SleepPage() {
 
   const handleSleepLogged = (data: any) => {
     // Optionally refresh dashboard data or show success message
-    console.log('Sleep logged:', data);
   };
 
   return (

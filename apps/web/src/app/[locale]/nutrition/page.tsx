@@ -142,14 +142,12 @@ export default function NutritionPage() {
       try {
         // Load water first to get current value
         const waterRes = await api.getWater(selectedDate);
-        console.log('getWater response:', waterRes);
         const rawGlasses = waterRes?.body?.glasses ?? waterRes?.glasses ?? 0;
         const parsed =
           typeof rawGlasses === 'string'
             ? parseInt(rawGlasses, 10)
             : rawGlasses;
         const glasses = Number.isFinite(parsed) ? parsed : 0;
-        console.log('Parsed glasses value:', glasses);
         setWaterCount(glasses);
         setIsWaterLoaded(true);
 
@@ -196,16 +194,9 @@ export default function NutritionPage() {
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
 
   useEffect(() => {
-    console.log(
-      'Water count changed to:',
-      waterCount,
-      'isLoaded:',
-      isWaterLoaded
-    );
     if (!user?.isAuthenticated) return;
 
     setDailyNutrition((prev) => {
-      console.log('Updating dailyNutrition water to:', waterCount);
       return prev ? { ...prev, water: waterCount } : prev;
     });
 
@@ -248,7 +239,6 @@ export default function NutritionPage() {
           return null;
         }),
       ]);
-      console.log('UserProfile response:', userProfile);
       // Store user profile data for use throughout the component
       setUserProfileData(userProfile);
 
@@ -268,7 +258,6 @@ export default function NutritionPage() {
           mealsArray = responseAny;
         }
 
-        console.log('Meals data received:', { response, mealsArray });
         const apiMeals: Meal[] = mealsArray.map((meal: any) => ({
           id: meal.id,
           name: meal.name,
@@ -343,7 +332,6 @@ export default function NutritionPage() {
     userProfile?: any
   ): DailyNutrition => {
     const profileData = userProfile?.body || userProfile || {};
-    console.log('Calculating default nutrition with profile:', profileData);
     const dailyGoals = profileData?.preferences?.dailyGoals;
 
     return {
@@ -418,16 +406,10 @@ export default function NutritionPage() {
 
     try {
       setSearching(true);
-      console.log('Searching for foods with query:', query);
       const { foods, nextCursor } = await api.searchFoods(
         query,
         cursor || undefined
       );
-      console.log('Search results received:', {
-        foods,
-        nextCursor,
-        count: foods?.length,
-      });
       if (cursor) {
         setSearchResults((prev) => [...prev, ...foods]);
       } else {
@@ -542,7 +524,6 @@ export default function NutritionPage() {
 
       if (response) {
         const mealData = response.body || response;
-        console.log('Create custom meal response:', { response, mealData });
 
         const newMeal: Meal = {
           id: mealData.id || Date.now().toString(),
@@ -621,20 +602,6 @@ export default function NutritionPage() {
       if (response) {
         // Backend returns: { body: { id: ..., ... } }
         const mealData = response.body || response;
-        console.log('Create meal response:', { response, mealData });
-
-        // Debug the multiplication issue
-        console.log('AddMeal debug:', {
-          selectedFood: selectedFood.name,
-          servingSize,
-          servingWeight,
-          serving: serving,
-          multiplier,
-          servingNutritionFacts: serving.nutritionFacts,
-          calculatedCalories: Math.round(
-            serving.nutritionFacts.calories * multiplier
-          ),
-        });
 
         const newMeal: Meal = {
           id: mealData.id || Date.now().toString(),
@@ -687,7 +654,6 @@ export default function NutritionPage() {
 
   const fetchWeeklyStats = async (endDateIso: string) => {
     try {
-      console.log('Fetching weekly stats for end date:', endDateIso);
       const end = new Date(endDateIso + 'T00:00:00Z');
       const days: string[] = [];
       for (let i = 6; i >= 0; i--) {
@@ -695,16 +661,13 @@ export default function NutritionPage() {
         d.setUTCDate(end.getUTCDate() - i);
         days.push(d.toISOString().slice(0, 10));
       }
-      console.log('Weekly stats date range:', days);
 
       const responses = await Promise.all(
         days.map(async (d) => {
           try {
             const response = await api.getMealsByDate(d);
-            console.log(`Meals for ${d}:`, response);
             return response;
           } catch (error) {
-            console.log(`No meals found for ${d}:`, error);
             return null;
           }
         })
@@ -722,14 +685,12 @@ export default function NutritionPage() {
         }
       }
 
-      console.log('Weekly stats totals calculated:', totals);
       const weeklyStatsResult = {
         calories: Math.round(totals.calories),
         protein: Math.round(totals.protein * 10) / 10,
         carbs: Math.round(totals.carbs * 10) / 10,
         fat: Math.round(totals.fat * 10) / 10,
       };
-      console.log('Setting weekly stats:', weeklyStatsResult);
       setWeeklyStats(weeklyStatsResult);
     } catch (e) {
       console.error('Failed to fetch weekly stats:', e);
@@ -875,7 +836,6 @@ export default function NutritionPage() {
           />
           <button
             onClick={() => {
-              console.log('Add Food button clicked');
               // Focus on search input to encourage food search
               const searchInput = document.querySelector(
                 'input[placeholder="Search foods..."]'
@@ -897,7 +857,6 @@ export default function NutritionPage() {
           </button>
           <button
             onClick={() => {
-              console.log('Create Custom Meal button clicked');
               setShowCustomMealForm(true);
             }}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -1737,16 +1696,6 @@ function AddFoodModal({
   }
 
   const multiplier = servingWeight > 0 ? servingWeight / serving.weight : 1;
-
-  // Debug logging
-  console.log('AddFoodModal debug:', {
-    selectedFood: selectedFood.name,
-    serving: serving.name,
-    servingSize,
-    servingWeight,
-    multiplier,
-    servingNutritionFacts: serving.nutritionFacts,
-  });
 
   const nutrition = {
     calories: Math.round((serving.nutritionFacts?.calories || 0) * multiplier),

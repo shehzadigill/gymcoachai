@@ -156,8 +156,6 @@ export default function AnalyticsPage() {
         api.getWorkoutInsights(undefined, timeRange).catch(() => null),
       ]);
 
-      console.log('Raw analytics response:', basicAnalytics);
-
       if (basicAnalytics) {
         // Handle nested response structure
         let data = basicAnalytics;
@@ -167,8 +165,6 @@ export default function AnalyticsPage() {
               ? JSON.parse(basicAnalytics.body)
               : basicAnalytics.body;
         }
-
-        console.log('Processed analytics data:', data);
 
         const transformedAnalytics: WorkoutAnalytics = {
           total_workouts:
@@ -239,7 +235,6 @@ export default function AnalyticsPage() {
           performance_trends: data.performance_trends || [],
         };
 
-        console.log('Final transformed analytics:', transformedAnalytics);
         setAnalytics(transformedAnalytics);
         setInsights(workoutInsights);
       } else {

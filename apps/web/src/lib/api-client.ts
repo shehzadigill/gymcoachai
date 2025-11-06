@@ -36,7 +36,6 @@ export async function apiFetch<T>(
     fetchOptions.credentials = 'omit';
   }
 
-  console.log(`API Request: ${finalBase}${path}`, fetchOptions);
   const res = await fetch(`${finalBase}${path}`, fetchOptions);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -793,12 +792,6 @@ export const api = {
           : sessionData.body;
     }
 
-    console.log('Web completeWorkoutSession - sessionData:', sessionData);
-    console.log(
-      'Web completeWorkoutSession - exercises:',
-      sessionData.exercises
-    );
-
     return apiFetch<any>(`/api/workouts/sessions`, {
       method: 'PUT',
       body: JSON.stringify({
@@ -1238,7 +1231,6 @@ export const api = {
     // Try CloudFront first
     try {
       const cloudfrontUrl = `${baseUrl}${path}`;
-      console.log(`AI Request (CloudFront): ${cloudfrontUrl}`, fetchOptions);
 
       const res = await fetch(cloudfrontUrl, fetchOptions);
       if (res.ok) {
@@ -1247,7 +1239,6 @@ export const api = {
 
       // If CloudFront returns timeout error, try Lambda URL
       if (res.status === 504) {
-        console.log('CloudFront timeout, trying Lambda URL...');
         throw new Error('CloudFront timeout');
       }
 

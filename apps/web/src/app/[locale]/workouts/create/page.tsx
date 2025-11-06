@@ -104,14 +104,11 @@ export default function CreateWorkoutPage() {
     const fromTemplateParam = searchParams.get('fromTemplate');
     if (fromTemplateParam) {
       try {
-        console.log('Loading template data:', fromTemplateParam);
         const templateData = JSON.parse(decodeURIComponent(fromTemplateParam));
-        console.log('Parsed template data:', templateData);
 
         // Map template exercises to the expected Exercise interface
         const mappedExercises = (templateData.exercises || []).map(
           (ex: any, index: number) => {
-            console.log('Mapping exercise:', ex);
             return {
               id: ex.exerciseId || `temp-${index}`,
               exerciseId: ex.exerciseId, // Reference to library exercise
@@ -126,8 +123,6 @@ export default function CreateWorkoutPage() {
           }
         );
 
-        console.log('Mapped exercises:', mappedExercises);
-
         setWorkout((prev) => ({
           ...prev,
           name: `${templateData.name} (Copy)`,
@@ -140,7 +135,6 @@ export default function CreateWorkoutPage() {
           isTemplate: false, // This is a new plan, not a template
         }));
         setIsTemplate(false); // Ensure we're not in template mode
-        console.log('Template loaded successfully');
       } catch (error) {
         console.error('Failed to parse template data:', error);
         console.error('Template data that failed:', fromTemplateParam);

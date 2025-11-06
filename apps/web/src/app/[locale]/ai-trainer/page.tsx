@@ -366,18 +366,11 @@ export default function AITrainerPage() {
     const dataParam = searchParams.get('data');
 
     if (context && question && user && !user.isLoading) {
-      console.log('URL parameters detected:', {
-        context,
-        question,
-        data: dataParam,
-      });
-
       // Parse the data if provided
       let parsedData = null;
       if (dataParam) {
         try {
           parsedData = JSON.parse(decodeURIComponent(dataParam));
-          console.log('Parsed data:', parsedData);
         } catch (error) {
           console.error('Failed to parse data parameter:', error);
         }
@@ -409,14 +402,10 @@ export default function AITrainerPage() {
 
   // Load conversations and rate limit on mount
   useEffect(() => {
-    console.log('AI Trainer page mounted, user:', user);
     if (user && !user.isLoading) {
-      console.log('User is authenticated, loading data...');
       loadConversations();
       loadRateLimit();
       loadEnhancedAIFeatures();
-    } else {
-      console.log('User not authenticated or still loading');
     }
   }, [user]);
 
@@ -431,9 +420,7 @@ export default function AITrainerPage() {
 
   const loadConversations = async () => {
     try {
-      console.log('Loading conversations...');
       const data = await api.getConversations();
-      console.log('Conversations loaded:', data);
       setConversations(data);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -442,9 +429,7 @@ export default function AITrainerPage() {
 
   const loadRateLimit = async () => {
     try {
-      console.log('Loading rate limit...');
       const data = await api.getRateLimit();
-      console.log('Rate limit loaded:', data);
       setRateLimit(data);
     } catch (error) {
       console.error('Failed to load rate limit:', error);
@@ -453,12 +438,9 @@ export default function AITrainerPage() {
 
   const loadEnhancedAIFeatures = async () => {
     try {
-      console.log('Loading enhanced AI features...');
-
       // Load user profile and preferences for context
       try {
         const profile = await api.getUserProfile();
-        console.log('User profile loaded:', profile);
         setUserProfile(profile);
       } catch (error) {
         console.error('Failed to load user profile:', error);
@@ -466,7 +448,6 @@ export default function AITrainerPage() {
 
       try {
         const preferences = await api.getUserPreferences();
-        console.log('User preferences loaded:', preferences);
         setUserPreferences(preferences);
       } catch (error) {
         console.error('Failed to load user preferences:', error);
@@ -474,7 +455,6 @@ export default function AITrainerPage() {
 
       // Load personalization profile
       const profileResponse = await aiService.getPersonalizationProfile();
-      console.log('Personalization profile response:', profileResponse);
       setPersonalizationProfile(profileResponse);
       setCoachingStyle(profileResponse.coachingStyle || 'adaptive');
 
@@ -483,7 +463,6 @@ export default function AITrainerPage() {
         'user preferences and goals',
         { context: 'profile_load' }
       );
-      console.log('User memories response:', memoriesResponse);
       if (memoriesResponse.success) {
         setUserMemories(memoriesResponse.data || []);
       } else {
@@ -502,8 +481,6 @@ export default function AITrainerPage() {
       if (ragStatsResponse.success) {
         setRagStats(ragStatsResponse.data);
       }
-
-      console.log('Enhanced AI features loaded successfully');
     } catch (error) {
       console.error('Failed to load enhanced AI features:', error);
     }
@@ -523,9 +500,7 @@ export default function AITrainerPage() {
 
   const loadConversation = async (conversationId: string) => {
     try {
-      console.log('Loading conversation:', conversationId);
       const data = await api.getConversation(conversationId);
-      console.log('Conversation data:', data);
 
       // Handle different message formats from the API
       const messages = data.messages || [];
@@ -592,15 +567,8 @@ export default function AITrainerPage() {
     }
 
     try {
-      console.log('Saving conversation title:', {
-        conversationId,
-        title: trimmedTitle,
-      });
-
       // Update conversation title in the backend
-      console.log('Calling API to update conversation title...');
       await api.updateConversationTitle(conversationId, trimmedTitle);
-      console.log('API call successful');
 
       // Update local state
       setConversations(
@@ -613,7 +581,6 @@ export default function AITrainerPage() {
 
       setEditingConversationId(null);
       setEditingTitle('');
-      console.log('Conversation title updated successfully');
     } catch (error) {
       console.error('Failed to update conversation title:', error);
       alert(t('failed_to_update_title'));
@@ -649,13 +616,6 @@ export default function AITrainerPage() {
     setShowSummaryModal(false);
 
     try {
-      console.log(
-        'Sending message:',
-        inputMessage.trim(),
-        'conversationId:',
-        currentConversationId
-      );
-
       // Use enhanced AI service for chat
       const response = await aiService.sendChatMessage({
         message: inputMessage.trim(),
@@ -675,8 +635,6 @@ export default function AITrainerPage() {
           },
         },
       });
-
-      console.log('Enhanced message response:', response);
 
       if (response.success) {
         const assistantMessage: Message = {
@@ -770,7 +728,6 @@ export default function AITrainerPage() {
       const response = await aiService.summarizeConversation(
         currentConversationId
       );
-      console.log('Summarize conversation response:', response.summary);
       if (response.success) {
         // Cache the summary and show modal
         setCachedSummary(response.summary);

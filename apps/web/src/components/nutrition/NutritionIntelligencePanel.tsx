@@ -95,12 +95,6 @@ export default function NutritionIntelligencePanel({
           api.getNutritionStats(),
         ]);
 
-      console.log('User data fetched:', {
-        profileResponse,
-        preferencesResponse,
-        nutritionStatsResponse,
-      });
-
       setUserProfile(profileResponse);
       setUserPreferences(preferencesResponse);
       setNutritionStats(nutritionStatsResponse);

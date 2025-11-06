@@ -174,7 +174,6 @@ export default function EnhancedWorkoutHistoryPage() {
         currentPage,
         pageLimit
       );
-      console.log('Raw history response:', response);
 
       if (response) {
         // Handle nested response structure
@@ -185,8 +184,6 @@ export default function EnhancedWorkoutHistoryPage() {
               ? JSON.parse(response.body)
               : response.body;
         }
-
-        console.log('Processed history data:', data);
 
         const transformedHistory: WorkoutHistory = {
           sessions: (
@@ -235,7 +232,6 @@ export default function EnhancedWorkoutHistoryPage() {
           },
         };
 
-        console.log('Final transformed history:', transformedHistory);
         setHistory(transformedHistory);
       } else {
         setError('No workout history found');

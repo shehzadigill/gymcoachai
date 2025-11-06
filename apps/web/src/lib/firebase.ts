@@ -28,13 +28,11 @@ export async function getFCMToken(): Promise<string | null> {
   try {
     const supported = await isSupported();
     if (!supported) {
-      console.log('Firebase messaging not supported in this browser');
       return null;
     }
 
     // Check if we're in a browser environment
     if (typeof window === 'undefined') {
-      console.log('Not in browser environment, skipping FCM token generation');
       return null;
     }
 
@@ -42,7 +40,6 @@ export async function getFCMToken(): Promise<string | null> {
     if ('serviceWorker' in navigator) {
       try {
         await navigator.serviceWorker.ready;
-        console.log('Service worker is ready for Firebase messaging');
       } catch (error) {
         console.error('Service worker not ready:', error);
         // Continue anyway, Firebase might still work

@@ -15,7 +15,6 @@ export default function AuthDebugPage() {
       try {
         initializeAuth();
         setAuthInitialized(true);
-        console.log('Auth initialized manually in debug page');
       } catch (e) {
         setInitError(e instanceof Error ? e.message : 'Unknown error');
         console.error('Failed to initialize auth in debug page:', e);

@@ -163,11 +163,6 @@ export default function AICoachingPreferencesPanel({
 }: AICoachingPreferencesPanelProps) {
   const t = useTranslations('profile_page');
 
-  console.log(
-    '🔧 AICoachingPreferencesPanel - currentPreferences prop:',
-    currentPreferences
-  );
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +183,6 @@ export default function AICoachingPreferencesPanel({
       supplementPreferences: [] as string[],
       ...currentPreferences,
     };
-    console.log('🎯 Initial preferences state:', defaultPrefs);
     return defaultPrefs;
   });
 
@@ -197,9 +191,6 @@ export default function AICoachingPreferencesPanel({
   >('style');
 
   useEffect(() => {
-    console.log(
-      '🚀 AICoachingPreferencesPanel mounted, fetching fresh preferences...'
-    );
     fetchPersonalizationProfile();
   }, []); // Remove userId dependency to ensure fresh API call on mount
 
@@ -208,19 +199,11 @@ export default function AICoachingPreferencesPanel({
       setLoading(true);
       setError(null);
 
-      console.log('Fetching user preferences for userId:', userId);
-
       // Fetch AI preferences from user profile service
       const res = await api.getUserPreferences(userId);
       const userPreferencesResponse = res;
-      console.log('User preferences response:', userPreferencesResponse);
 
       if (userPreferencesResponse?.aiTrainer) {
-        console.log(
-          '✅ Found AI trainer preferences:',
-          userPreferencesResponse.aiTrainer
-        );
-
         // Map backend snake_case to frontend camelCase and add defaults
         const aiTrainerPrefs = userPreferencesResponse.aiTrainer as any;
         const mappedPreferences: Partial<AIPreferences> = {
@@ -266,13 +249,7 @@ export default function AICoachingPreferencesPanel({
         };
 
         setPreferences(newPreferences);
-        console.log('🎯 Updated preferences state:', newPreferences);
-        console.log('🎯 Specifically enabled value:', newPreferences.enabled);
       } else {
-        console.log(
-          'ℹ️ No AI trainer preferences found, ensuring defaults are set'
-        );
-
         // Ensure preferences have proper defaults when no backend data exists
         setPreferences((prev: AIPreferences) => ({
           ...prev,
@@ -288,8 +265,6 @@ export default function AICoachingPreferencesPanel({
           allergies: prev.allergies || [],
           supplementPreferences: prev.supplementPreferences || [],
         }));
-
-        console.log('🎯 Set default preferences with enabled=true');
       }
     } catch (err: any) {
       console.error('Failed to fetch AI preferences:', err);
@@ -300,12 +275,10 @@ export default function AICoachingPreferencesPanel({
   };
 
   const handlePreferenceChange = (key: keyof AIPreferences, value: any) => {
-    console.log('🔧 Preference change:', key, '=', value);
     const newPreferences = {
       ...preferences,
       [key]: value,
     };
-    console.log('🔧 New preferences after change:', newPreferences);
     setPreferences(newPreferences);
   };
 
@@ -334,8 +307,6 @@ export default function AICoachingPreferencesPanel({
       setError(null);
       setSuccess(null);
 
-      console.log('💾 Saving AI preferences:', preferences);
-
       // Map frontend camelCase to backend snake_case format
       const backendPreferences = {
         enabled: preferences.enabled,
@@ -351,12 +322,8 @@ export default function AICoachingPreferencesPanel({
         supplement_preferences: preferences.supplementPreferences,
       };
 
-      console.log('📤 Sending backend preferences:', backendPreferences);
-
       // Save preferences to user profile service
       const saveResult = await api.updateAIPreferences(backendPreferences);
-
-      console.log('✅ Save result:', saveResult);
 
       // Immediately update parent component with the saved preferences
       if (onPreferencesUpdate) {
@@ -482,12 +449,6 @@ export default function AICoachingPreferencesPanel({
                 type="checkbox"
                 checked={preferences.enabled}
                 onChange={(e) => {
-                  console.log(
-                    '🎛️ Toggle clicked, current checked:',
-                    preferences.enabled,
-                    'new value:',
-                    e.target.checked
-                  );
                   handlePreferenceChange('enabled', e.target.checked);
                 }}
                 className="sr-only peer"

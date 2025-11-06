@@ -36,7 +36,6 @@ export function ProtectedRoute({
     // This can be enhanced later when we add role information to the hook
     if (requiredRole) {
       // TODO: Implement role checking once user details are available
-      console.log('Role checking not implemented yet:', requiredRole);
     }
 
     setIsAuthorized(true);

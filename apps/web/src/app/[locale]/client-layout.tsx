@@ -387,8 +387,8 @@ function SidebarContent({
                             child.href
                           );
                           // Check if pathname matches or starts with the child href (for nested pages)
-                          const isChildActive = 
-                            pathname === childLocalizedHref || 
+                          const isChildActive =
+                            pathname === childLocalizedHref ||
                             pathname === `${childLocalizedHref}/` ||
                             pathname.startsWith(`${childLocalizedHref}/`);
                           return (
@@ -502,8 +502,6 @@ function ThemeToggle() {
     // Also set a flag to indicate manual override
     localStorage.setItem('gymcoach-theme-manual', 'true');
     setIsManualTheme(true);
-
-    console.log('Theme manually toggled to:', newTheme);
   };
 
   const handleUseSystem = () => {
@@ -511,7 +509,6 @@ function ThemeToggle() {
     localStorage.removeItem('gymcoach-theme-manual');
     setTheme('system');
     setIsManualTheme(false);
-    console.log('Theme set to follow system preference');
   };
 
   if (!mounted) {

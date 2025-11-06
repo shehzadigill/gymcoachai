@@ -52,11 +52,6 @@ export default function LanguageSwitcher() {
     // Build new path with new locale
     const newPath = `/${newLocale}${pathWithoutLocale}`;
 
-    console.log('Changing locale from', locale, 'to', newLocale);
-    console.log('Current pathname:', pathname);
-    console.log('Path without locale:', pathWithoutLocale);
-    console.log('New path:', newPath);
-
     // For static exports, use window.location to force a full reload
     // This ensures the locale context updates properly
     window.location.href = newPath;

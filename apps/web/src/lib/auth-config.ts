@@ -19,7 +19,6 @@ export const initializeAuth = () => {
       region,
       cloudFrontUrl,
     });
-    console.log('Authentication configured successfully');
   } catch (error) {
     console.error('Failed to configure authentication:', error);
     // Do not proceed with a broken config; ensure .env.local is set and restart dev server

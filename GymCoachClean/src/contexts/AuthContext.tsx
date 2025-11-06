@@ -47,21 +47,16 @@ export function AuthProvider({children}: AuthProviderProps) {
 
   // Initial auth check - runs only once on mount
   useEffect(() => {
-    console.log('[AuthProvider] Starting initial auth check');
     let cancelled = false;
     // Fail-safe: if auth hangs for any reason, stop showing splash
     const failSafe = setTimeout(() => {
       if (!cancelled && isLoading) {
-        console.log(
-          '[AuthProvider] Auth check timeout, disabling loading spinner',
-        );
         setIsLoading(false);
       }
     }, 8000);
 
     checkAuthState().finally(() => {
       clearTimeout(failSafe);
-      console.log('[AuthProvider] Initial auth check finished');
     });
 
     return () => {
@@ -76,15 +71,11 @@ export function AuthProvider({children}: AuthProviderProps) {
       return; // Don't set up interval if no user
     }
 
-    console.log('Setting up token refresh interval for user:', user.email);
-
     // Set up automatic token refresh every 45 minutes (tokens expire in 1 hour)
     const refreshInterval = setInterval(async () => {
-      console.log('Performing scheduled token refresh...');
       try {
         const refreshedUser = await CognitoAuthService.refreshTokens();
         if (!refreshedUser) {
-          console.log('Token refresh failed, signing out...');
           await handleSignOut();
         }
       } catch (error) {
@@ -93,20 +84,17 @@ export function AuthProvider({children}: AuthProviderProps) {
     }, 45 * 60 * 1000); // 45 minutes
 
     return () => {
-      console.log('Clearing token refresh interval');
       clearInterval(refreshInterval);
     };
   }, [user?.id]); // Only depend on user ID to avoid unnecessary re-runs
 
   const checkAuthState = async () => {
     try {
-      console.log('[AuthProvider] checkAuthState start');
       setIsLoading(true);
       let currentUser = await CognitoAuthService.getCurrentUser();
 
       // If getCurrentUser fails, try to refresh tokens
       if (!currentUser) {
-        console.log('No current user, attempting token refresh...');
         currentUser = await CognitoAuthService.refreshTokens();
       }
 
@@ -124,19 +112,17 @@ export function AuthProvider({children}: AuthProviderProps) {
           const profile = await apiClient.getUserProfile();
           setUserProfile(profile);
         } catch (error) {
-          console.log('No user profile found, will create one:', error);
+          console.error('Failed to load user profile:', error);
         }
       } else {
-        console.log('Authentication failed - clearing state');
         setUser(null);
         setUserProfile(null);
       }
     } catch (error) {
-      console.log('User not authenticated:', error);
+      console.error('Authentication failed:', error);
       setUser(null);
       setUserProfile(null);
     } finally {
-      console.log('[AuthProvider] checkAuthState end -> setIsLoading(false)');
       setIsLoading(false);
     }
   };
@@ -144,10 +130,6 @@ export function AuthProvider({children}: AuthProviderProps) {
   const handleSignIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log('Attempting sign in for:', email);
-
-      // Test network connectivity first
-      console.log('Testing network connectivity...');
       const cognitoStatus = await testCognitoConnectivity();
       const apiStatus = await testAPIConnectivity();
       console.log('Network test results:', {cognitoStatus, apiStatus});
@@ -168,13 +150,7 @@ export function AuthProvider({children}: AuthProviderProps) {
       // Auth service already stores tokens
       await checkAuthState();
     } catch (error: any) {
-      console.error('Sign in error details:', {
-        error,
-        message: error.message,
-        name: error.name,
-        code: error.code,
-        stack: error.stack,
-      });
+      console.error('Sign in error:', error.message || error);
 
       // Provide specific error messages based on error type
       if (error.name === 'UserNotConfirmedException') {
@@ -184,11 +160,6 @@ export function AuthProvider({children}: AuthProviderProps) {
       } else if (error.name === 'UserNotFoundException') {
         throw new Error('No account found with this email address.');
       } else if (error.name === 'Unknown') {
-        // Log more details for unknown errors
-        console.error(
-          'Unknown AWS error - full details:',
-          JSON.stringify(error, null, 2),
-        );
         throw new Error(
           'AWS service temporarily unavailable. Please try again in a few moments.',
         );
@@ -217,7 +188,6 @@ export function AuthProvider({children}: AuthProviderProps) {
       if (lastName) attributes.family_name = lastName;
 
       await CognitoAuthService.signUp(email, password, attributes);
-      console.log('Sign up successful, confirmation required');
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw new Error(error.message || 'Sign up failed');
@@ -230,7 +200,6 @@ export function AuthProvider({children}: AuthProviderProps) {
     try {
       setIsLoading(true);
       await CognitoAuthService.confirmSignUp(email, code);
-      console.log('Email confirmed successfully');
     } catch (error: any) {
       console.error('Confirmation error:', error);
       throw new Error(error.message || 'Confirmation failed');

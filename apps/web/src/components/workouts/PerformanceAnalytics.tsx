@@ -106,11 +106,6 @@ export default function PerformanceAnalytics({
           .catch(() => null),
       ]);
 
-      console.log('User data fetched:', {
-        profileResponse,
-        preferencesResponse,
-      });
-
       setUserProfile(profileResponse);
       setUserPreferences(preferencesResponse);
 

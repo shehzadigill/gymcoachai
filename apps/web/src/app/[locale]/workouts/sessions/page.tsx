@@ -186,7 +186,6 @@ export default function WorkoutSessionsPage() {
     try {
       setLoading(true);
       const response = await api.getWorkoutSessions();
-      console.log('Sessions response:', response);
 
       if (response) {
         // Handle different response formats
@@ -221,7 +220,6 @@ export default function WorkoutSessionsPage() {
     try {
       setExercisesLoading(true);
       const response = await api.getExercises();
-      console.log('Exercises response:', response);
 
       if (response) {
         let data: any = response;
@@ -408,7 +406,11 @@ export default function WorkoutSessionsPage() {
               {totalMinutes > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-500">
                   {completedSessions > 0 &&
-                    t('avg_time_per_session', { time: formatDuration(Math.round(totalMinutes / completedSessions)) })}
+                    t('avg_time_per_session', {
+                      time: formatDuration(
+                        Math.round(totalMinutes / completedSessions)
+                      ),
+                    })}
                 </p>
               )}
             </div>
@@ -425,7 +427,10 @@ export default function WorkoutSessionsPage() {
                 <div className="mt-1">
                   {renderStarRating(avgRating)}
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    {t('ratings_info', { rated: ratedSessions.length, total: totalSessions })}
+                    {t('ratings_info', {
+                      rated: ratedSessions.length,
+                      total: totalSessions,
+                    })}
                   </p>
                 </div>
               ) : (
@@ -535,7 +540,9 @@ export default function WorkoutSessionsPage() {
                     )}
                     <div className="flex items-center gap-1">
                       <Dumbbell className="w-4 h-4" />
-                      {t('exercises_count', { count: session.exercises?.length || 0 })}
+                      {t('exercises_count', {
+                        count: session.exercises?.length || 0,
+                      })}
                     </div>
                     {session.rating && (
                       <div className="flex items-center gap-1">

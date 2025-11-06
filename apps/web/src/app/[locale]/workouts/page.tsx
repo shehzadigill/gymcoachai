@@ -385,7 +385,6 @@ export default function WorkoutsPage() {
       );
 
       // Show alternatives in a modal or notification
-      console.log('Exercise alternatives:', alternatives);
     } catch (err: any) {
       console.error('Failed to find alternatives:', err);
       setAiError(err.message || 'Failed to find alternatives');
@@ -510,7 +509,6 @@ export default function WorkoutsPage() {
 
       // Check if already completed to prevent duplicate operations
       if (workout.completed) {
-        console.log('Workout already completed');
         setSelectedWorkout(null);
         return;
       }
@@ -518,7 +516,6 @@ export default function WorkoutsPage() {
       const now = new Date().toISOString();
 
       // Update the existing workout session to mark as completed
-      console.log('Updating workout session to completed:', workoutId);
 
       try {
         // Transform exercises to match backend expected format
@@ -545,8 +542,6 @@ export default function WorkoutsPage() {
           completed: true,
           exercises: transformedExercises, // Properly formatted exercises data
         });
-        console.log('Session completion response:', updateResponse);
-
         // Update the local state to reflect completion
         setWorkouts(
           workouts.map((w) =>
@@ -590,7 +585,6 @@ export default function WorkoutsPage() {
         exercises: planData.exercises || [],
       });
 
-      console.log('Created workout plan:', response);
       await fetchWorkoutPlans(); // Refresh the list
       setShowPlanForm(false);
       setEditingPlan(null);
@@ -618,7 +612,6 @@ export default function WorkoutsPage() {
         isActive: planData.isActive !== undefined ? planData.isActive : true,
       });
 
-      console.log('Updated workout plan:', response);
       await fetchWorkoutPlans(); // Refresh the list
       setShowPlanForm(false);
       setEditingPlan(null);
@@ -635,7 +628,6 @@ export default function WorkoutsPage() {
 
     try {
       await api.deleteWorkoutPlan(userId, planId);
-      console.log('Deleted workout plan:', planId);
       await fetchWorkoutPlans(); // Refresh the list
     } catch (e: any) {
       console.error('Failed to delete workout plan:', e);
@@ -650,7 +642,6 @@ export default function WorkoutsPage() {
 
     try {
       await api.deleteWorkoutSession(sessionId);
-      console.log('Deleted workout session:', sessionId);
       await fetchWorkouts(); // Refresh the list
     } catch (e: any) {
       console.error('Failed to delete workout session:', e);
@@ -686,7 +677,6 @@ export default function WorkoutsPage() {
       };
 
       const response = await api.createWorkoutSession(sessionData);
-      console.log('Started workout session from plan:', response);
 
       // Refresh workouts to show the new session
       await fetchWorkouts();
@@ -1764,7 +1754,6 @@ export default function WorkoutsPage() {
           }}
           currentPlan={selectedPlanForAdaptation}
           onApplyAdaptations={(adaptations) => {
-            console.log('Applied adaptations:', adaptations);
             // Here you would typically update the workout plan with the adaptations
             fetchWorkoutPlans(); // Refresh the plans
           }}

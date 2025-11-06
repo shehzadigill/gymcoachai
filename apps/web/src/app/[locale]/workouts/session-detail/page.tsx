@@ -90,7 +90,6 @@ export default function SessionDetailPage() {
       setError(null);
 
       const session = await api.getWorkoutSession(sessionId!);
-      console.log('Session details response:', session);
 
       if (session) {
         // Fetch exercise details for each exercise

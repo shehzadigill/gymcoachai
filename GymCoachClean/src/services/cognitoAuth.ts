@@ -115,27 +115,21 @@ export class CognitoAuthService {
     attributes?: Record<string, string>,
   ): Promise<void> {
     try {
-      console.log('CognitoAuthService: Starting sign up for:', email);
-
       const command = new SignUpCommand({
         ClientId: CLIENT_ID,
         Username: email,
         Password: password,
         UserAttributes: attributes
-          ? Object.entries(attributes).map(([key, value]) => ({
-              Name: key,
-              Value: value,
+          ? Object.entries(attributes).map(([Name, Value]) => ({
+              Name,
+              Value,
             }))
           : undefined,
       });
 
-      const response = await cognitoClient.send(command);
-      console.log('CognitoAuthService: Sign up successful:', {
-        userSub: response.UserSub,
-        codeDeliveryDetails: response.CodeDeliveryDetails,
-      });
+      await cognitoClient.send(command);
     } catch (error: any) {
-      console.error('CognitoAuthService: Sign up error:', error);
+      console.error('Sign up error:', error.message || error);
       throw error;
     }
   }
@@ -160,41 +154,25 @@ export class CognitoAuthService {
 
   static async getCurrentUser(): Promise<AuthUser | null> {
     try {
+      const username = await AsyncStorage.getItem('username');
+      const email = await AsyncStorage.getItem('userEmail');
       const accessToken = await AsyncStorage.getItem('accessToken');
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       const idToken = await AsyncStorage.getItem('idToken');
 
-      if (!accessToken || !refreshToken || !idToken) {
-        console.log('CognitoAuthService: No stored tokens found');
-        return null;
+      if (username && email && accessToken && refreshToken && idToken) {
+        return {
+          username,
+          email,
+          accessToken,
+          refreshToken,
+          idToken,
+        };
       }
 
-      // Verify token is still valid by getting user info
-      const command = new GetUserCommand({
-        AccessToken: accessToken,
-      });
-
-      const response = await cognitoClient.send(command);
-      console.log('CognitoAuthService: Current user retrieved:', {
-        username: response.Username,
-        attributes: response.UserAttributes?.length,
-      });
-
-      const emailAttribute = response.UserAttributes?.find(
-        attr => attr.Name === 'email',
-      );
-
-      return {
-        username: response.Username || '',
-        email: emailAttribute?.Value || '',
-        accessToken,
-        refreshToken,
-        idToken,
-      };
-    } catch (error: any) {
-      console.error('CognitoAuthService: Get current user error:', error);
-      // Clear invalid tokens
-      await this.signOut();
+      return null;
+    } catch (error) {
+      console.error('Get current user error:', error);
       return null;
     }
   }

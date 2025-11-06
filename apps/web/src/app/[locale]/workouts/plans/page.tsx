@@ -170,15 +170,6 @@ export default function WorkoutPlansPage() {
     times: string[]
   ) => {
     try {
-      console.log(
-        'Scheduling plan:',
-        plan.name,
-        'from',
-        startDate,
-        'at times:',
-        times
-      );
-
       const response = await api.scheduleWorkoutPlan(plan.id, {
         startDate,
         times,
@@ -218,8 +209,6 @@ export default function WorkoutPlansPage() {
       if (!confirmed) {
         return;
       }
-
-      console.log('Deleting scheduled workout:', scheduleId);
 
       await api.cancelScheduledWorkout(scheduleId, user.id);
 

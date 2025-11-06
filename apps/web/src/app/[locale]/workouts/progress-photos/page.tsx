@@ -198,10 +198,6 @@ export default function AdvancedProgressPhotosPage() {
         ),
       ]);
 
-      console.log('Fetched photos data:', photosData);
-      console.log('Fetched analytics data:', analyticsData);
-      console.log('Fetched timeline data:', timelineData);
-
       if (photosData && Array.isArray(photosData)) {
         // Transform API response to match interface
         const transformedPhotos: ProgressPhoto[] = photosData.map(
@@ -373,7 +369,6 @@ export default function AdvancedProgressPhotosPage() {
     try {
       const comparison = await api.getProgressPhotoComparison(selectedPhotos);
       // Handle comparison result - could show in modal or new view
-      console.log('Comparison result:', comparison);
     } catch (e: any) {
       console.error('Comparison failed:', e);
       setError(e.message || 'Comparison failed');

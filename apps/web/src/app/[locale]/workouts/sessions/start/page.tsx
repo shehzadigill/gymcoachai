@@ -177,7 +177,7 @@ export default function StartSessionPage() {
 
     try {
       const startTime = new Date();
-      
+
       // Transform exercises to match backend expected format
       const transformedExercises = session.exercises.map((exercise, index) => ({
         exerciseId: exercise.exercise_id,
@@ -246,21 +246,23 @@ export default function StartSessionPage() {
     // Save to backend with proper data format
     try {
       // Transform exercises to match backend expected format
-      const transformedExercises = updatedSession.exercises.map((exercise, index) => ({
-        exerciseId: exercise.exercise_id,
-        name: exercise.exercise_name,
-        notes: exercise.notes || null,
-        order: index,
-        sets: exercise.sets.map((set) => ({
-          setNumber: set.set_number,
-          reps: set.reps || null,
-          weight: set.weight || null,
-          durationSeconds: set.duration_seconds || null,
-          restSeconds: set.rest_seconds || null,
-          completed: set.completed,
-          notes: set.notes || null,
-        })),
-      }));
+      const transformedExercises = updatedSession.exercises.map(
+        (exercise, index) => ({
+          exerciseId: exercise.exercise_id,
+          name: exercise.exercise_name,
+          notes: exercise.notes || null,
+          order: index,
+          sets: exercise.sets.map((set) => ({
+            setNumber: set.set_number,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            durationSeconds: set.duration_seconds || null,
+            restSeconds: set.rest_seconds || null,
+            completed: set.completed,
+            notes: set.notes || null,
+          })),
+        })
+      );
 
       const updateData = {
         name: updatedSession.name,
@@ -340,7 +342,6 @@ export default function StartSessionPage() {
         workoutPlanId: session.workout_plan_id || null,
       };
 
-      console.log('Completing session with data:', completedSession);
       await api.updateWorkoutSession(session.id, completedSession);
 
       // Navigate to session detail with completion success
@@ -369,21 +370,23 @@ export default function StartSessionPage() {
     // Save to backend with proper data format
     try {
       // Transform exercises to match backend expected format
-      const transformedExercises = updatedSession.exercises.map((exercise, index) => ({
-        exerciseId: exercise.exercise_id,
-        name: exercise.exercise_name,
-        notes: exercise.notes || null,
-        order: index,
-        sets: exercise.sets.map((set) => ({
-          setNumber: set.set_number,
-          reps: set.reps || null,
-          weight: set.weight || null,
-          durationSeconds: set.duration_seconds || null,
-          restSeconds: set.rest_seconds || null,
-          completed: set.completed,
-          notes: set.notes || null,
-        })),
-      }));
+      const transformedExercises = updatedSession.exercises.map(
+        (exercise, index) => ({
+          exerciseId: exercise.exercise_id,
+          name: exercise.exercise_name,
+          notes: exercise.notes || null,
+          order: index,
+          sets: exercise.sets.map((set) => ({
+            setNumber: set.set_number,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            durationSeconds: set.duration_seconds || null,
+            restSeconds: set.rest_seconds || null,
+            completed: set.completed,
+            notes: set.notes || null,
+          })),
+        })
+      );
 
       const updateData = {
         name: updatedSession.name,

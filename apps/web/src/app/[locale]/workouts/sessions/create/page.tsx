@@ -93,15 +93,12 @@ export default function CreateWorkoutSessionPage() {
   const fetchWorkoutPlan = async () => {
     try {
       setLoading(true);
-      console.log('Fetching workout plan:', { userId: user.id, planId });
       const plan = await api.getWorkoutPlan(user.id, planId!);
 
       if (plan) {
-        console.log('Workout plan loaded:', plan);
         setWorkoutPlan(plan);
 
         // Convert workout plan exercises to session exercises
-        console.log('Plan exercises:', plan.exercises);
         const sessionExercises: SessionExercise[] = (plan.exercises || []).map(
           (ex: WorkoutPlanExercise) => ({
             exerciseId: ex.exerciseId,
@@ -118,8 +115,6 @@ export default function CreateWorkoutSessionPage() {
             order: ex.order,
           })
         );
-
-        console.log('Session exercises:', sessionExercises);
 
         // Generate session name
         let sessionName = plan.name;

@@ -190,7 +190,6 @@ export default function ProfilePage() {
     try {
       setLoadingMeasurements(true);
       const measurements = await api.getBodyMeasurements();
-      console.log('Loaded body measurements:', measurements);
       setBodyMeasurements(measurements || []);
 
       // Set current values from latest measurement
@@ -301,10 +300,6 @@ export default function ProfilePage() {
       if (updates.fitnessGoals) {
         try {
           await api.updateFitnessGoals(updates.fitnessGoals);
-          console.log(
-            'Fitness goals saved successfully:',
-            updates.fitnessGoals
-          );
         } catch (error) {
           console.error('Error saving fitness goals:', error);
           alert('Failed to save fitness goals. Please try again.');
@@ -324,12 +319,7 @@ export default function ProfilePage() {
       setProfile(updatedProfile);
 
       try {
-        console.log(
-          'Sending preferences update:',
-          JSON.stringify(updates, null, 2)
-        );
         await api.updateUserPreferences(updates);
-        console.log('Preferences saved successfully:', updates);
         setSuccess('Preferences updated successfully');
       } catch (error) {
         console.error('Error saving preferences:', error);
@@ -998,7 +988,6 @@ function GoalsTab({
   const saveDailyGoals = async () => {
     try {
       await api.updateDailyGoals(dailyGoals);
-      console.log('Daily goals saved successfully:', dailyGoals);
       alert('Daily goals saved successfully!');
     } catch (error) {
       console.error('Error saving daily goals:', error);
@@ -1214,17 +1203,10 @@ function AITrainerTab({
     const fetchFreshPreferences = async () => {
       if (shouldRefresh && userId) {
         try {
-          console.log(
-            '🔄 AI Trainer tab active - fetching fresh preferences...'
-          );
           const response = await api.getUserPreferences(userId);
           const result = response;
 
           if (result?.aiTrainer) {
-            console.log(
-              '✅ Got fresh AI trainer preferences:',
-              result.aiTrainer
-            );
             setAiPreferences({
               enabled: result.aiTrainer.enabled ?? true,
               coachingStyle:
@@ -1266,7 +1248,6 @@ function AITrainerTab({
                 [],
             });
           } else {
-            console.log('ℹ️ No fresh AI trainer data, using defaults');
             setAiPreferences({
               enabled: true,
               coachingStyle: 'balanced',
@@ -1448,7 +1429,6 @@ function AITrainerTab({
   };
 
   const user = useCurrentUser();
-  console.log('AI preferences for user', user?.id, aiPreferences);
   const t = useTranslations('profile_page');
   return (
     <div className="space-y-6">

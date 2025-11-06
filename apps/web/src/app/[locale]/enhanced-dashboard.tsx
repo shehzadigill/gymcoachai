@@ -196,32 +196,13 @@ export default function DashboardPage() {
             return [{ hours: 7, quality: 3 }];
           }),
         ]);
-        console.log('Fetched dashboard data:', {
-          workoutSessions,
-          workoutPlans,
-          userProfile,
-          nutritionStats,
-          bodyMeasurements,
-          strengthProgress,
-          achievements,
-          milestones,
-          workoutAnalytics,
-          todaysMeals,
-          waterIntake,
-          progressPhotos,
-          todaysSleepData,
-        });
         // Process workout data
-        console.log('workoutSessions:', workoutSessions);
-
         // Handle different API response formats
         const workoutData = Array.isArray(workoutSessions)
           ? workoutSessions
           : Array.isArray((workoutSessions as any)?.body)
             ? (workoutSessions as any).body
             : [];
-
-        console.log('Processed workoutData:', workoutData);
 
         // More comprehensive completion check
         const completedWorkouts = workoutData.filter((session: any) => {
@@ -234,21 +215,8 @@ export default function DashboardPage() {
             session.endTime ||
             session.end_time;
 
-          console.log('Session completion check:', {
-            sessionId: session.id,
-            completed: session.completed,
-            status: session.status,
-            completedAt: session.completedAt,
-            completed_at: session.completed_at,
-            endTime: session.endTime,
-            end_time: session.end_time,
-            isCompleted,
-          });
-
           return isCompleted;
         }).length;
-
-        console.log('Total completed workouts:', completedWorkouts);
 
         const totalWorkoutTime = workoutData
           .filter((session: any) => {
@@ -270,14 +238,8 @@ export default function DashboardPage() {
               session.totalTime ||
               session.total_time ||
               0;
-            console.log('Session duration:', {
-              sessionId: session.id,
-              duration,
-            });
             return total + duration;
           }, 0);
-
-        console.log('Total workout time:', totalWorkoutTime);
 
         const avgWorkoutDuration =
           completedWorkouts > 0
@@ -363,8 +325,6 @@ export default function DashboardPage() {
           }
         }).length;
 
-        console.log('Workouts this week:', workoutsThisWeek);
-
         // Count active days this week (days with any activity)
         const activeDaysThisWeek = new Set(
           workoutData
@@ -425,8 +385,6 @@ export default function DashboardPage() {
             })
             .filter(Boolean)
         ).size;
-
-        console.log('Active days this week:', activeDaysThisWeek);
 
         // Separate daily and weekly goals for better organization
         // Extract daily goals from user profile preferences
@@ -940,8 +898,6 @@ export default function DashboardPage() {
   };
 
   const processStrengthData = (strengthProgressData: any) => {
-    console.log('Processing strength data:', strengthProgressData);
-
     // Handle different API response formats
     let strengthData = [];
     if (Array.isArray(strengthProgressData)) {
@@ -960,11 +916,8 @@ export default function DashboardPage() {
         [];
     }
 
-    console.log('Processed strength data array:', strengthData);
-
     if (!Array.isArray(strengthData) || strengthData.length === 0) {
       // Return demo data so users can see the chart structure
-      console.log('No strength data available, using demo data');
       return [
         { label: t('muscle_groups.chest'), value: 135 },
         { label: t('muscle_groups.back'), value: 165 },
@@ -1007,8 +960,6 @@ export default function DashboardPage() {
       }
     });
 
-    console.log('Grouped muscle data:', muscleGroups);
-
     // Calculate average for each muscle group
     const processedData = Object.entries(muscleGroups).map(
       ([label, weights]) => ({
@@ -1020,11 +971,8 @@ export default function DashboardPage() {
       })
     );
 
-    console.log('Final processed strength data:', processedData);
-
     // If we still don't have data after processing, return demo data
     if (processedData.length === 0) {
-      console.log('No valid strength data found, returning demo data');
       return [
         { label: t('muscle_groups.chest'), value: 135 },
         { label: t('muscle_groups.back'), value: 165 },

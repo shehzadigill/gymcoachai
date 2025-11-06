@@ -196,11 +196,6 @@ export default function WorkoutAnalyticsPage() {
           .catch(() => null),
       ]);
 
-      console.log('Analytics Response:', analyticsResponse);
-      console.log('Insights Response:', insightsResponse);
-      console.log('Strength Response:', strengthResponse);
-      console.log('History Response:', historyResponse);
-
       // Process analytics data with better error handling
       if (analyticsResponse) {
         try {
@@ -210,7 +205,6 @@ export default function WorkoutAnalyticsPage() {
           } else if (analyticsResponse.body) {
             data = analyticsResponse.body;
           }
-          console.log('Processed analytics data:', data);
           setAnalytics(data);
         } catch (error) {
           console.error('Error processing analytics data:', error);
@@ -226,7 +220,6 @@ export default function WorkoutAnalyticsPage() {
           } else if (insightsResponse.body) {
             data = insightsResponse.body;
           }
-          console.log('Processed insights data:', data);
           // Ensure risk values are numbers
           if (data) {
             data.plateau_risk =
@@ -251,7 +244,6 @@ export default function WorkoutAnalyticsPage() {
           } else if (strengthResponse.body) {
             data = strengthResponse.body;
           }
-          console.log('Processed strength data:', data);
 
           // Filter by selected exercise if not 'all'
           const progressData = Array.isArray(data)
@@ -280,7 +272,6 @@ export default function WorkoutAnalyticsPage() {
           } else if (historyResponse.body) {
             data = historyResponse.body;
           }
-          console.log('Processed workout history data:', data);
           setWorkoutHistory(data);
         } catch (error) {
           console.error('Error processing workout history data:', error);

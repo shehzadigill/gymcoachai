@@ -30,12 +30,9 @@ export class NotificationService {
       // Get FCM token
       const token = await getFCMToken();
       if (token) {
-        console.log('FCM Token:', token);
-
         // Save token to backend
         try {
           await api.saveDeviceToken(token, 'web');
-          console.log('Device token saved successfully');
         } catch (error) {
           console.error('Failed to save device token:', error);
         }
@@ -43,8 +40,6 @@ export class NotificationService {
 
       // Set up message listener
       setupNotificationListener((payload) => {
-        console.log('Message received:', payload);
-
         // Show notification if app is in foreground
         if (payload.notification) {
           const notification = new Notification(payload.notification.title, {
@@ -74,7 +69,6 @@ export class NotificationService {
     if (token) {
       try {
         await api.saveDeviceToken(token, 'web');
-        console.log('Device token refreshed successfully');
       } catch (error) {
         console.error('Failed to refresh device token:', error);
       }

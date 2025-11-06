@@ -39,29 +39,14 @@ class ApiClient {
       const tokenType = idToken ? 'ID' : 'Access';
 
       if (token) {
-        const headers = {
+        return {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         };
-        console.log(
-          `API Client: Auth headers prepared with ${tokenType} token:`,
-          {
-            Authorization: `Bearer ${token.substring(0, 20)}...`,
-            'Content-Type': 'application/json',
-          },
-        );
-        return headers;
-      } else {
-        console.error(
-          'API Client: No tokens found in AsyncStorage - user may need to re-authenticate',
-        );
       }
     } catch (error) {
       console.error('Failed to get auth headers:', error);
     }
-    console.warn(
-      'API Client: Returning headers without Authorization - APIs will fail',
-    );
     return {
       'Content-Type': 'application/json',
     };
@@ -72,17 +57,8 @@ class ApiClient {
       // Get ID token and extract user ID (sub) from it
       const idToken = await AsyncStorage.getItem('idToken');
       if (idToken) {
-        console.log(
-          'API Client: Retrieved idToken for user ID extraction:',
-          idToken ? `${idToken.substring(0, 20)}...` : 'null',
-        );
-
         const userId = getUserIdFromToken(idToken);
         if (userId) {
-          console.log(
-            'API Client: Successfully extracted userId from idToken:',
-            userId,
-          );
           return userId;
         }
       }
@@ -90,17 +66,11 @@ class ApiClient {
       // Try access token if ID token doesn't have sub
       const accessToken = await AsyncStorage.getItem('accessToken');
       if (accessToken) {
-        console.log('API Client: Trying access token for user ID extraction');
         const userId = getUserIdFromToken(accessToken);
         if (userId) {
-          console.log('API Client: Found userId in access token:', userId);
           return userId;
         }
       }
-
-      console.warn(
-        'API Client: No userId found in tokens, this may cause API failures',
-      );
     } catch (error) {
       console.error('Failed to get current user ID:', error);
     }
@@ -110,8 +80,6 @@ class ApiClient {
     const isDemo = await this.isDemoMode();
 
     if (isDemo) {
-      console.log('API Client: Demo mode active, intercepting API call');
-      // Use demo mode handling here
       throw new Error('Demo mode not implemented for this endpoint');
     }
 
@@ -136,18 +104,10 @@ class ApiClient {
     };
 
     try {
-      console.log('Making API request:', url);
-      console.log('Request options:', {
-        method: fetchOptions.method,
-        headers: fetchOptions.headers,
-        body: fetchOptions.body,
-      });
-
       const response = await fetch(url, fetchOptions);
 
       if (response.status === 401 || response.status === 403) {
         // Token might be expired, try to refresh and retry
-        console.log('Received 401/403, attempting token refresh...');
         try {
           await CognitoAuthService.refreshTokens();
 
@@ -157,7 +117,6 @@ class ApiClient {
             headers.Authorization = `Bearer ${newToken}`;
             fetchOptions.headers = headers;
 
-            console.log('Retrying API request with refreshed token...');
             const retryResponse = await fetch(url, fetchOptions);
 
             if (!retryResponse.ok) {
@@ -181,8 +140,6 @@ class ApiClient {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API request failed:', response.status, errorText);
-        console.error('Request URL:', url);
-        console.error('Request body:', options.body);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -205,25 +162,10 @@ class ApiClient {
         ...options.headers,
       };
 
-      console.log(`API Client: Making request to ${baseUrl}${path}`);
-      console.log(
-        'API Client: Final headers:',
-        Object.keys(finalHeaders).reduce((acc, key) => {
-          const value = (finalHeaders as any)[key];
-          acc[key] =
-            key === 'Authorization' ? `${value?.substring(0, 20)}...` : value;
-          return acc;
-        }, {} as Record<string, string>),
-      );
-
       const response = await fetch(`${baseUrl}${path}`, {
         ...options,
         headers: finalHeaders,
       });
-
-      console.log(
-        `API Client: Response status for ${path}: ${response.status}`,
-      );
 
       if (!response.ok) {
         // Check if it's an authentication error
@@ -257,7 +199,7 @@ class ApiClient {
           }
         }
 
-        console.log(`API Client: Error response for ${path}:`, errorText);
+        console.error(`API Client: Error response for ${path}:`, errorText);
         throw new Error(errorText || `Request failed: ${response.status}`);
       }
 
@@ -290,22 +232,14 @@ class ApiClient {
 
   // User Profile methods
   async getUserProfile(userId?: string): Promise<UserProfile> {
-    // Don't include user ID in path - let backend authenticate from JWT token
-    console.log('API Client: Fetching user profile from JWT token');
-
     try {
       const result = await this.apiFetch<UserProfile>(
         '/api/user-profiles/profile',
       );
-      console.log('API Client: User profile fetch successful:', result);
       return result;
     } catch (error) {
-      console.warn(
-        'API Client: User profile fetch failed (this API might not be implemented yet):',
-        error,
-      );
-      // Return a basic user profile object to prevent crashes
-      throw error; // Re-throw to let Promise.allSettled handle it
+      console.error('User profile fetch failed:', error);
+      throw error;
     }
   }
 
@@ -371,7 +305,7 @@ class ApiClient {
     try {
       return this.apiFetch<any>('/api/user-profiles/profile/preferences');
     } catch (error) {
-      console.warn('API Client: User preferences fetch failed:', error);
+      console.warn('User preferences fetch failed:', error);
       return null;
     }
   }
@@ -585,16 +519,12 @@ class ApiClient {
     data: Partial<WorkoutSession>,
   ): Promise<WorkoutSession> {
     const userId = await this.getCurrentUserId();
-    console.log('CreateWorkoutSession - userId:', userId);
-    console.log('CreateWorkoutSession - data:', data);
 
-    // Ensure required fields are present
     const requestBody = {
       ...data,
       userId,
-      name: (data as any).name || 'Workout Session', // Ensure name is always present
+      name: (data as any).name || 'Workout Session',
     };
-    console.log('CreateWorkoutSession - requestBody:', requestBody);
 
     return this.apiFetch<WorkoutSession>('/api/workouts/sessions', {
       method: 'POST',
@@ -616,17 +546,11 @@ class ApiClient {
   }
 
   async completeWorkoutSession(sessionId: string): Promise<WorkoutSession> {
-    console.log('CompleteWorkoutSession called with sessionId:', sessionId);
-
     const userId = await this.getCurrentUserId();
-    console.log('Got userId:', userId);
 
     try {
       // First get the session to preserve existing data
-      console.log('Fetching session data for sessionId:', sessionId);
-      console.log('Using userId:', userId);
       const session = await this.getWorkoutSession(sessionId);
-      console.log('Session fetch result:', session);
 
       let sessionData = session;
 
@@ -638,8 +562,6 @@ class ApiClient {
             : session.body;
       }
 
-      console.log('Processed session data:', sessionData);
-
       // Preserve exercises data - don't transform if already in correct format
       let exercisesToSend = sessionData.exercises || [];
 
@@ -649,7 +571,6 @@ class ApiClient {
         exercisesToSend[0] &&
         !exercisesToSend[0].exerciseId
       ) {
-        console.log('Transforming exercises from old format...');
         exercisesToSend = exercisesToSend.map(
           (exercise: any, index: number) => ({
             exerciseId:
@@ -684,21 +605,18 @@ class ApiClient {
         );
       }
 
-      console.log('Exercises to send:', exercisesToSend);
-
       const requestBody = {
         id: sessionId,
         userId: userId,
-        // Use proper field names matching web app and backend expectations
         name: (sessionData as any).name || 'Workout Session',
         startedAt:
           (sessionData as any).started_at ||
           sessionData.startTime ||
           sessionData.createdAt ||
           new Date().toISOString(),
-        completedAt: new Date().toISOString(), // This marks the session as completed
-        completed: true, // Explicitly mark as completed for clarity
-        exercises: exercisesToSend as any, // Use preserved exercises
+        completedAt: new Date().toISOString(),
+        completed: true,
+        exercises: exercisesToSend as any,
         notes: sessionData.notes || null,
         rating: (sessionData as any).rating || null,
         createdAt:
@@ -710,21 +628,6 @@ class ApiClient {
         durationMinutes: (sessionData as any).duration_minutes || null,
       };
 
-      console.log(
-        'Request body for completion:',
-        JSON.stringify(requestBody, null, 2),
-      );
-      console.log('Session ID being sent:', sessionId);
-      console.log('User ID being sent:', userId);
-      console.log(
-        'Session name being sent:',
-        (sessionData as any).name || 'Workout Session',
-      );
-      console.log(
-        'Exercises being sent:',
-        JSON.stringify(exercisesToSend, null, 2),
-      );
-
       // Use the correct endpoint for updating/completing sessions
       const result = await this.apiFetch<WorkoutSession>(
         '/api/workouts/sessions',
@@ -734,10 +637,9 @@ class ApiClient {
         },
       );
 
-      console.log('Completion API result:', result);
       return result;
     } catch (error) {
-      console.error('Error in completeWorkoutSession:', error);
+      console.error('Error completing workout session:', error);
       throw error;
     }
   }
@@ -870,11 +772,6 @@ class ApiClient {
     conversationId: string,
     title: string,
   ): Promise<any> {
-    console.log('API Client: updateConversationTitle called with:', {
-      conversationId,
-      title,
-    });
-
     const result = await this.aiFetch<any>(
       `/api/ai/conversations/${conversationId}/title`,
       {
@@ -883,7 +780,6 @@ class ApiClient {
       },
     );
 
-    console.log('API Client: updateConversationTitle result:', result);
     return result;
   }
 
@@ -1047,16 +943,12 @@ class ApiClient {
 
   // AI-specific fetch method with Lambda URL fallback
   private async aiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-    console.log('API Client: aiFetch called with path:', path, 'init:', init);
-
     const authHeaders = await this.getAuthHeaders();
     const headers = {
       'Content-Type': 'application/json',
       ...authHeaders,
       ...(init.headers || {}),
     };
-
-    console.log('API Client: aiFetch headers:', headers);
 
     const fetchOptions: RequestInit = {
       ...init,
@@ -1066,7 +958,6 @@ class ApiClient {
     // Try CloudFront first
     try {
       const cloudfrontUrl = `${baseUrl}${path}`;
-      console.log(`AI Request (CloudFront): ${cloudfrontUrl}`, fetchOptions);
 
       const res = await fetch(cloudfrontUrl, fetchOptions);
       if (res.ok) {
@@ -1075,34 +966,13 @@ class ApiClient {
 
       // If CloudFront returns timeout error, try Lambda URL
       if (res.status === 504) {
-        console.log('CloudFront timeout, trying Lambda URL...');
         throw new Error('CloudFront timeout');
       }
 
       const text = await res.text().catch(() => '');
       throw new Error(text || `Request failed: ${res.status}`);
     } catch (error) {
-      // Fallback to Lambda URL
-      const lambdaUrl =
-        'https://omk3alczw57uum2gv5ouwbseym0ymyut.lambda-url.eu-west-1.on.aws';
-      const lambdaFetchOptions: RequestInit = {
-        ...fetchOptions,
-        mode: 'cors',
-        credentials: 'omit',
-      };
-
-      console.log(
-        `AI Request (Lambda): ${lambdaUrl}${path}`,
-        lambdaFetchOptions,
-      );
-      const res = await fetch(`${lambdaUrl}${path}`, lambdaFetchOptions);
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(text || `Request failed: ${res.status}`);
-      }
-
-      return (await res.json()) as T;
+      throw error;
     }
   }
 
