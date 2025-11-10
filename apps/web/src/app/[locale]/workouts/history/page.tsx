@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 import {
@@ -131,6 +131,7 @@ type DifficultyFilter = 'all' | 'easy' | 'moderate' | 'hard' | 'extreme';
 export default function EnhancedWorkoutHistoryPage() {
   const router = useRouter();
   const user = useCurrentUser();
+  const locale = useLocale();
   const t = useTranslations('workout_history');
   const [history, setHistory] = useState<WorkoutHistory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,14 +185,9 @@ export default function EnhancedWorkoutHistoryPage() {
               ? JSON.parse(response.body)
               : response.body;
         }
-
+        console.log('Fetched workout history data:', data);
         const transformedHistory: WorkoutHistory = {
-          sessions: (
-            data.sessions ||
-            data.Sessions ||
-            data.workoutSessions ||
-            []
-          ).map((session: any) => ({
+          sessions: data.map((session: any) => ({
             id:
               session.id ||
               session.WorkoutSessionId ||
@@ -888,7 +884,7 @@ export default function EnhancedWorkoutHistoryPage() {
                         <button
                           onClick={() =>
                             router.push(
-                              `/workouts/sessions/start?id=${enhancedSession.id}`
+                              `/${locale}/workouts/sessions/start?id=${enhancedSession.id}`
                             )
                           }
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -955,7 +951,7 @@ export default function EnhancedWorkoutHistoryPage() {
                       <button
                         onClick={() =>
                           router.push(
-                            `/workouts/session-detail?id=${session.id}`
+                            `/${locale}/workouts/session-detail?id=${session.id}`
                           )
                         }
                         className="bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded-md text-sm"

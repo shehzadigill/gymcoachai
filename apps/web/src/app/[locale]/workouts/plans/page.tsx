@@ -19,7 +19,7 @@ import {
   Filter,
   Search,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
 
@@ -70,6 +70,7 @@ export default function WorkoutPlansPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const locale = useLocale();
   const t = useTranslations('workout_plans');
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [scheduledWorkouts, setScheduledWorkouts] = useState<
@@ -256,7 +257,7 @@ export default function WorkoutPlansPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => router.push('/workouts')}
+            onClick={() => router.push(`/${locale}/workouts`)}
             className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -271,7 +272,7 @@ export default function WorkoutPlansPage() {
           </div>
         </div>
         <button
-          onClick={() => router.push('/workouts/create')}
+          onClick={() => router.push(`/${locale}/workouts/create`)}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
@@ -362,6 +363,7 @@ export default function WorkoutPlansPage() {
         <ScheduleView
           scheduledWorkouts={scheduledWorkouts}
           onDeleteScheduledWorkout={deleteScheduledWorkout}
+          locale={locale}
         />
       ) : (
         <PlansGrid
@@ -372,7 +374,9 @@ export default function WorkoutPlansPage() {
           }}
           onStart={(plan) => {
             // Create a workout session from the plan
-            router.push(`/workouts/sessions/create?planId=${plan.id}`);
+            router.push(
+              `/${locale}/workouts/sessions/create?planId=${plan.id}`
+            );
           }}
           onUseTemplate={(plan) => {
             // Create a new workout plan from template
@@ -397,15 +401,17 @@ export default function WorkoutPlansPage() {
                 tags: plan.tags,
               })
             );
-            router.push(`/workouts/create?fromTemplate=${templateData}`);
+            router.push(
+              `/${locale}/workouts/create?fromTemplate=${templateData}`
+            );
           }}
           onCreatePlan={() => {
             if (view === 'templates') {
               // When in templates view with no templates, go to create page to make a template
-              router.push('/workouts/create?template=true');
+              router.push(`/${locale}/workouts/create?template=true`);
             } else {
               // Navigate to create page for new plans
-              router.push('/workouts/create');
+              router.push(`/${locale}/workouts/create`);
             }
           }}
           loading={loading}
@@ -433,9 +439,11 @@ export default function WorkoutPlansPage() {
 function ScheduleView({
   scheduledWorkouts,
   onDeleteScheduledWorkout,
+  locale,
 }: {
   scheduledWorkouts: ScheduledWorkout[];
   onDeleteScheduledWorkout: (scheduleId: string, workoutName: string) => void;
+  locale: string;
 }) {
   const today = new Date().toISOString().split('T')[0];
   const upcoming = scheduledWorkouts.filter(
@@ -466,6 +474,7 @@ function ScheduleView({
                   key={workout.id}
                   workout={workout}
                   onDelete={onDeleteScheduledWorkout}
+                  locale={locale}
                 />
               ))
           )}
@@ -487,6 +496,7 @@ function ScheduleView({
                 workout={workout}
                 isCompact
                 onDelete={onDeleteScheduledWorkout}
+                locale={locale}
               />
             ))}
         </div>
@@ -718,10 +728,12 @@ function ScheduledWorkoutCard({
   workout,
   isCompact = false,
   onDelete,
+  locale,
 }: {
   workout: ScheduledWorkout;
   isCompact?: boolean;
   onDelete?: (scheduleId: string, workoutName: string) => void;
+  locale: string;
 }) {
   const router = useRouter();
 
@@ -743,7 +755,7 @@ function ScheduledWorkoutCard({
           <button
             onClick={() =>
               router.push(
-                `/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
+                `/${locale}/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
               )
             }
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -792,7 +804,7 @@ function ScheduledWorkoutCard({
         <button
           onClick={() =>
             router.push(
-              `/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
+              `/${locale}/workouts/sessions/create?planId=${workout.planId}&week=${workout.week}&day=${workout.day}`
             )
           }
           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"

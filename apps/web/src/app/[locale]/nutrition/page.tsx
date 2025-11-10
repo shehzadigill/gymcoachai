@@ -231,16 +231,25 @@ export default function NutritionPage() {
       setLoading(true);
       setError(null);
 
-      // Fetch both meals and user profile to get daily goals
-      const [response, userProfile] = await Promise.all([
+      // Fetch meals, profile, and preferences separately (preferences are on separate endpoint)
+      const [response, userProfile, userPreferences] = await Promise.all([
         api.getMealsByDate(selectedDate),
         api.getUserProfile().catch((e) => {
           console.warn('Failed to fetch user profile:', e);
           return null;
         }),
+        api.getUserPreferences().catch((e) => {
+          console.warn('Failed to fetch user preferences:', e);
+          return null;
+        }),
       ]);
-      // Store user profile data for use throughout the component
-      setUserProfileData(userProfile);
+
+      // Merge profile with preferences for use throughout the component
+      const mergedProfile = {
+        ...userProfile,
+        preferences: userPreferences,
+      };
+      setUserProfileData(mergedProfile);
 
       if (response) {
         // Handle both response formats: new API format { meals: [] } and old format { body: [] }
@@ -282,13 +291,13 @@ export default function NutritionPage() {
         calculateDailyNutrition(
           apiMeals,
           currentWaterCount ?? waterCount,
-          userProfile
+          mergedProfile
         );
       } else {
         // Fallback to empty state
         setMeals([]);
         setDailyNutrition(
-          getDefaultNutrition(currentWaterCount ?? waterCount, userProfile)
+          getDefaultNutrition(currentWaterCount ?? waterCount, mergedProfile)
         );
       }
     } catch (e: any) {
@@ -331,8 +340,8 @@ export default function NutritionPage() {
     currentWater: number = 0,
     userProfile?: any
   ): DailyNutrition => {
-    const profileData = userProfile?.body || userProfile || {};
-    const dailyGoals = profileData?.preferences?.dailyGoals;
+    // userProfile now includes preferences merged in from separate endpoint
+    const dailyGoals = userProfile?.preferences?.dailyGoals;
 
     return {
       calories: 0,
@@ -376,9 +385,8 @@ export default function NutritionPage() {
       }
     );
 
-    // Get daily goals from user profile preferences
-    const profileData = userProfile?.body || userProfile || {};
-    const dailyGoals = profileData?.preferences?.dailyGoals;
+    // Get daily goals from user preferences (already merged in from separate endpoint)
+    const dailyGoals = userProfile?.preferences?.dailyGoals;
 
     setDailyNutrition({
       calories: Math.round(totals.calories),

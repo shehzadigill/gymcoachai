@@ -77,7 +77,7 @@ export default function SignInPage() {
         {/* Back to Home Link */}
         <div className="text-center">
           <Link
-            href={locale === 'en' ? '/' : `/${locale}`}
+            href={`/${locale}`}
             className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -175,9 +175,7 @@ export default function SignInPage() {
             <p className="text-sm text-gray-600">
               {t('no_account')}{' '}
               <Link
-                href={
-                  locale === 'en' ? '/auth/signup' : `/${locale}/auth/signup`
-                }
+                href={`/${locale}/auth/signup`}
                 className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
               >
                 {t('signup_link')}
@@ -188,11 +186,7 @@ export default function SignInPage() {
           {/* Forgot Password Link */}
           <div className="text-center">
             <Link
-              href={
-                locale === 'en'
-                  ? '/auth/forgot-password'
-                  : `/${locale}/auth/forgot-password`
-              }
+              href={`/${locale}/auth/forgot-password`}
               className="text-sm text-indigo-600 hover:text-indigo-500 transition-colors"
             >
               {t('forgot_password')}

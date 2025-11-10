@@ -61,12 +61,13 @@ export default function NutritionScreen({navigation}: any) {
     try {
       setLoading(true);
 
-      const [mealsData, statsData, waterData, profileData] =
+      const [mealsData, statsData, waterData, profileData, preferencesData] =
         await Promise.allSettled([
           apiClient.getMealsByDate(today),
           apiClient.getNutritionStats(),
           apiClient.getWater(today),
           apiClient.getUserProfile(user?.id || ''),
+          apiClient.getUserPreferences(),
         ]);
 
       console.log('NutritionScreen: Meals data response:', mealsData);
@@ -116,7 +117,19 @@ export default function NutritionScreen({navigation}: any) {
 
       if (profileData.status === 'fulfilled') {
         console.log('NutritionScreen: User profile value:', profileData.value);
-        setUserProfile(profileData.value);
+        // Merge preferences with profile if preferences were fetched
+        let mergedProfile = profileData.value;
+        if (preferencesData.status === 'fulfilled' && preferencesData.value) {
+          console.log(
+            'NutritionScreen: User preferences value:',
+            preferencesData.value,
+          );
+          mergedProfile = {
+            ...profileData.value,
+            preferences: preferencesData.value,
+          };
+        }
+        setUserProfile(mergedProfile);
       } else {
         console.log(
           'NutritionScreen: User profile request failed (this is expected if API is not implemented):',

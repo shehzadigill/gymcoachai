@@ -210,10 +210,16 @@ export default function ProfilePage() {
       setLoading(true);
       setError(null);
 
-      const response = await api.getUserProfile();
+      // Fetch both profile and preferences separately since they're on different endpoints
+      const [profileResponse, preferencesResponse] = await Promise.all([
+        api.getUserProfile(),
+        api.getUserPreferences(),
+      ]);
 
-      if (response) {
-        const profileData = response;
+      if (profileResponse) {
+        const profileData = profileResponse;
+
+        // Merge profile data with preferences from the separate endpoint
         setProfile({
           ...createDefaultProfile(user),
           ...profileData,
@@ -221,15 +227,23 @@ export default function ProfilePage() {
           email: profileData.email || user?.email || '',
           preferences: {
             ...createDefaultProfile(user).preferences,
-            ...profileData.preferences,
+            // Use preferences from the separate endpoint, not from profile
+            ...(preferencesResponse || {}),
             notifications: {
               ...createDefaultProfile(user).preferences.notifications,
-              ...profileData.preferences?.notifications,
+              ...(preferencesResponse?.notifications || {}),
             },
             privacy: {
               ...createDefaultProfile(user).preferences.privacy,
-              ...profileData.preferences?.privacy,
+              ...(preferencesResponse?.privacy || {}),
             },
+            // Ensure aiTrainer and dailyGoals come from preferences endpoint
+            aiTrainer:
+              preferencesResponse?.aiTrainer ||
+              createDefaultProfile(user).preferences.aiTrainer,
+            dailyGoals:
+              preferencesResponse?.dailyGoals ||
+              createDefaultProfile(user).preferences.dailyGoals,
           },
         });
       } else {
@@ -321,7 +335,8 @@ export default function ProfilePage() {
       setProfile(updatedProfile);
 
       try {
-        await api.updateUserPreferences(updates);
+        // Use the separate preferences endpoint to avoid confusion with profile endpoint
+        await api.updateUserPreferencesSeparate(updates);
         setSuccess('Preferences updated successfully');
       } catch (error) {
         console.error('Error saving preferences:', error);
@@ -991,7 +1006,7 @@ function GoalsTab({
 
   const saveDailyGoals = async () => {
     try {
-      await api.updateDailyGoals(dailyGoals);
+      await api.updateUserPreferencesSeparate({ dailyGoals });
       alert('Daily goals saved successfully!');
     } catch (error) {
       console.error('Error saving daily goals:', error);
@@ -1018,10 +1033,7 @@ function GoalsTab({
                   type="number"
                   value={dailyGoals.calories}
                   onChange={(e) =>
-                    updateDailyGoal(
-                      'calories',
-                      parseInt(e.target.value) || 2000
-                    )
+                    updateDailyGoal('calories', parseInt(e.target.value))
                   }
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="2000"
@@ -1041,7 +1053,7 @@ function GoalsTab({
                   type="number"
                   value={dailyGoals.water}
                   onChange={(e) =>
-                    updateDailyGoal('water', parseInt(e.target.value) || 8)
+                    updateDailyGoal('water', parseInt(e.target.value))
                   }
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="8"
@@ -1061,7 +1073,7 @@ function GoalsTab({
                   type="number"
                   value={dailyGoals.protein}
                   onChange={(e) =>
-                    updateDailyGoal('protein', parseInt(e.target.value) || 150)
+                    updateDailyGoal('protein', parseInt(e.target.value))
                   }
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="150"
@@ -1081,7 +1093,7 @@ function GoalsTab({
                   type="number"
                   value={dailyGoals.carbs}
                   onChange={(e) =>
-                    updateDailyGoal('carbs', parseInt(e.target.value) || 200)
+                    updateDailyGoal('carbs', parseInt(e.target.value))
                   }
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="200"
@@ -1101,7 +1113,7 @@ function GoalsTab({
                   type="number"
                   value={dailyGoals.fat}
                   onChange={(e) =>
-                    updateDailyGoal('fat', parseInt(e.target.value) || 65)
+                    updateDailyGoal('fat', parseInt(e.target.value))
                   }
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="65"
@@ -1266,6 +1278,7 @@ function AITrainerTab({
               supplementPreferences: [],
             });
           }
+          // Note: dailyGoals are handled separately in the GoalsTab component
         } catch (error) {
           console.error(
             '❌ Error fetching fresh AI trainer preferences:',

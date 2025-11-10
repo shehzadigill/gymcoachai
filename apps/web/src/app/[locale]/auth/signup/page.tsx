@@ -73,10 +73,7 @@ export default function SignUpPage() {
       });
 
       setSuccess(true);
-      const verificationPath =
-        locale === 'en'
-          ? `/auth/codeVerification?username=${formData.username}`
-          : `/${locale}/auth/codeVerification?username=${formData.username}`;
+      const verificationPath = `/${locale}/auth/codeVerification?username=${formData.username}`;
       router.push(verificationPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('signup_error'));
@@ -107,18 +104,16 @@ export default function SignUpPage() {
               size="lg"
               className="w-full"
               onClick={() => {
-                const verificationPath =
-                  locale === 'en'
-                    ? `/auth/codeVerification?username=${formData.username}`
-                    : `/${locale}/auth/codeVerification?username=${formData.username}`;
-                router.push(verificationPath);
+                router.push(
+                  `/${locale}/auth/codeVerification?username=${formData.username}`
+                );
               }}
             >
               {t('verify_account')}
             </Button>
 
             <Link
-              href={locale === 'en' ? '/auth/signin' : `/${locale}/auth/signin`}
+              href={`/${locale}/auth/signin`}
               className="block text-blue-600 hover:text-blue-700 font-medium"
             >
               {t('back_to_signin')}
@@ -182,7 +177,7 @@ export default function SignUpPage() {
           {/* Header */}
           <div className="mb-8">
             <Link
-              href={locale === 'en' ? '/' : `/${locale}`}
+              href={`/${locale}`}
               className="inline-flex items-center text-gray-600 hover:text-blue-600 mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -369,14 +364,14 @@ export default function SignUpPage() {
                 <span className="ml-2 text-sm text-gray-600">
                   I agree to the{' '}
                   <Link
-                    href="/terms"
+                    href={`/${locale}/terms`}
                     className="text-blue-600 hover:text-blue-700"
                   >
                     Terms of Service
                   </Link>{' '}
                   and{' '}
                   <Link
-                    href="/privacy"
+                    href={`/${locale}/privacy`}
                     className="text-blue-600 hover:text-blue-700"
                   >
                     Privacy Policy
@@ -399,7 +394,7 @@ export default function SignUpPage() {
               <p className="text-gray-600">
                 Already have an account?{' '}
                 <Link
-                  href="/auth/signin"
+                  href={`/${locale}/auth/signin`}
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >
                   Sign in here

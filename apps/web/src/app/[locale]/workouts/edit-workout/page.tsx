@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Save,
 } from 'lucide-react';
+import { useLocale } from 'next-intl';
 
 interface Exercise {
   id: string;
@@ -37,6 +38,7 @@ interface Workout {
 export default function EditWorkoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const sessionId = searchParams.get('id');
 
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -72,7 +74,7 @@ export default function EditWorkoutPage() {
     try {
       setSaving(true);
       await api.updateWorkoutSession(workout.id, workout);
-      router.push('/workouts');
+      router.push(`/${locale}/workouts`);
     } catch (err: any) {
       console.error('Error saving workout:', err);
       setError(err?.message || 'Failed to save workout');
@@ -135,7 +137,7 @@ export default function EditWorkoutPage() {
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <button
-            onClick={() => router.push('/workouts')}
+            onClick={() => router.push(`/${locale}/workouts`)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Back to Workouts
@@ -153,7 +155,7 @@ export default function EditWorkoutPage() {
             Workout Not Found
           </h2>
           <button
-            onClick={() => router.push('/workouts')}
+            onClick={() => router.push(`/${locale}/workouts`)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Back to Workouts
@@ -170,7 +172,7 @@ export default function EditWorkoutPage() {
           <div className="flex items-center justify-between py-6">
             <div className="flex items-center">
               <button
-                onClick={() => router.push('/workouts')}
+                onClick={() => router.push(`/${locale}/workouts`)}
                 className="mr-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <ArrowLeft className="h-5 w-5" />

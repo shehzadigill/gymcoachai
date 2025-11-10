@@ -61,7 +61,7 @@ function CodeVerificationForm() {
             {t('account_verified_message')}
           </p>
           <Link
-            href={locale === 'en' ? '/auth/signin' : `/${locale}/auth/signin`}
+            href={`/${locale}/auth/signin`}
             className="text-primary-600 hover:text-primary-700 font-medium"
           >
             {t('go_to_signin')}
@@ -120,7 +120,7 @@ function CodeVerificationForm() {
 
         <div className="mt-6 text-center">
           <Link
-            href={locale === 'en' ? '/auth/signin' : `/${locale}/auth/signin`}
+            href={`/${locale}/auth/signin`}
             className="text-primary-600 hover:text-primary-700 font-medium"
           >
             {t('back_to_signin')}

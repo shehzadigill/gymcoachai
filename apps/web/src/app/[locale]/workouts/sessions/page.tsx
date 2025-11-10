@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   CheckCircle,
   Clock,
@@ -67,6 +67,7 @@ interface WorkoutSession {
 
 export default function WorkoutSessionsPage() {
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations('workout_sessions');
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -276,7 +277,7 @@ export default function WorkoutSessionsPage() {
   };
 
   const handleStartSession = (sessionId: string) => {
-    router.push(`/workouts/sessions/start?id=${sessionId}`);
+    router.push(`/${locale}/workouts/sessions/start?id=${sessionId}`);
   };
 
   const handleCompleteSession = async (sessionId: string) => {

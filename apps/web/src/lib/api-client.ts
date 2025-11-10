@@ -312,6 +312,8 @@ export const api = {
   },
 
   // Goals and preferences specific methods
+  // DEPRECATED: Use updateUserPreferencesSeparate or updateDailyGoalsSeparate instead
+  // This method updates via the profile endpoint which can cause confusion
   async updateDailyGoals(dailyGoals: {
     calories: number;
     water: number;
@@ -332,6 +334,8 @@ export const api = {
     });
   },
 
+  // DEPRECATED: Use updateUserPreferencesSeparate instead
+  // This method is kept for backwards compatibility but updateUserPreferencesSeparate is preferred
   async updateUserPreferences(preferences: any, userId?: string) {
     // Send directly to preferences endpoint, not wrapped in a preferences object
     const id = userId || (await getCurrentUserId());
@@ -341,7 +345,15 @@ export const api = {
     });
   },
 
-  // Separated preferences methods for cleaner architecture
+  // ========== PREFERRED PREFERENCES METHODS ==========
+  // Use these methods for all preference operations (aiTrainer, dailyGoals, etc.)
+  // These send data to the dedicated preferences endpoint: /api/user-profiles/profile/preferences
+  // NOT to the profile endpoint, keeping preferences separate from profile data
+
+  /**
+   * Get user preferences (aiTrainer, dailyGoals, notifications, privacy, etc.)
+   * Fetches from the dedicated preferences endpoint
+   */
   async getUserPreferences(userId?: string) {
     try {
       const id = userId || (await getCurrentUserId());
@@ -355,6 +367,11 @@ export const api = {
     }
   },
 
+  /**
+   * Update user preferences (aiTrainer, dailyGoals, notifications, privacy, etc.)
+   * Updates via the dedicated preferences endpoint
+   * Use this method for all preference updates to keep them separate from profile data
+   */
   async updateUserPreferencesSeparate(preferences: any, userId?: string) {
     const id = userId || (await getCurrentUserId());
     return apiFetch<any>(`/api/user-profiles/profile/preferences/${id}`, {
@@ -363,6 +380,10 @@ export const api = {
     });
   },
 
+  /**
+   * Update daily nutrition goals (calories, protein, carbs, fat, water)
+   * Uses the preferences endpoint to keep it separate from profile
+   */
   async updateDailyGoalsSeparate(
     dailyGoals: {
       calories: number;
@@ -381,6 +402,10 @@ export const api = {
     );
   },
 
+  /**
+   * Update AI trainer preferences (coaching style, communication frequency, etc.)
+   * Uses the preferences endpoint to keep it separate from profile
+   */
   async updateAIPreferences(aiPreferences: any, userId?: string) {
     return this.updateUserPreferencesSeparate(
       {
@@ -792,24 +817,50 @@ export const api = {
           : sessionData.body;
     }
 
+    // Transform exercises to ensure proper format - this is critical for data persistence
+    const transformedExercises = (sessionData.exercises || []).map(
+      (exercise: any, index: number) => ({
+        exerciseId: exercise.exercise_id || exercise.exerciseId,
+        name: exercise.exercise_name || exercise.name,
+        notes: exercise.notes || null,
+        order: exercise.order || index,
+        sets: (exercise.sets || []).map((set: any) => ({
+          setNumber: set.set_number || set.setNumber,
+          reps: set.reps || null,
+          weight: set.weight || null,
+          durationSeconds: set.duration_seconds || set.durationSeconds || null,
+          restSeconds: set.rest_seconds || set.restSeconds || null,
+          completed: set.completed || false,
+          notes: set.notes || null,
+        })),
+      })
+    );
+
+    // Calculate duration if not already set
+    const startTime = sessionData.started_at || sessionData.created_at;
+    const duration =
+      sessionData.duration_minutes ||
+      (startTime
+        ? Math.round(
+            (new Date().getTime() - new Date(startTime).getTime()) / (1000 * 60)
+          )
+        : 0);
+
     return apiFetch<any>(`/api/workouts/sessions`, {
       method: 'PUT',
       body: JSON.stringify({
         id: sessionId,
         userId: id,
         name: sessionData.name || 'Workout Session',
-        startedAt:
-          sessionData.started_at ||
-          sessionData.created_at ||
-          new Date().toISOString(),
+        startedAt: startTime || new Date().toISOString(),
         completedAt: new Date().toISOString(), // This marks the session as completed
         completed: true, // Explicitly mark as completed for clarity
-        exercises: sessionData.exercises || [], // Preserve exercises data
+        exercises: transformedExercises, // Use properly transformed exercises data
         notes: sessionData.notes || null,
         rating: sessionData.rating || null,
         createdAt: sessionData.created_at || new Date().toISOString(),
         workoutPlanId: sessionData.workout_plan_id || null,
-        durationMinutes: sessionData.duration_minutes || null,
+        durationMinutes: duration,
       }),
     });
   },

@@ -83,7 +83,12 @@ function ResetPasswordForm() {
       });
       setSuccess(true);
       setTimeout(() => {
-        router.push('/auth/signin');
+        // Get locale from current URL
+        const locale =
+          typeof window !== 'undefined'
+            ? window.location.pathname.match(/^\/([a-z]{2})\//)?.[1] || 'en'
+            : 'en';
+        router.push(`/${locale}/auth/signin`);
       }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reset password');

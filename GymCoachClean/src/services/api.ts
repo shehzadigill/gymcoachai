@@ -273,7 +273,11 @@ class ApiClient {
     });
   }
 
-  // Goals and preferences specific methods
+  // ⚠️ DEPRECATED METHODS - Use separate preferences methods below instead
+  // These methods update the entire profile when you only want to update preferences
+  /**
+   * @deprecated Use updateDailyGoalsSeparate() instead
+   */
   async updateDailyGoals(dailyGoals: {
     calories: number;
     water: number;
@@ -294,13 +298,16 @@ class ApiClient {
     });
   }
 
+  /**
+   * @deprecated Use updateUserPreferencesSeparate() instead
+   */
   async updateUserPreferences(preferences: any): Promise<UserProfile> {
     return this.updateUserProfile({
       preferences: preferences,
     });
   }
 
-  // Separated preferences methods for cleaner architecture
+  // ✅ PREFERRED PREFERENCES METHODS - Use these for preferences operations
   async getUserPreferences(): Promise<any> {
     try {
       return this.apiFetch<any>('/api/user-profiles/profile/preferences');

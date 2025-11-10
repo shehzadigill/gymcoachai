@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../../../../../lib/api-client';
+import { useLocale } from 'next-intl';
 
 interface WorkoutSession {
   id: string;
@@ -74,6 +75,7 @@ interface ExerciseSet {
 export default function StartSessionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const sessionId = searchParams.get('id');
 
   const [session, setSession] = useState<WorkoutSession | null>(null);
@@ -345,7 +347,9 @@ export default function StartSessionPage() {
       await api.updateWorkoutSession(session.id, completedSession);
 
       // Navigate to session detail with completion success
-      router.push(`/workouts/session-detail?id=${session.id}&completed=true`);
+      router.push(
+        `/${locale}/workouts/session-detail?id=${session.id}&completed=true`
+      );
     } catch (err) {
       console.error('Error completing session:', err);
       setError('Failed to complete session');
@@ -440,7 +444,7 @@ export default function StartSessionPage() {
             {error || 'Session not found'}
           </p>
           <button
-            onClick={() => router.push('/workouts')}
+            onClick={() => router.push(`/${locale}/workouts`)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Back to Workouts

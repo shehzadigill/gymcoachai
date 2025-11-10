@@ -98,6 +98,7 @@ export default function WorkoutsScreen({navigation}: any) {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAllSessions, setShowAllSessions] = useState(false);
   const [createType, setCreateType] = useState<
     'session' | 'plan' | 'exercise' | 'template'
   >('session');
@@ -571,17 +572,33 @@ export default function WorkoutsScreen({navigation}: any) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {t('workouts_screen.sections.recent_sessions')}
+            {showAllSessions
+              ? t('workouts_screen.sections.all_sessions', 'All Sessions')
+              : t('workouts_screen.sections.recent_sessions')}
           </Text>
-          <TouchableOpacity onPress={() => setActiveView('plans')}>
-            <Text style={styles.sectionAction}>
-              {t('common.view_all', 'View All')}
-            </Text>
-          </TouchableOpacity>
+          {sessions && sessions.length > 5 && (
+            <TouchableOpacity
+              onPress={() => {
+                console.log(`View ${showAllSessions ? 'Less' : 'All'} pressed`);
+                setShowAllSessions(!showAllSessions);
+              }}
+              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={
+                showAllSessions ? 'View recent sessions' : 'View all sessions'
+              }>
+              <Text style={styles.sectionAction}>
+                {showAllSessions
+                  ? t('common.view_less', 'View Less')
+                  : t('common.view_all', 'View All')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         {sessions && sessions.length > 0 ? (
           <FlatList
-            data={sessions.slice(0, 5)}
+            data={showAllSessions ? sessions : sessions.slice(0, 5)}
             keyExtractor={(item, index) => item.id || index.toString()}
             renderItem={({item: session}) => (
               <TouchableOpacity
@@ -1565,6 +1582,9 @@ export default function WorkoutsScreen({navigation}: any) {
                         setShowSessionDetail(false);
                         navigation.navigate('Session', {
                           sessionId: selectedSession.id,
+                          quickWorkout:
+                            selectedSession.name === 'Quick Workout' ||
+                            !selectedSession.workout,
                         });
                       }}
                       style={styles.actionButton}

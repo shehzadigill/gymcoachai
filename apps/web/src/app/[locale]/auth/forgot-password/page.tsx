@@ -56,11 +56,7 @@ export default function ForgotPasswordPage() {
             <p className="text-blue-800 text-sm">
               <strong>{t('next_steps')}</strong> {t('go_to_reset_page')}{' '}
               <Link
-                href={
-                  locale === 'en'
-                    ? '/auth/reset-password'
-                    : `/${locale}/auth/reset-password`
-                }
+                href={`/${locale}/auth/reset-password`}
                 className="text-blue-600 hover:text-blue-700 underline"
               >
                 {t('password_reset_page')}
@@ -80,9 +76,7 @@ export default function ForgotPasswordPage() {
               {t('try_again')}
             </Button>
 
-            <Link
-              href={locale === 'en' ? '/auth/signin' : `/${locale}/auth/signin`}
-            >
+            <Link href={`/${locale}/auth/signin`}>
               <Button variant="primary" className="w-full">
                 {t('back_to_signin_button')}
               </Button>
@@ -138,7 +132,7 @@ export default function ForgotPasswordPage() {
           {/* Header */}
           <div className="mb-8">
             <Link
-              href={locale === 'en' ? '/auth/signin' : `/${locale}/auth/signin`}
+              href={`/${locale}/auth/signin`}
               className="inline-flex items-center text-gray-600 hover:text-blue-600 mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -199,9 +193,7 @@ export default function ForgotPasswordPage() {
               <p className="text-gray-600">
                 {t('remember_password')}{' '}
                 <Link
-                  href={
-                    locale === 'en' ? '/auth/signin' : `/${locale}/auth/signin`
-                  }
+                  href={`/${locale}/auth/signin`}
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >
                   {t('signin_here')}
@@ -214,7 +206,7 @@ export default function ForgotPasswordPage() {
             <p>
               {t('contact_support')}{' '}
               <Link
-                href={locale === 'en' ? '/support' : `/${locale}/support`}
+                href={`/${locale}/support`}
                 className="text-blue-600 hover:text-blue-700"
               >
                 {t('support_team')}

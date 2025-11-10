@@ -138,13 +138,19 @@ export function AINotificationHandler({ className = '' }: AINotificationProps) {
   const handleNotificationClick = (
     notification: ProactiveInsight | ProgressMonitoringAlert
   ) => {
+    // Get locale from current URL
+    const locale =
+      typeof window !== 'undefined'
+        ? window.location.pathname.match(/^\/([a-z]{2})\//)?.[1] || 'en'
+        : 'en';
+
     // Navigate to relevant page or open AI trainer
     if ('type' in notification) {
       // Proactive insight - open AI trainer
-      window.location.href = '/ai-trainer';
+      window.location.href = `/${locale}/ai-trainer`;
     } else {
       // Progress alert - open analytics or dashboard
-      window.location.href = '/dashboard';
+      window.location.href = `/${locale}/dashboard`;
     }
   };
 
@@ -289,8 +295,15 @@ export function AINotificationHandler({ className = '' }: AINotificationProps) {
             <div className="p-3 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={() => {
+                  // Get locale from current URL
+                  const locale =
+                    typeof window !== 'undefined'
+                      ? window.location.pathname.match(
+                          /^\/([a-z]{2})\//
+                        )?.[1] || 'en'
+                      : 'en';
                   setIsVisible(false);
-                  window.location.href = '/ai-trainer';
+                  window.location.href = `/${locale}/ai-trainer`;
                 }}
                 className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
               >

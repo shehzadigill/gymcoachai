@@ -47,10 +47,17 @@ export default function SessionScreen({route, navigation}: any) {
         if (session?.exercises) {
           setExercises(session.exercises);
         }
+        // Set sessionStarted if status is in_progress
+        if (session?.status === 'in_progress') {
+          setSessionStarted(true);
+          if (session.startTime) {
+            setStartTime(new Date(session.startTime));
+          }
+        }
       }
 
-      // Load exercise library for quick workout
-      if (quickWorkout) {
+      // Load exercise library for quick workout or resumed quick workout session
+      if (quickWorkout || (sessionId && !workoutId)) {
         try {
           console.log('Loading exercise library for quick workout...');
           const library = await apiClient.getExercises();
@@ -59,11 +66,30 @@ export default function SessionScreen({route, navigation}: any) {
             library?.length || 0,
             'exercises',
           );
-          setExerciseLibrary(library?.slice(0, 20) || []); // Load first 20 exercises
+          if (library && Array.isArray(library) && library.length > 0) {
+            setExerciseLibrary(library.slice(0, 50) || []); // Load first 50 exercises
+          } else {
+            console.warn('Exercise library is empty or not an array');
+            setExerciseLibrary([]);
+          }
         } catch (error) {
           console.error('Failed to load exercise library:', error);
-          // Set empty array as fallback
-          setExerciseLibrary([]);
+          // Show an alert to user about the issue
+          Alert.alert(
+            'Exercise Library',
+            'Unable to load exercises. Please check your connection and try again.',
+            [
+              {
+                text: 'Retry',
+                onPress: () => loadSessionData(),
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => setExerciseLibrary([]),
+              },
+            ],
+          );
         }
       }
     } catch (error) {

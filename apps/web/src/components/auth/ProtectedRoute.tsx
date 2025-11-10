@@ -27,7 +27,13 @@ export function ProtectedRoute({
     if (!isAuthenticated) {
       const currentPath = window.location.pathname + window.location.search;
       const redirectUrl = encodeURIComponent(currentPath);
-      router.push(`${redirectTo}?redirect=${redirectUrl}`);
+      // Extract locale from current path
+      const localeMatch = currentPath.match(/^\/([a-z]{2})\//);
+      const locale = localeMatch ? localeMatch[1] : 'en';
+      const localizedRedirectTo = redirectTo.startsWith('/')
+        ? `/${locale}${redirectTo}`
+        : redirectTo;
+      router.push(`${localizedRedirectTo}?redirect=${redirectUrl}`);
       return;
     }
 

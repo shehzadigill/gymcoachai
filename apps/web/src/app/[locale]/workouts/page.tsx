@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { api } from '../../../lib/api-client';
 import { aiService } from '../../../lib/ai-service-client';
 import { useCurrentUser } from '@packages/auth';
@@ -109,6 +109,7 @@ export default function WorkoutsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const locale = useLocale();
   const t = useTranslations('workouts_page');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
@@ -133,7 +134,7 @@ export default function WorkoutsPage() {
     setActiveView(view);
     const params = new URLSearchParams(searchParams.toString());
     params.set('view', view);
-    router.push(`/workouts?${params.toString()}`);
+    router.push(`/${locale}/workouts?${params.toString()}`);
   };
 
   // Exercises state
@@ -651,7 +652,7 @@ export default function WorkoutsPage() {
 
   const editWorkoutSession = (workout: Workout) => {
     // Navigate to edit page or set up edit modal
-    router.push(`/workouts/edit-workout?id=${workout.id}`);
+    router.push(`/${locale}/workouts/edit-workout?id=${workout.id}`);
   };
 
   const startPlanWorkout = async (plan: WorkoutPlan) => {
@@ -744,21 +745,21 @@ export default function WorkoutsPage() {
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
         <button
-          onClick={() => router.push('/workouts/sessions/create')}
+          onClick={() => router.push(`/${locale}/workouts/sessions/create`)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Play className="h-4 w-4" />
           <span>{t('quick_workout')}</span>
         </button>
         <button
-          onClick={() => router.push('/workouts/plans')}
+          onClick={() => router.push(`/${locale}/workouts/plans`)}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Calendar className="h-4 w-4" />
           <span>{t('browse_plans')}</span>
         </button>
         <button
-          onClick={() => router.push('/workouts/exercises')}
+          onClick={() => router.push(`/${locale}/workouts/exercises`)}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Dumbbell className="h-4 w-4" />
@@ -941,7 +942,9 @@ export default function WorkoutsPage() {
           {/* Quick AI Actions */}
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => router.push('/ai-trainer?context=workout')}
+              onClick={() =>
+                router.push(`/${locale}/ai-trainer?context=workout`)
+              }
               className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
             >
               <Brain className="w-4 h-4" />

@@ -1246,6 +1246,11 @@ export class GymCoachAIStack extends cdk.Stack {
       description: 'CloudFront Distribution URL',
     });
 
+    new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
+      value: this.distribution.distributionId,
+      description: 'CloudFront Distribution ID',
+    });
+
     new cdk.CfnOutput(this, 'TableName', {
       value: this.mainTable.tableName,
       description: 'DynamoDB Table Name',

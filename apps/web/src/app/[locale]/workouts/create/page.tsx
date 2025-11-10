@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   Plus,
   Trash2,
@@ -58,6 +58,7 @@ export default function CreateWorkoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const locale = useLocale();
   const t = useTranslations('workout_create');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -277,7 +278,7 @@ export default function CreateWorkoutPage() {
         setTimeout(() => {
           // Navigate to templates tab if it's a template, otherwise to my-plans
           const targetView = isTemplate ? 'templates' : 'my-plans';
-          router.push(`/workouts/plans?view=${targetView}`);
+          router.push(`/${locale}/workouts/plans?view=${targetView}`);
         }, 1500);
       }
     } catch (e: any) {

@@ -126,6 +126,7 @@ export default function DashboardPage() {
           workoutSessions,
           workoutPlans,
           userProfile,
+          userPreferences,
           nutritionStats,
           bodyMeasurements,
           strengthProgress,
@@ -148,6 +149,10 @@ export default function DashboardPage() {
           api.getUserProfile().catch((e) => {
             console.warn('Failed to fetch user profile:', e);
             return { body: {} };
+          }),
+          api.getUserPreferences().catch((e) => {
+            console.warn('Failed to fetch user preferences:', e);
+            return null;
           }),
           api.getNutritionStats().catch((e) => {
             console.warn('Failed to fetch nutrition stats:', e);
@@ -387,9 +392,8 @@ export default function DashboardPage() {
         ).size;
 
         // Separate daily and weekly goals for better organization
-        // Extract daily goals from user profile preferences
-        const profileData = userProfile?.body || userProfile || {};
-        const dailyGoalsFromPrefs = profileData?.preferences?.dailyGoals;
+        // Extract daily goals from user preferences (fetched separately)
+        const dailyGoalsFromPrefs = userPreferences?.dailyGoals;
 
         const dailyGoals = [
           {
@@ -1142,33 +1146,39 @@ export default function DashboardPage() {
     );
   }
 
+  // Get locale from URL
+  const locale =
+    typeof window !== 'undefined'
+      ? window.location.pathname.match(/^\/([a-z]{2})\//)?.[1] || 'en'
+      : 'en';
+
   const quickActions = [
     {
       icon: <Play size={24} />,
       title: t('quick_actions.workouts'),
       description: t('quick_actions.workouts_desc'),
-      onClick: () => (window.location.href = '/workouts'),
+      onClick: () => (window.location.href = `/${locale}/workouts`),
       color: 'blue' as const,
     },
     {
       icon: <Utensils size={24} />,
       title: t('quick_actions.nutrition'),
       description: t('quick_actions.nutrition_desc'),
-      onClick: () => (window.location.href = '/nutrition'),
+      onClick: () => (window.location.href = `/${locale}/nutrition`),
       color: 'green' as const,
     },
     {
       icon: <Moon size={24} />,
       title: t('quick_actions.sleep'),
       description: t('quick_actions.sleep_desc'),
-      onClick: () => (window.location.href = '/sleep'),
+      onClick: () => (window.location.href = `/${locale}/sleep`),
       color: 'purple' as const,
     },
     {
       icon: <Camera size={24} />,
       title: t('quick_actions.progress_photo'),
       description: t('quick_actions.progress_photo_desc'),
-      onClick: () => (window.location.href = '/progress'),
+      onClick: () => (window.location.href = `/${locale}/progress`),
       color: 'orange' as const,
     },
   ];
@@ -1411,7 +1421,9 @@ export default function DashboardPage() {
               action={
                 <button
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  onClick={() => (window.location.href = '/workouts/history')}
+                  onClick={() =>
+                    (window.location.href = `/${locale}/workouts/history`)
+                  }
                 >
                   {t('view_details')}
                 </button>
@@ -1463,7 +1475,9 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs">{t('start_tracking_workouts')}</p>
                       <button
-                        onClick={() => (window.location.href = '/workouts')}
+                        onClick={() =>
+                          (window.location.href = `/${locale}/workouts`)
+                        }
                         className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
                       >
                         {t('start_workout')}
@@ -1643,7 +1657,9 @@ export default function DashboardPage() {
                 <ActivityFeed
                   activities={data?.recentActivities || []}
                   maxItems={6}
-                  onViewAll={() => (window.location.href = '/activity')}
+                  onViewAll={() =>
+                    (window.location.href = `/${locale}/activity`)
+                  }
                 />
               </div>
             </DashboardSection>

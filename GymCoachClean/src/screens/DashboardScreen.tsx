@@ -188,12 +188,17 @@ export default function DashboardScreen() {
 
       // Load critical data first (batch 1)
       console.log('Loading critical dashboard data (batch 1)...');
-      const [userProfileData, workoutPlans, workoutSessions] =
-        await Promise.allSettled([
-          apiClient.getUserProfile(user?.id || ''),
-          apiClient.getWorkouts(),
-          apiClient.getWorkoutSessions(),
-        ]);
+      const [
+        userProfileData,
+        userPreferencesData,
+        workoutPlans,
+        workoutSessions,
+      ] = await Promise.allSettled([
+        apiClient.getUserProfile(user?.id || ''),
+        apiClient.getUserPreferences(),
+        apiClient.getWorkouts(),
+        apiClient.getWorkoutSessions(),
+      ]);
 
       // Small delay before next batch to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -444,12 +449,12 @@ export default function DashboardScreen() {
         }
       }).length;
 
-      // Extract daily goals from user profile preferences
-      const profileData =
-        userProfileData.status === 'fulfilled'
-          ? (userProfileData.value as any)?.body || userProfileData.value || {}
-          : {};
-      const dailyGoalsFromPrefs = profileData?.preferences?.dailyGoals;
+      // Extract daily goals from user preferences (fetched separately)
+      const userPreferences =
+        userPreferencesData.status === 'fulfilled'
+          ? userPreferencesData.value
+          : null;
+      const dailyGoalsFromPrefs = userPreferences?.dailyGoals;
 
       // Separate daily and weekly goals
       const dailyGoals = [

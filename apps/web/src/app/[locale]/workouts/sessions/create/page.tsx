@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Clock, Dumbbell, Plus, Save } from 'lucide-react';
 import { api } from '../../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
+import { useLocale } from 'next-intl';
 
 interface WorkoutPlan {
   id: string;
@@ -52,6 +53,7 @@ export default function CreateWorkoutSessionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const locale = useLocale();
 
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,7 +165,7 @@ export default function CreateWorkoutSessionPage() {
       if (response) {
         setSuccess('Workout session created successfully!');
         setTimeout(() => {
-          router.push('/workouts/sessions');
+          router.push(`/${locale}/workouts/sessions`);
         }, 1500);
       }
     } catch (error) {
@@ -195,7 +197,7 @@ export default function CreateWorkoutSessionPage() {
 
       if (response) {
         // Redirect to start the session immediately
-        router.push(`/workouts/sessions/start?id=${response.id}`);
+        router.push(`/${locale}/workouts/sessions/start?id=${response.id}`);
       }
     } catch (error) {
       console.error('Failed to create and start workout session:', error);

@@ -74,15 +74,33 @@ aws s3 cp ../apps/web/out s3://$FRONTEND_BUCKET --recursive \
 
 echo "✅ Frontend deployment completed successfully!"
 
-# Get the CloudFront distribution URL
+# Get the CloudFront distribution ID and URL
+CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+    --output text \
+    --region eu-west-1)
+
 CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
     --stack-name $STACK_NAME \
     --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionURL`].OutputValue' \
     --output text \
     --region eu-west-1)
 
+if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+    echo "🔄 Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
+    INVALIDATION_ID=$(aws cloudfront create-invalidation \
+        --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+        --paths "/*" \
+        --query 'Invalidation.Id' \
+        --output text \
+        --region eu-west-1)
+    
+    echo "✅ Cache invalidation created with ID: $INVALIDATION_ID"
+    echo "⏳ Invalidation is in progress. This typically takes 2-5 minutes."
+else
+    echo "⚠️ Could not find CloudFront distribution ID from CloudFormation outputs"
+    echo "💡 You may need to manually invalidate the cache"
+fi
+
 echo "🌐 Frontend is now available at: $CLOUDFRONT_URL"
-echo "🔄 Note: CloudFront cache may take a few minutes to update"
-echo ""
-echo "To invalidate CloudFront cache, run:"
-echo "aws cloudfront create-invalidation --distribution-id <distribution-id> --paths '/*' --region eu-west-1"

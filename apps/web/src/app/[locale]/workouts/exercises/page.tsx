@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../../lib/api-client';
 import { useCurrentUser } from '@packages/auth';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   Plus,
   Search,
@@ -41,6 +41,7 @@ const difficulties = ['All', 'beginner', 'intermediate', 'advanced'];
 export default function ExerciseLibraryPage() {
   const router = useRouter();
   const user = useCurrentUser();
+  const locale = useLocale();
   const t = useTranslations('workout_exercises');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
@@ -236,7 +237,7 @@ export default function ExerciseLibraryPage() {
           <p className="text-gray-600 dark:text-gray-400">{t('subtitle')}</p>
         </div>
         <button
-          onClick={() => router.push('/workouts/exercises/create')}
+          onClick={() => router.push(`/${locale}/workouts/exercises/create`)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
@@ -452,7 +453,9 @@ export default function ExerciseLibraryPage() {
                 </button>
                 <button
                   onClick={() =>
-                    router.push(`/workouts/exercises/edit/${exercise.id}`)
+                    router.push(
+                      `/${locale}/workouts/exercises/edit/${exercise.id}`
+                    )
                   }
                   className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-md text-sm"
                 >
@@ -570,7 +573,7 @@ export default function ExerciseLibraryPage() {
                 <button
                   onClick={() => {
                     router.push(
-                      `/workouts/exercises/edit/${selectedExercise.id}`
+                      `/${locale}/workouts/exercises/edit/${selectedExercise.id}`
                     );
                     setSelectedExercise(null);
                   }}

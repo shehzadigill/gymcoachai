@@ -3,6 +3,7 @@ const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
 
 const client = new DynamoDBClient({ region: 'eu-west-1' });
+process.env.AWS_PROFILE = 'shehzadi';
 const dynamoDb = DynamoDBDocumentClient.from(client);
 const tableName = 'gymcoach-ai-main';
 

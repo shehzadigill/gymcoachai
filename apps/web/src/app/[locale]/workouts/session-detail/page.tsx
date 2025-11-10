@@ -17,6 +17,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
+import { useLocale } from 'next-intl';
 
 interface WorkoutSession {
   id: string;
@@ -69,6 +70,7 @@ interface ExerciseDetails {
 export default function SessionDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const sessionId = searchParams.get('id');
 
   const [session, setSession] = useState<WorkoutSession | null>(null);
@@ -147,11 +149,11 @@ export default function SessionDetailPage() {
   };
 
   const handleResumeSession = () => {
-    router.push(`/workouts/sessions/start?id=${sessionId}`);
+    router.push(`/${locale}/workouts/sessions/start?id=${sessionId}`);
   };
 
   const handleEditSession = () => {
-    router.push(`/workouts/edit-workout?id=${sessionId}`);
+    router.push(`/${locale}/workouts/edit-workout?id=${sessionId}`);
   };
 
   if (loading) {
