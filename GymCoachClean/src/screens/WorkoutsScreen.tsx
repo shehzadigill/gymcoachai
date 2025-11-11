@@ -77,17 +77,21 @@ export default function WorkoutsScreen({navigation}: any) {
   const [plansLoading, setPlansLoading] = useState(true);
   const [exercisesLoading, setExercisesLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // 🔧 STREAMLINED: Reduced from 5 tabs to 3 essential tabs
+  // Removed: 'templates' (AI should generate plans, not users browsing templates)
+  // Removed: 'analytics' (moved inline to sessions view for simplicity)
   const [activeView, setActiveView] = useState<
-    'sessions' | 'plans' | 'exercises' | 'templates' | 'analytics'
+    'sessions' | 'plans' | 'exercises' // | 'templates' | 'analytics'
   >('sessions');
   const [error, setError] = useState<string | null>(null);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [exercisesError, setExercisesError] = useState<string | null>(null);
 
-  // Enhanced states for beautiful UI and functionality
-  const [templates, setTemplates] = useState<WorkoutPlan[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  // 🔧 COMMENTED OUT: Templates feature - conflicts with AI-first approach
+  // Users should get AI-generated personalized plans, not browse generic templates
+  // const [templates, setTemplates] = useState<WorkoutPlan[]>([]);
+  // const [templatesLoading, setTemplatesLoading] = useState(false);
+  // const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
   const [showPlanDetail, setShowPlanDetail] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -103,12 +107,14 @@ export default function WorkoutsScreen({navigation}: any) {
     'session' | 'plan' | 'exercise' | 'template'
   >('session');
 
-  // Analytics states
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  // 🔧 COMMENTED OUT: Separate analytics tab - moved to inline display in sessions
+  // Over-engineered analytics overwhelm users. Show progress inline instead.
+  // const [analytics, setAnalytics] = useState<any>(null);
+  // const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  // const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
-  // Tab configuration
+  // 🔧 STREAMLINED: Tab configuration reduced from 5 to 3 essential tabs
+  // Commented out: templates, analytics (not core to AI-first training experience)
   const tabs = [
     {
       id: 'sessions',
@@ -116,21 +122,23 @@ export default function WorkoutsScreen({navigation}: any) {
       icon: 'sessions',
     },
     {id: 'plans', title: t('workouts_screen.tabs.plans'), icon: 'plans'},
-    {
-      id: 'templates',
-      title: t('workouts_screen.tabs.templates'),
-      icon: 'templates',
-    },
+    // 🔧 COMMENTED OUT: Templates tab - AI should generate personalized plans
+    // {
+    //   id: 'templates',
+    //   title: t('workouts_screen.tabs.templates'),
+    //   icon: 'templates',
+    // },
     {
       id: 'exercises',
       title: t('workouts_screen.tabs.exercises'),
       icon: 'exercises',
     },
-    {
-      id: 'analytics',
-      title: t('workouts_screen.tabs.analytics'),
-      icon: 'analytics',
-    },
+    // 🔧 COMMENTED OUT: Analytics tab - show progress inline in sessions view
+    // {
+    //   id: 'analytics',
+    //   title: t('workouts_screen.tabs.analytics'),
+    //   icon: 'analytics',
+    // },
   ];
 
   useEffect(() => {
@@ -139,12 +147,13 @@ export default function WorkoutsScreen({navigation}: any) {
     if (activeView === 'exercises') {
       loadExercises();
     }
-    if (activeView === 'templates') {
-      loadTemplates();
-    }
-    if (activeView === 'analytics') {
-      loadAnalytics();
-    }
+    // 🔧 COMMENTED OUT: Templates and analytics loading
+    // if (activeView === 'templates') {
+    //   loadTemplates();
+    // }
+    // if (activeView === 'analytics') {
+    //   loadAnalytics();
+    // }
   }, [activeView]);
 
   const loadWorkouts = async () => {
@@ -281,84 +290,86 @@ export default function WorkoutsScreen({navigation}: any) {
     }
   };
 
-  const loadTemplates = async () => {
-    try {
-      setTemplatesLoading(true);
-      setTemplatesError(null);
+  // 🔧 COMMENTED OUT: Templates loading function - not needed in AI-first approach
+  // const loadTemplates = async () => {
+  //   try {
+  //     setTemplatesLoading(true);
+  //     setTemplatesError(null);
 
-      // For now, filter from existing workout plans that are templates
-      const response = await apiClient.getWorkoutPlans();
-      const allPlans = response && Array.isArray(response) ? response : [];
-      const templatePlans = allPlans.filter(
-        (plan: any) => plan.isTemplate === true || plan.is_template === true,
-      );
-      if (templatePlans && Array.isArray(templatePlans)) {
-        const transformedTemplates: WorkoutPlan[] = templatePlans.map(
-          (plan: any) => ({
-            id: plan.id || plan.WorkoutPlanId,
-            userId: plan.userId || plan.UserId,
-            name: plan.name || plan.Name || 'Template',
-            description: plan.description || plan.Description,
-            difficulty: plan.difficulty || plan.Difficulty || 'beginner',
-            durationWeeks: plan.durationWeeks || plan.duration_weeks || 4,
-            frequencyPerWeek:
-              plan.frequencyPerWeek || plan.frequency_per_week || 3,
-            exercises: plan.exercises || plan.Exercises || [],
-            createdAt:
-              plan.createdAt || plan.created_at || new Date().toISOString(),
-            updatedAt:
-              plan.updatedAt || plan.updated_at || new Date().toISOString(),
-            isActive: plan.isActive ?? plan.is_active ?? true,
-          }),
-        );
-        setTemplates(transformedTemplates);
-      } else {
-        setTemplates([]);
-      }
-    } catch (error) {
-      console.error('Error loading templates:', error);
-      setTemplatesError(
-        error instanceof Error ? error.message : 'Failed to load templates',
-      );
-      setTemplates([]);
-    } finally {
-      setTemplatesLoading(false);
-    }
-  };
+  //     // For now, filter from existing workout plans that are templates
+  //     const response = await apiClient.getWorkoutPlans();
+  //     const allPlans = response && Array.isArray(response) ? response : [];
+  //     const templatePlans = allPlans.filter(
+  //       (plan: any) => plan.isTemplate === true || plan.is_template === true,
+  //     );
+  //     if (templatePlans && Array.isArray(templatePlans)) {
+  //       const transformedTemplates: WorkoutPlan[] = templatePlans.map(
+  //         (plan: any) => ({
+  //           id: plan.id || plan.WorkoutPlanId,
+  //           userId: plan.userId || plan.UserId,
+  //           name: plan.name || plan.Name || 'Template',
+  //           description: plan.description || plan.Description,
+  //           difficulty: plan.difficulty || plan.Difficulty || 'beginner',
+  //           durationWeeks: plan.durationWeeks || plan.duration_weeks || 4,
+  //           frequencyPerWeek:
+  //             plan.frequencyPerWeek || plan.frequency_per_week || 3,
+  //           exercises: plan.exercises || plan.Exercises || [],
+  //           createdAt:
+  //             plan.createdAt || plan.created_at || new Date().toISOString(),
+  //           updatedAt:
+  //             plan.updatedAt || plan.updated_at || new Date().toISOString(),
+  //           isActive: plan.isActive ?? plan.is_active ?? true,
+  //         }),
+  //       );
+  //       setTemplates(transformedTemplates);
+  //     } else {
+  //       setTemplates([]);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading templates:', error);
+  //     setTemplatesError(
+  //       error instanceof Error ? error.message : 'Failed to load templates',
+  //     );
+  //     setTemplates([]);
+  //   } finally {
+  //     setTemplatesLoading(false);
+  //   }
+  // };
 
-  const loadAnalytics = async () => {
-    try {
-      setAnalyticsLoading(true);
-      setAnalyticsError(null);
+  // 🔧 COMMENTED OUT: Separate analytics loading - show progress inline instead
+  // const loadAnalytics = async () => {
+  //   try {
+  //     setAnalyticsLoading(true);
+  //     setAnalyticsError(null);
 
-      const [strengthProgress, bodyMeasurements, milestones, achievements] =
-        await Promise.allSettled([
-          apiClient.getStrengthProgress(),
-          apiClient.getBodyMeasurements(),
-          apiClient.getMilestones(),
-          apiClient.getAchievements(),
-        ]);
+  //     const [strengthProgress, bodyMeasurements, milestones, achievements] =
+  //       await Promise.allSettled([
+  //         apiClient.getStrengthProgress(),
+  //         apiClient.getBodyMeasurements(),
+  //         apiClient.getMilestones(),
+  //         apiClient.getAchievements(),
+  //       ]);
 
-      const analyticsData = {
-        strengthProgress:
-          strengthProgress.status === 'fulfilled' ? strengthProgress.value : [],
-        bodyMeasurements:
-          bodyMeasurements.status === 'fulfilled' ? bodyMeasurements.value : [],
-        milestones: milestones.status === 'fulfilled' ? milestones.value : [],
-        achievements:
-          achievements.status === 'fulfilled' ? achievements.value : [],
-      };
+  //     const analyticsData = {
+  //       strengthProgress:
+  //         strengthProgress.status === 'fulfilled' ? strengthProgress.value : [],
+  //       bodyMeasurements:
+  //         bodyMeasurements.status === 'fulfilled' ? bodyMeasurements.value : [],
+  //       milestones: milestones.status === 'fulfilled' ? milestones.value : [],
+  //       achievements:
+  //         achievements.status === 'fulfilled' ? achievements.value : [],
+  //     };
 
-      setAnalytics(analyticsData);
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-      setAnalyticsError(
-        error instanceof Error ? error.message : 'Failed to load analytics',
-      );
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  };
+  //     setAnalytics(analyticsData);
+  //   } catch (error) {
+  //     console.error('Error loading analytics:', error);
+  //     setAnalyticsError(
+  //       error instanceof Error ? error.message : 'Failed to load analytics',
+  //     );
+  //   } finally {
+  //     setAnalyticsLoading(false);
+  //   }
+  // };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -366,8 +377,9 @@ export default function WorkoutsScreen({navigation}: any) {
       loadWorkouts(),
       loadWorkoutPlans(),
       activeView === 'exercises' ? loadExercises() : Promise.resolve(),
-      activeView === 'templates' ? loadTemplates() : Promise.resolve(),
-      activeView === 'analytics' ? loadAnalytics() : Promise.resolve(),
+      // 🔧 COMMENTED OUT: Templates and analytics refresh
+      // activeView === 'templates' ? loadTemplates() : Promise.resolve(),
+      // activeView === 'analytics' ? loadAnalytics() : Promise.resolve(),
     ]);
   };
 
@@ -403,17 +415,21 @@ export default function WorkoutsScreen({navigation}: any) {
     navigation.navigate('CreatePlan');
   };
 
+  // 🔧 DE-EMPHASIZED: Manual exercise creation - keep but don't promote
+  // Reason: System has comprehensive exercise library. Custom exercises add complexity.
+  // Keep for advanced users who specifically request it.
   const createNewExercise = () => {
     navigation.navigate('CreateExercise');
   };
 
-  const createNewTemplate = () => {
-    navigation.navigate('CreatePlan', {isTemplate: true});
-  };
+  // 🔧 COMMENTED OUT: Template-related functions - not needed in AI-first approach
+  // const createNewTemplate = () => {
+  //   navigation.navigate('CreatePlan', {isTemplate: true});
+  // };
 
-  const useTemplate = (template: WorkoutPlan) => {
-    navigation.navigate('CreatePlan', {fromTemplate: template});
-  };
+  // const useTemplate = (template: WorkoutPlan) => {
+  //   navigation.navigate('CreatePlan', {fromTemplate: template});
+  // };
 
   const viewPlanDetail = (plan: WorkoutPlan) => {
     setSelectedPlan(plan);
@@ -490,17 +506,18 @@ export default function WorkoutsScreen({navigation}: any) {
     return matchesSearch && matchesDifficulty;
   });
 
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch =
-      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description?.toLowerCase().includes(searchQuery.toLowerCase());
+  // 🔧 COMMENTED OUT: Templates filtering - not needed without templates view
+  // const filteredTemplates = templates.filter(template => {
+  //   const matchesSearch =
+  //     template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //     template.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesDifficulty =
-      selectedDifficulty === 'all' ||
-      template.difficulty === selectedDifficulty;
+  //   const matchesDifficulty =
+  //     selectedDifficulty === 'all' ||
+  //     template.difficulty === selectedDifficulty;
 
-    return matchesSearch && matchesDifficulty;
-  });
+  //   return matchesSearch && matchesDifficulty;
+  // });
 
   if (loading && !workouts.length && !workoutPlans.length) {
     return (
@@ -678,9 +695,12 @@ export default function WorkoutsScreen({navigation}: any) {
     </>
   );
 
+  // 🔧 COMMENTED OUT: Separate analytics view - show progress inline in sessions instead
+  // Reason: Over-engineered analytics with achievements, milestones, body measurements
+  // overwhelm users. Focus on essential strength progress shown inline.
+  /* 
   const renderAnalyticsView = () => (
     <>
-      {/* Analytics Hero */}
       <LinearGradient
         colors={['#f093fb', '#f5576c']}
         style={styles.heroSection}
@@ -696,7 +716,6 @@ export default function WorkoutsScreen({navigation}: any) {
         </View>
       </LinearGradient>
 
-      {/* Analytics Content */}
       <View style={styles.section}>
         {analyticsLoading ? (
           <LoadingSpinner />
@@ -710,7 +729,6 @@ export default function WorkoutsScreen({navigation}: any) {
           </Card>
         ) : analytics ? (
           <>
-            {/* Strength Progress */}
             <View style={styles.analyticsSection}>
               <Text style={styles.analyticsTitle}>
                 {t('workouts_screen.analytics.strength')}
@@ -727,7 +745,6 @@ export default function WorkoutsScreen({navigation}: any) {
               </Card>
             </View>
 
-            {/* Body Measurements */}
             <View style={styles.analyticsSection}>
               <Text style={styles.analyticsTitle}>
                 {t('workouts_screen.analytics.body')}
@@ -744,7 +761,6 @@ export default function WorkoutsScreen({navigation}: any) {
               </Card>
             </View>
 
-            {/* Milestones */}
             <View style={styles.analyticsSection}>
               <Text style={styles.analyticsTitle}>
                 {t('workouts_screen.analytics.milestones')}
@@ -761,7 +777,6 @@ export default function WorkoutsScreen({navigation}: any) {
               </Card>
             </View>
 
-            {/* Achievements */}
             <View style={styles.analyticsSection}>
               <Text style={styles.analyticsTitle}>
                 {t('workouts_screen.analytics.achievements')}
@@ -792,6 +807,7 @@ export default function WorkoutsScreen({navigation}: any) {
       </View>
     </>
   );
+  */
 
   const renderPlansView = () => (
     <>
@@ -926,7 +942,10 @@ export default function WorkoutsScreen({navigation}: any) {
 
   const renderExercisesView = () => (
     <>
-      {/* Create Exercise Action */}
+      {/* 🔧 COMMENTED OUT: Create Exercise Action - library should be sufficient */}
+      {/* Users shouldn't need to create exercises - comprehensive library exists */}
+      {/* Keep code for future advanced user feature */}
+      {/*
       <View style={styles.quickActions}>
         <TouchableOpacity
           style={styles.createButton}
@@ -937,6 +956,7 @@ export default function WorkoutsScreen({navigation}: any) {
           </Text>
         </TouchableOpacity>
       </View>
+      */}
 
       {/* Search */}
       <View style={styles.searchContainer}>
@@ -1161,9 +1181,11 @@ export default function WorkoutsScreen({navigation}: any) {
     </>
   );
 
+  // 🔧 COMMENTED OUT: Templates view completely - AI should generate personalized plans
+  // Reason: Generic templates conflict with AI-first personalization approach
+  /* 
   const renderTemplatesView = () => (
     <>
-      {/* Create Template Action */}
       <View style={styles.quickActions}>
         <Button
           title="➕ Create New Template"
@@ -1172,7 +1194,6 @@ export default function WorkoutsScreen({navigation}: any) {
         />
       </View>
 
-      {/* Search */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -1182,7 +1203,6 @@ export default function WorkoutsScreen({navigation}: any) {
         />
       </View>
 
-      {/* Workout Templates */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
           {t('workouts_screen.sections.templates')}
@@ -1267,6 +1287,7 @@ export default function WorkoutsScreen({navigation}: any) {
       </View>
     </>
   );
+  */
 
   return (
     <SafeAreaView
@@ -1294,12 +1315,13 @@ export default function WorkoutsScreen({navigation}: any) {
           onTabPress={tabId => setActiveView(tabId as any)}
         />
 
-        {/* Content based on active view */}
+        {/* 🔧 STREAMLINED: Content based on active view - reduced from 5 to 3 views */}
         {activeView === 'sessions' && renderSessionsView()}
         {activeView === 'plans' && renderPlansView()}
-        {activeView === 'templates' && renderTemplatesView()}
+        {/* 🔧 COMMENTED OUT: Templates and analytics views */}
+        {/* {activeView === 'templates' && renderTemplatesView()} */}
         {activeView === 'exercises' && renderExercisesView()}
-        {activeView === 'analytics' && renderAnalyticsView()}
+        {/* {activeView === 'analytics' && renderAnalyticsView()} */}
       </ScrollView>
 
       {/* Plan Detail Modal */}

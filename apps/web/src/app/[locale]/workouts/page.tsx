@@ -122,6 +122,9 @@ export default function WorkoutsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null);
+  // 🔧 STREAMLINED: Keep 3 core views - sessions, plans, exercises
+  // Removed: templates (AI generates personalized plans, not generic templates)
+  // Analytics shown inline in sessions view instead of separate view
   const [activeView, setActiveView] = useState<
     'sessions' | 'plans' | 'exercises'
   >(
@@ -742,8 +745,21 @@ export default function WorkoutsPage() {
         </div>
       </div>
 
+      {/* 🔧 AI-FIRST: Prominent AI Generate Plan Button */}
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
+        {/* ⭐ MAIN CTA: AI Workout Plan Generation - Most Prominent */}
+        <button
+          onClick={() =>
+            router.push(`/${locale}/workouts/plans?action=ai-generate`)
+          }
+          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-lg transform hover:scale-105 transition-all font-semibold"
+        >
+          <Sparkles className="h-5 w-5" />
+          <span>Generate My AI Program</span>
+        </button>
+
+        {/* Secondary Actions */}
         <button
           onClick={() => router.push(`/${locale}/workouts/sessions/create`)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -758,13 +774,16 @@ export default function WorkoutsPage() {
           <Calendar className="h-4 w-4" />
           <span>{t('browse_plans')}</span>
         </button>
-        <button
+        {/* 🔧 COMMENTED OUT: Manual Exercise Library Button */}
+        {/* Expert Rationale: AI trainer automatically selects optimal exercises.
+             Users don't need to manually browse exercise library - AI handles this. */}
+        {/* <button
           onClick={() => router.push(`/${locale}/workouts/exercises`)}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
         >
           <Dumbbell className="h-4 w-4" />
           <span>{t('exercise_library')}</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Stats */}
@@ -1237,7 +1256,10 @@ export default function WorkoutsPage() {
                 Browse and manage your exercise collection
               </p>
             </div>
-            <div className="flex space-x-3">
+            {/* 🔧 COMMENTED OUT: Manual Exercise Creation Button */}
+            {/* Expert Rationale: AI trainer should select/create exercises automatically.
+                 Manual exercise creation is advanced user feature, not primary workflow. */}
+            {/* <div className="flex space-x-3">
               <button
                 onClick={() => {
                   setEditingExercise(null);
@@ -1248,7 +1270,7 @@ export default function WorkoutsPage() {
                 <Plus className="h-4 w-4" />
                 <span>Add New Exercise</span>
               </button>
-            </div>
+            </div> */}
           </div>
 
           {/* Exercises Error Display */}
@@ -2116,14 +2138,16 @@ function WorkoutPlanFormModal({
                     {exercisesLoading ? 'Loading...' : 'From Exercise Library'}
                   </button>
 
-                  <button
+                  {/* 🔧 COMMENTED OUT: Manual Custom Exercise Creation */}
+                  {/* Expert Rationale: AI trainer should suggest exercises. Manual creation is edge case. */}
+                  {/* <button
                     type="button"
                     onClick={() => setShowCustomExerciseForm(true)}
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2"
                   >
                     <Plus className="h-4 w-4" />
                     Create Custom Exercise
-                  </button>
+                  </button> */}
                 </div>
 
                 {formData.exercises.length === 0 && (

@@ -271,16 +271,32 @@ export default function WorkoutPlansPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => router.push(`/${locale}/workouts/create`)}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>{t('new_plan')}</span>
-        </button>
+        <div className="flex space-x-3">
+          {/* ⭐ MAIN CTA: AI-Generated Personalized Plan */}
+          <button
+            onClick={() =>
+              router.push(`/${locale}/ai-trainer?context=workout-plan`)
+            }
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-2.5 rounded-lg flex items-center space-x-2 shadow-lg font-semibold"
+          >
+            <Star className="h-5 w-5" />
+            <span>Generate AI Plan</span>
+          </button>
+
+          {/* 🔧 COMMENTED OUT: Manual Plan Creation */}
+          {/* Expert Rationale: AI trainer creates better personalized plans.
+               Manual creation is fallback for advanced users only. */}
+          {/* <button
+            onClick={() => router.push(`/${locale}/workouts/create`)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>{t('new_plan')}</span>
+          </button> */}
+        </div>
       </div>
 
-      {/* View Toggle */}
+      {/* 🔧 STREAMLINED: View Toggle - Removed Templates (AI generates personalized plans) */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1 inline-flex">
         <button
           onClick={() => setView('my-plans')}
@@ -292,7 +308,11 @@ export default function WorkoutPlansPage() {
         >
           {t('my_plans')}
         </button>
-        <button
+        {/* 🔧 COMMENTED OUT: Templates Tab */}
+        {/* Expert Rationale: Generic templates inferior to AI-personalized plans.
+             AI trainer creates plans based on user's actual goals, fitness level, 
+             equipment, injuries, and preferences. Templates can't match this. */}
+        {/* <button
           onClick={() => setView('templates')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             view === 'templates'
@@ -301,7 +321,7 @@ export default function WorkoutPlansPage() {
           }`}
         >
           {t('templates')}
-        </button>
+        </button> */}
         <button
           onClick={() => setView('schedule')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
