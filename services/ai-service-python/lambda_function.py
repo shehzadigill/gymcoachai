@@ -27,6 +27,7 @@ from exercise_substitution import ExerciseSubstitutionService
 from nutrition_intelligence import NutritionIntelligence
 from macro_optimizer import MacroOptimizer
 from meal_timing_service import MealTimingService
+from workout_plan_generator import WorkoutPlanGenerator
 
 # Configure logging
 logger = logging.getLogger()
@@ -55,6 +56,7 @@ macro_optimizer = MacroOptimizer()
 meal_timing_service = MealTimingService()
 memory_service = MemoryService()
 personalization_engine = PersonalizationEngine()
+workout_plan_generator = WorkoutPlanGenerator()
 
 # Initialize CloudWatch client for metrics
 cloudwatch = boto3.client('cloudwatch')
@@ -172,6 +174,10 @@ def lambda_handler(event, context):
         if http_method == 'POST':
             if '/chat' in path:
                 return asyncio.run(handle_chat(user_id, body))
+            elif '/workout-plan/create' in path:
+                return asyncio.run(handle_workout_plan_create(user_id, body, event))
+            elif '/workout-plan/approve' in path:
+                return asyncio.run(handle_workout_plan_approve(user_id, body, event))
             elif '/workout-plan/generate' in path:
                 return asyncio.run(handle_workout_plan_generation(user_id, body))
             elif '/meal-plan/generate' in path:
@@ -555,6 +561,142 @@ Format the response as a structured workout plan with weekly breakdowns."""
     except Exception as e:
         logger.error(f"Error in handle_workout_plan_generation: {e}")
         return create_error_response(500, 'Failed to generate workout plan')
+
+async def handle_workout_plan_create(user_id: str, body: Dict[str, Any], event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle AI-powered workout plan creation with multi-turn conversation"""
+    try:
+        message = body.get('message', '').strip()
+        conversation_id = body.get('conversationId', str(uuid.uuid4()))
+        
+        if not message:
+            return create_error_response(400, 'Message is required')
+        
+        # Check rate limit
+        user_tier = await rate_limiter.get_user_tier(user_id)
+        rate_limit_result = await rate_limiter.check_limit(user_id, user_tier)
+        
+        if not rate_limit_result['allowed']:
+            return create_error_response(429, 'Rate limit exceeded')
+        
+        # Start or continue plan creation conversation
+        result = await workout_plan_generator.start_plan_creation_conversation(
+            user_id, message, conversation_id
+        )
+        
+        if not result['success']:
+            return create_error_response(500, f"Failed to create plan: {result.get('error')}")
+        
+        # Increment usage
+        await rate_limiter.increment_usage(user_id, user_tier)
+        
+        # Emit metrics
+        emit_metric('WorkoutPlanCreationRequests', 1)
+        if result.get('stage') == 'awaiting_approval':
+            emit_metric('WorkoutPlansGenerated', 1)
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(convert_decimals({
+                'success': True,
+                'data': {
+                    'message': result.get('message'),
+                    'stage': result.get('stage'),
+                    'requirements': result.get('requirements'),
+                    'plan': result.get('plan'),
+                    'conversationId': conversation_id
+                },
+                'metadata': {
+                    'timestamp': datetime.now().isoformat(),
+                    'tokensUsed': result.get('tokens_used', 0),
+                    'missingFields': result.get('missing_fields', [])
+                },
+                'remainingRequests': rate_limit_result['remaining'] - 1,
+                'tier': user_tier
+            }))
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in handle_workout_plan_create: {e}")
+        emit_metric('WorkoutPlanCreationErrors', 1)
+        return create_error_response(500, 'Failed to create workout plan')
+
+async def handle_workout_plan_approve(user_id: str, body: Dict[str, Any], event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle approval or modification of generated workout plan"""
+    try:
+        conversation_id = body.get('conversationId')
+        user_response = body.get('message', '').strip()
+        
+        if not conversation_id:
+            return create_error_response(400, 'Conversation ID is required')
+        
+        if not user_response:
+            return create_error_response(400, 'User response is required')
+        
+        # Extract auth token from event
+        auth_token = None
+        headers = event.get('headers', {})
+        auth_header = headers.get('authorization') or headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            auth_token = auth_header[7:]
+        
+        if not auth_token:
+            return create_error_response(401, 'Authentication token required for plan approval')
+        
+        # Check rate limit
+        user_tier = await rate_limiter.get_user_tier(user_id)
+        rate_limit_result = await rate_limiter.check_limit(user_id, user_tier)
+        
+        if not rate_limit_result['allowed']:
+            return create_error_response(429, 'Rate limit exceeded')
+        
+        # Handle approval or modification
+        result = await workout_plan_generator.handle_plan_approval(
+            user_id, conversation_id, user_response, auth_token
+        )
+        
+        if not result['success']:
+            return create_error_response(500, f"Failed to process approval: {result.get('error')}")
+        
+        # Increment usage
+        await rate_limiter.increment_usage(user_id, user_tier)
+        
+        # Emit metrics
+        if result.get('stage') == 'completed':
+            emit_metric('WorkoutPlansSaved', 1)
+            emit_metric('WorkoutSessionsCreated', result.get('sessions_created', 0))
+            emit_metric('ExercisesCreated', result.get('exercises_created', 0))
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(convert_decimals({
+                'success': True,
+                'data': {
+                    'message': result.get('message'),
+                    'stage': result.get('stage'),
+                    'planId': result.get('plan_id'),
+                    'sessionsCreated': result.get('sessions_created', 0),
+                    'exercisesCreated': result.get('exercises_created', 0)
+                },
+                'metadata': {
+                    'timestamp': datetime.now().isoformat()
+                },
+                'remainingRequests': rate_limit_result['remaining'] - 1,
+                'tier': user_tier
+            }))
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in handle_workout_plan_approve: {e}")
+        emit_metric('WorkoutPlanApprovalErrors', 1)
+        return create_error_response(500, 'Failed to approve workout plan')
 
 async def handle_meal_plan_generation(user_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Handle meal plan generation requests"""

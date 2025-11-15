@@ -13,10 +13,16 @@ class BedrockService:
     
     def __init__(self, cache_service=None):
         self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'eu-west-1'))
-        # OpenAI GPT-OSS-20B - Cheapest model with great performance
-        # Cost: ~$0.00008/1K input tokens, ~$0.00035/1K output tokens (5-10x cheaper than Titan!)
-        # Native support in eu-west-1 with on-demand throughput, no approval needed
-        self.model_id = os.environ.get('BEDROCK_MODEL_ID', 'openai.gpt-oss-20b-1:0')
+        # MISTRAL 7B INSTRUCT - Reliable open-source model with excellent instruction following
+        # Size: 7 billion parameters - efficient and fast
+        # Benefits: 
+        #   ✓ NO reasoning tags - clean, direct output
+        #   ✓ Excellent JSON generation (deterministic with temp=0)
+        #   ✓ Good context understanding and instruction following
+        #   ✓ Instant access, NO FORMS needed (available on-demand)
+        #   ✓ Cost-effective: $0.00015 input / $0.0002 output per 1K tokens
+        # Proven: Mistral models are known for reliability and clean structured output
+        self.model_id = os.environ.get('BEDROCK_MODEL_ID', 'mistral.mistral-7b-instruct-v0:2')
         self.max_retries = 3
         self.retry_delay = 1  # seconds
         
@@ -138,8 +144,12 @@ class BedrockService:
             # Prepare request body based on model
             if 'gpt' in self.model_id or 'openai' in self.model_id:
                 body = self._build_openai_request(full_prompt, max_tokens)
+            elif 'llama' in self.model_id:
+                body = self._build_llama_request(full_prompt, max_tokens)
             elif 'titan' in self.model_id:
                 body = self._build_titan_request(full_prompt, max_tokens)
+            elif 'mistral' in self.model_id:
+                body = self._build_mistral_request(full_prompt, max_tokens)
             elif 'deepseek' in self.model_id:
                 body = self._build_deepseek_request(full_prompt, max_tokens)
             elif 'nova' in self.model_id:
@@ -184,12 +194,25 @@ class BedrockService:
                         content = response_body['choices'][0]['message']['content']
                         input_tokens = response_body.get('usage', {}).get('prompt_tokens', 0)
                         output_tokens = response_body.get('usage', {}).get('completion_tokens', 0)
+                    elif 'llama' in self.model_id:
+                        # Llama uses 'generation' field
+                        if 'generation' not in response_body:
+                            raise Exception("Invalid response structure: missing generation")
+                        content = response_body['generation']
+                        input_tokens = response_body.get('prompt_token_count', 0)
+                        output_tokens = response_body.get('generation_token_count', 0)
                     elif 'titan' in self.model_id:
                         if 'results' not in response_body or not response_body['results']:
                             raise Exception("Invalid response structure: missing results")
                         content = response_body['results'][0]['outputText']
                         input_tokens = response_body.get('inputTextTokenCount', 0)
                         output_tokens = response_body['results'][0].get('tokenCount', 0)
+                    elif 'mistral' in self.model_id:
+                        if 'outputs' not in response_body or not response_body['outputs']:
+                            raise Exception("Invalid response structure: missing outputs")
+                        content = response_body['outputs'][0]['text']
+                        input_tokens = response_body.get('usage', {}).get('prompt_tokens', 0)
+                        output_tokens = response_body.get('usage', {}).get('completion_tokens', 0)
                     elif 'deepseek' in self.model_id:
                         if 'choices' not in response_body or not response_body['choices']:
                             raise Exception("Invalid response structure: missing choices")
@@ -669,28 +692,71 @@ YOUR RESPONSE (use the context above):"""
     
     def _build_openai_request(self, prompt: str, max_tokens: int) -> Dict:
         """Build request body for OpenAI GPT models via Bedrock"""
+        # ULTRA-STRONG system prompt - GPT-OSS-20B loves reasoning tags, must suppress aggressively
+        system_prompt = """You are a FITNESS COACH AI that NEVER uses internal reasoning tags.
+
+ABSOLUTELY FORBIDDEN - DO NOT OUTPUT THESE:
+- <reasoning>, </reasoning>, <think>, </think>, <analysis>, </analysis>
+- ANY XML-style tags whatsoever
+- NO explanations of your thought process
+- NO meta-commentary about what you're doing
+
+REQUIRED BEHAVIOR:
+- When asked for JSON: Start response with { and end with }
+- ZERO text before the opening brace {
+- ZERO text after the closing brace }
+- NO markdown, NO code blocks, NO ```json```
+- Be direct, concise, professional"""
+        
         return {
             "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
             "max_tokens": max_tokens,
-            "temperature": 0.7,
-            "top_p": 0.9
+            "temperature": 0.1,  # Low but not zero - helps avoid reasoning tag loops
+            "top_p": 0.9,
+            "frequency_penalty": 0.8,  # HIGH penalty to stop repetitive reasoning patterns
+            "presence_penalty": 0.3
         }
     
     def _build_titan_request(self, prompt: str, max_tokens: int) -> Dict:
-        """Build request body for Amazon Titan models"""
+        """Build request body for Amazon Titan models optimized for structured output"""
+        # Add system instruction at the beginning of the prompt for Titan
+        system_instruction = "You are an AI fitness coach. When asked for JSON, return ONLY valid JSON with no extra text. Be concise and direct.\n\n"
         return {
-            "inputText": prompt,
+            "inputText": system_instruction + prompt,
             "textGenerationConfig": {
                 "maxTokenCount": max_tokens,
-                "temperature": 0.7,
+                "temperature": 0.0,  # Deterministic for JSON output
                 "topP": 0.9,
                 "stopSequences": []
             }
+        }
+    
+    def _build_llama_request(self, prompt: str, max_tokens: int) -> Dict:
+        """Build request body for Llama models - clean JSON output, no reasoning"""
+        return {
+            "prompt": f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\nYou are an AI fitness coach. When asked for JSON, output ONLY valid JSON with NO extra text or explanations.<|eot_id|><|start_header_id|>user<|end_header_id|>\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>",
+            "max_gen_len": max_tokens,
+            "temperature": 0.1,
+            "top_p": 0.9
+        }
+    
+    def _build_mistral_request(self, prompt: str, max_tokens: int) -> Dict:
+        """Build request body for Mistral models optimized for structured JSON output"""
+        return {
+            "prompt": f"<s>[INST] You are an AI fitness coach. When asked for JSON, return ONLY valid JSON with no extra text or explanations.\n\n{prompt} [/INST]",
+            "max_tokens": max_tokens,
+            "temperature": 0.0,  # Deterministic for structured output
+            "top_p": 0.9,
+            "top_k": 50
         }
     
     def _build_deepseek_request(self, prompt: str, max_tokens: int) -> Dict:
@@ -708,7 +774,7 @@ YOUR RESPONSE (use the context above):"""
         }
     
     def _build_nova_request(self, prompt: str, max_tokens: int) -> Dict:
-        """Build request body for Amazon Nova models"""
+        """Build request body for Amazon Nova models with optimized settings for structured output"""
         return {
             "messages": [
                 {
@@ -720,20 +786,27 @@ YOUR RESPONSE (use the context above):"""
                     ]
                 }
             ],
+            "system": [
+                {
+                    "text": "You are an AI fitness coach assistant. When asked to return JSON, provide ONLY valid JSON with no additional text, explanations, or markdown formatting. Be direct and concise in all responses."
+                }
+            ],
             "inferenceConfig": {
                 "maxTokens": max_tokens,
-                "temperature": 0.7,
-                "topP": 0.9
+                "temperature": 0.0,  # Deterministic for structured output
+                "topP": 0.9,
+                "stopSequences": []
             }
         }
     
     def _build_claude_3_request(self, prompt: str, max_tokens: int) -> Dict:
-        """Build request body for Claude 3 models"""
+        """Build request body for Claude 3 models with optimized settings for structured output"""
         return {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": max_tokens,
-            "temperature": 0.7,
+            "temperature": 0.0,  # Deterministic for structured JSON output
             "top_p": 0.9,
+            "system": "You are an AI fitness coach assistant. When asked to return JSON, provide ONLY valid JSON with no additional text, explanations, or markdown formatting. Be direct and concise in all responses.",
             "messages": [
                 {
                     "role": "user",

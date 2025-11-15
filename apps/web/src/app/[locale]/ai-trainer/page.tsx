@@ -40,6 +40,7 @@ import {
   ConfidenceIndicator,
 } from '../../../components/ai/visualizations';
 import MemoryViewer from '../../../components/ai/MemoryViewer';
+import WorkoutPlanCreator from '../../../components/ai/WorkoutPlanCreator';
 import type {
   RAGContext,
   ConversationAnalytics,
@@ -355,6 +356,9 @@ export default function AITrainerPage() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [cachedSummary, setCachedSummary] = useState<string | null>(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
+
+  // Workout plan creator state
+  const [showWorkoutPlanCreator, setShowWorkoutPlanCreator] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -772,6 +776,11 @@ export default function AITrainerPage() {
     );
   };
 
+  const locale =
+    typeof window !== 'undefined'
+      ? window.location.pathname.match(/^\/([a-z]{2})\//)?.[1] || 'en'
+      : 'en';
+
   // Show loading state if user is not authenticated
   if (user?.isLoading) {
     return (
@@ -826,6 +835,15 @@ export default function AITrainerPage() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {/* Create Workout Plan Button */}
+          <button
+            onClick={() => setShowWorkoutPlanCreator(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg text-sm"
+          >
+            <Dumbbell className="h-4 w-4" />
+            <span className="hidden sm:inline">Create Plan</span>
+          </button>
+
           {/* Coaching Style Indicator */}
           {personalizationProfile && (
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
@@ -1427,6 +1445,37 @@ export default function AITrainerPage() {
           </div>
         </div>
       </div>
+
+      {/* Workout Plan Creator Modal */}
+      {showWorkoutPlanCreator && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-6xl my-8">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  AI Workout Plan Creator
+                </h2>
+                <button
+                  onClick={() => setShowWorkoutPlanCreator(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                <WorkoutPlanCreator
+                  onComplete={(planId) => {
+                    setShowWorkoutPlanCreator(false);
+                    // Optionally redirect to the plan
+                    window.location.href = `${locale}/workouts?planId=${planId}`;
+                  }}
+                  onCancel={() => setShowWorkoutPlanCreator(false)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Modal */}
       <SummaryModal

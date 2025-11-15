@@ -20,6 +20,7 @@ export const Icon: React.FC<{
       check: '✓',
       send: '➤',
       'flash-on': '⚡',
+      dumbbell: '🏋️',
 
       // Workout screen icons
       'fitness-center': '🏋️',
@@ -32,8 +33,6 @@ export const Icon: React.FC<{
       add: '➕',
       search: '🔍',
       'more-vert': '⋮',
-      edit: '✏️',
-      delete: '🗑️',
       favorite: '❤️',
       'favorite-border': '🤍',
       star: '⭐',

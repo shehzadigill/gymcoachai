@@ -30,7 +30,8 @@ export class AIServiceClient {
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_AI_SERVICE_URL || '/ai';
+    this.baseUrl =
+      baseUrl || process.env.NEXT_PUBLIC_AI_SERVICE_URL || '/api/ai';
   }
 
   // Cache management
@@ -232,6 +233,35 @@ export class AIServiceClient {
     const response = await apiFetch('/api/ai/workout/adapt', {
       method: 'POST',
       body: JSON.stringify(request),
+    });
+    return response;
+  }
+
+  // Workout Plan Creator APIs
+  async createWorkoutPlan(
+    message: string,
+    conversationId?: string
+  ): Promise<any> {
+    const response = await apiFetch(`${this.baseUrl}/workout-plan/create`, {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        conversationId,
+      }),
+    });
+    return response;
+  }
+
+  async approveWorkoutPlan(
+    conversationId: string,
+    message: string
+  ): Promise<any> {
+    const response = await apiFetch(`${this.baseUrl}/workout-plan/approve`, {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationId,
+        message,
+      }),
     });
     return response;
   }
@@ -708,6 +738,8 @@ export const {
   determineCoachingStyle,
   adaptCoachingMessage,
   submitPersonalizationFeedback,
+  createWorkoutPlan,
+  approveWorkoutPlan,
   adaptWorkoutPlan,
   assessInjuryRisk,
   substituteExercise,

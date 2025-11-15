@@ -30,6 +30,7 @@ import WorkoutAdaptationModal from '../../../components/modals/WorkoutAdaptation
 import PerformanceAnalytics from '../../../components/workouts/PerformanceAnalytics';
 import { ConfidenceIndicator } from '../../../components/ai/visualizations';
 import ContextualAITrigger from '../../../components/ai/ContextualAITrigger';
+import WorkoutPlanCreator from '../../../components/ai/WorkoutPlanCreator';
 import type { WorkoutAdaptation } from '../../../types/ai-service';
 
 interface Workout {
@@ -175,6 +176,9 @@ export default function WorkoutsPage() {
     useState<WorkoutPlan | null>(null);
   const [showPerformanceAnalytics, setShowPerformanceAnalytics] =
     useState(false);
+
+  // AI Workout Plan Creator state
+  const [showAIPlanCreator, setShowAIPlanCreator] = useState(false);
 
   useEffect(() => {
     fetchWorkouts();
@@ -750,9 +754,7 @@ export default function WorkoutsPage() {
       <div className="flex flex-wrap gap-3">
         {/* ⭐ MAIN CTA: AI Workout Plan Generation - Most Prominent */}
         <button
-          onClick={() =>
-            router.push(`/${locale}/workouts/plans?action=ai-generate`)
-          }
+          onClick={() => setShowAIPlanCreator(true)}
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-lg transform hover:scale-105 transition-all font-semibold"
         >
           <Sparkles className="h-5 w-5" />
@@ -1801,6 +1803,51 @@ export default function WorkoutsPage() {
             </div>
             <div className="p-6 overflow-y-auto max-h-[80vh]">
               <PerformanceAnalytics userId={user.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Workout Plan Creator Modal */}
+      {showAIPlanCreator && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    AI Workout Plan Generator
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Create a personalized workout plan with AI
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAIPlanCreator(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <WorkoutPlanCreator
+                onComplete={async (planId) => {
+                  // Close modal
+                  setShowAIPlanCreator(false);
+                  // Refresh workout plans
+                  await fetchWorkoutPlans();
+                  // Switch to plans view
+                  updateActiveView('plans');
+                  // Show success message
+                  console.log('Plan created successfully:', planId);
+                }}
+                onCancel={() => setShowAIPlanCreator(false)}
+              />
             </div>
           </div>
         </div>

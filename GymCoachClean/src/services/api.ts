@@ -1088,6 +1088,27 @@ class ApiClient {
     const userId = await this.getCurrentUserId();
     return this.apiFetch(`/api/analytics/progress-photos/${userId}/timeline`);
   }
+
+  // AI Workout Plan Creation methods
+  async createWorkoutPlan(data: {
+    message: string;
+    conversationId?: string;
+  }): Promise<any> {
+    return this.apiFetch('/api/ai/workout-plan/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async approveWorkoutPlan(data: {
+    conversationId: string;
+    message: string;
+  }): Promise<any> {
+    return this.apiFetch('/api/ai/workout-plan/approve', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

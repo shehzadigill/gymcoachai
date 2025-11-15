@@ -64,6 +64,8 @@ pnpm run build
 
 ### Development
 
+#### Frontend Development
+
 Start all development servers:
 
 ```bash
@@ -74,7 +76,43 @@ This will start:
 
 - Next.js web app on `http://localhost:3000`
 - React Native mobile app (use Expo Go app)
-- All backend services in watch mode
+
+#### Backend Development (Local Lambda Functions)
+
+For local Lambda development with hot-reload and AWS resource access:
+
+```bash
+# One-time setup
+npm run setup:local
+
+# Start all Lambda functions locally
+npm run dev:local
+
+# Check service status
+npm run dev:status
+
+# View logs
+npm run dev:logs
+
+# Stop all services
+npm run dev:stop
+```
+
+See [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md) for detailed local development guide.
+
+**Quick Local Development Features:**
+
+- ✅ All 8 Rust + 1 Python Lambda functions running locally
+- ✅ Hot-reload for Rust services (auto-rebuild on changes)
+- ✅ Real AWS resources (DynamoDB, S3, Cognito)
+- ✅ CORS-enabled proxy server
+- ✅ Uses AWS profile `shehzadi`
+- ✅ No code changes required
+
+**Service Ports:**
+
+- Proxy Server: http://localhost:3001 (recommended endpoint)
+- Individual services: ports 9000-9008 (see LOCAL_DEV_QUICK_REF.md)
 
 ### Individual Commands
 

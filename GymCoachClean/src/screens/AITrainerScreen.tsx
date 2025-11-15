@@ -26,6 +26,7 @@ import RAGSourcesDisplay from '../components/ai/RAGSourcesDisplay';
 import MemoryViewer from '../components/ai/MemoryViewer';
 import FloatingSettingsButton from '../components/common/FloatingSettingsButton';
 import MessageItem from '../components/ai/MessageItem';
+import WorkoutPlanCreator from '../components/ai/WorkoutPlanCreator';
 import {useTheme} from '../theme';
 
 interface RAGSource {
@@ -133,6 +134,7 @@ const AITrainerScreen: React.FC = () => {
     totalVectors: number;
     namespaces: string[];
   } | null>(null);
+  const [showWorkoutPlanCreator, setShowWorkoutPlanCreator] = useState(false);
 
   const scrollViewRef = useRef<FlatList<Message>>(null);
   const drawerAnimation = useRef(new Animated.Value(0)).current;
@@ -749,6 +751,12 @@ const AITrainerScreen: React.FC = () => {
             )}
 
             <Pressable
+              onPress={() => setShowWorkoutPlanCreator(true)}
+              style={[styles.headerButton, styles.createPlanButton]}>
+              <Icon name="dumbbell" size={20} color="#10b981" />
+            </Pressable>
+
+            <Pressable
               onPress={() => setShowMemoryPanel(true)}
               style={styles.headerButton}>
               <Icon name="memory" size={20} color="#6b7280" />
@@ -1028,6 +1036,20 @@ const AITrainerScreen: React.FC = () => {
           </View>
         </Modal>
 
+        {/* Workout Plan Creator Modal */}
+        <WorkoutPlanCreator
+          visible={showWorkoutPlanCreator}
+          onClose={() => setShowWorkoutPlanCreator(false)}
+          onComplete={planId => {
+            setShowWorkoutPlanCreator(false);
+            Alert.alert(
+              'Success',
+              'Your workout plan has been created! Check the Workouts tab to view it.',
+              [{text: 'OK'}],
+            );
+          }}
+        />
+
         {/* Personalization Panel Modal */}
         <Modal
           visible={showPersonalizationPanel}
@@ -1176,6 +1198,10 @@ const styles = StyleSheet.create({
   headerButton: {
     padding: 8,
     marginLeft: 4,
+  },
+  createPlanButton: {
+    backgroundColor: '#D1FAE5',
+    borderRadius: 8,
   },
   content: {
     flex: 1,
