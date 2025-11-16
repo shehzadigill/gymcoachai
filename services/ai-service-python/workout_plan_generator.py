@@ -767,18 +767,22 @@ Then update the plan according to their request."""
             plan_data = {
                 'PK': f'USER#{user_id}',
                 'SK': f'WORKOUT_PLAN#{plan_id}',
-                'id': plan_id,
-                'user_id': user_id,
-                'name': plan.get('name', 'AI Generated Workout Plan'),
-                'description': plan.get('description', ''),
-                'difficulty': plan.get('difficulty', 'intermediate'),
-                'duration_weeks': plan.get('duration_weeks', 4),
-                'frequency_per_week': plan.get('frequency_per_week', 3),
-                'tags': plan.get('tags', ['ai-generated']),
-                'is_template': False,
-                'created_at': datetime.now(timezone.utc).isoformat(),
-                'updated_at': datetime.now(timezone.utc).isoformat(),
-                'entity_type': 'workout_plan'
+                'WorkoutPlanId': plan_id,
+                'UserId': user_id,
+                'Name': plan.get('name', 'AI Generated Workout Plan'),
+                'Description': plan.get('description', ''),
+                'Difficulty': plan.get('difficulty', 'intermediate'),
+                'DurationWeeks': plan.get('duration_weeks', 4),
+                'FrequencyPerWeek': plan.get('frequency_per_week', 3),
+                'Tags': json.dumps(plan.get('tags', ['ai-generated'])),
+                'IsTemplate': False,
+                'IsActive': True,
+                'Exercises': json.dumps([]),  # Exercises are in sessions
+                'CreatedAt': datetime.now(timezone.utc).isoformat(),
+                'UpdatedAt': datetime.now(timezone.utc).isoformat(),
+                'EntityType': 'WORKOUT_PLAN',
+                'GSI1PK': 'WORKOUT_PLAN',
+                'GSI1SK': f"{plan.get('name', 'AI Generated Workout Plan').lower()}#{plan_id}"
             }
             
             self.table.put_item(Item=plan_data)
@@ -795,19 +799,22 @@ Then update the plan according to their request."""
                             session_data = {
                                 'PK': f'USER#{user_id}',
                                 'SK': f'WORKOUT_SESSION#{session_id}',
-                                'id': session_id,
-                                'user_id': user_id,
-                                'workout_plan_id': plan_id,
-                                'name': session.get('name', f"Week {week_idx + 1} - Day {session_idx + 1}"),
-                                'week_number': week_idx + 1,
-                                'day_number': session.get('day', session_idx + 1),
-                                'duration_minutes': session.get('duration_minutes', 60),
-                                'exercises': self._format_session_exercises(session.get('exercises', [])),
-                                'notes': session.get('notes', ''),
-                                'started_at': datetime.now(timezone.utc).isoformat(),
-                                'created_at': datetime.now(timezone.utc).isoformat(),
-                                'entity_type': 'workout_session',
-                                'status': 'planned'
+                                'SessionId': session_id,  # Changed from WorkoutSessionId to match Rust service
+                                'UserId': user_id,
+                                'WorkoutPlanId': plan_id,
+                                'Name': session.get('name', f"Week {week_idx + 1} - Day {session_idx + 1}"),
+                                'WeekNumber': week_idx + 1,
+                                'DayNumber': session.get('day', session_idx + 1),
+                                'DurationMinutes': session.get('duration_minutes', 60),
+                                'Exercises': json.dumps(self._format_session_exercises(session.get('exercises', []))),
+                                'Notes': session.get('notes', ''),
+                                'StartedAt': datetime.now(timezone.utc).isoformat(),
+                                'CreatedAt': datetime.now(timezone.utc).isoformat(),
+                                'UpdatedAt': datetime.now(timezone.utc).isoformat(),
+                                'EntityType': 'WORKOUT_SESSION',
+                                'Status': 'planned',
+                                'GSI1PK': 'WORKOUT_SESSION',
+                                'GSI1SK': f'{user_id}#{datetime.now(timezone.utc).isoformat()}'
                             }
                             
                             self.table.put_item(Item=session_data)
@@ -835,25 +842,26 @@ Then update the plan according to their request."""
         try:
             exercise_id = exercise_data.get('id', str(uuid.uuid4()))
             
-            # Store exercise with proper DynamoDB keys
+            # Store exercise with proper DynamoDB keys (PascalCase to match Rust service)
             item = {
                 'PK': f'USER#{user_id}',
                 'SK': f'EXERCISE#{exercise_id}',
-                'GSI1PK': 'EXERCISES',
-                'GSI1SK': f'EXERCISE#{exercise_id}',
-                'id': exercise_id,
-                'name': exercise_data.get('name', ''),
-                'category': exercise_data.get('category', 'strength'),
-                'muscle_groups': exercise_data.get('muscle_groups', []),
-                'equipment': exercise_data.get('equipment', []),
-                'difficulty': exercise_data.get('difficulty', 'beginner'),
-                'description': exercise_data.get('description', ''),
-                'instructions': exercise_data.get('instructions', []),
-                'created_by': user_id,
-                'created_at': datetime.now(timezone.utc).isoformat(),
-                'updated_at': datetime.now(timezone.utc).isoformat(),
-                'entity_type': 'exercise',
-                'is_custom': True
+                'GSI1PK': 'EXERCISE',
+                'GSI1SK': f'{exercise_data.get("name", "").lower()}#{exercise_id}',
+                'ExerciseId': exercise_id,
+                'Name': exercise_data.get('name', ''),
+                'NameLower': exercise_data.get('name', '').lower(),
+                'Category': exercise_data.get('category', 'strength'),
+                'MuscleGroups': json.dumps(exercise_data.get('muscle_groups', [])),
+                'Equipment': json.dumps(exercise_data.get('equipment', [])),
+                'Difficulty': exercise_data.get('difficulty', 'beginner'),
+                'Description': exercise_data.get('description', ''),
+                'Instructions': json.dumps(exercise_data.get('instructions', [])),
+                'CreatedBy': user_id,
+                'CreatedAt': datetime.now(timezone.utc).isoformat(),
+                'UpdatedAt': datetime.now(timezone.utc).isoformat(),
+                'EntityType': 'EXERCISE',
+                'IsCustom': True
             }
             
             self.table.put_item(Item=item)
@@ -868,20 +876,21 @@ Then update the plan according to their request."""
             return {'success': False, 'error': str(e)}
     
     def _format_session_exercises(self, exercises: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Format exercises for session creation"""
+        """Format exercises for session creation with camelCase field names to match Rust service"""
         formatted = []
         for idx, exercise in enumerate(exercises):
             formatted.append({
-                'exercise_id': exercise.get('exercise_id'),
+                'exerciseId': exercise.get('exercise_id') or exercise.get('exerciseId'),
                 'name': exercise.get('name'),
                 'sets': [
                     {
-                        'set_number': i + 1,
+                        'setNumber': i + 1,
                         'reps': exercise.get('reps'),
                         'weight': exercise.get('weight'),
-                        'duration_seconds': exercise.get('duration_seconds'),
-                        'rest_seconds': exercise.get('rest_seconds', 60),
-                        'completed': False
+                        'durationSeconds': exercise.get('duration_seconds') or exercise.get('durationSeconds'),
+                        'restSeconds': exercise.get('rest_seconds', 60) or exercise.get('restSeconds', 60),
+                        'completed': False,
+                        'notes': None
                     } for i in range(exercise.get('sets', 3))
                 ],
                 'notes': exercise.get('notes', ''),

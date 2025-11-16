@@ -22,16 +22,19 @@ impl WorkoutPlanRepository {
         user_id: Option<String>,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         // Use GSI1 to query all workout plans
-        let mut query = self
+        let query = self
             .client
             .query()
             .table_name(&self.table_name)
-            .key_condition_expression("PK = :pk")
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
             .expression_attribute_values(
                 ":pk",
                 AttributeValue::S(format!("USER#{}", user_id.unwrap_or_default())),
+            )
+            .expression_attribute_values(
+                ":sk_prefix",
+                AttributeValue::S("WORKOUT_PLAN#".to_string()),
             );
-
         let result = query.send().await?;
 
         let plans: Vec<WorkoutPlan> = result

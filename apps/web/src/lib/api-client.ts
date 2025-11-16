@@ -422,6 +422,15 @@ export const api = {
     return res;
   },
 
+  async getWorkoutSessionsForPlan(planId: string, userId?: string) {
+    const id = userId || (await getCurrentUserId());
+    // Backend now filters by workoutPlanId - single efficient query
+    const res = await apiFetch<any[]>(
+      `/api/workouts/sessions?userId=${id}&workoutPlanId=${planId}`
+    );
+    return res;
+  },
+
   async getWorkoutSession(sessionId: string, userId?: string) {
     const id = userId || (await getCurrentUserId());
     return apiFetch<any>(`/api/workouts/sessions/${sessionId}?userId=${id}`);

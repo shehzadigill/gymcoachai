@@ -33,6 +33,7 @@ interface WorkoutPlan {
   durationWeeks: number;
   frequencyPerWeek: number;
   exercises: WorkoutPlanExercise[];
+  sessions?: WorkoutSession[]; // Sessions contain the actual exercises
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
@@ -48,6 +49,38 @@ interface WorkoutPlanExercise {
   restSeconds?: number;
   notes?: string;
   order: number;
+}
+
+interface WorkoutSession {
+  id: string;
+  userId: string;
+  workoutPlanId?: string;
+  name: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMinutes?: number;
+  notes?: string;
+  exercises: SessionExercise[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SessionExercise {
+  exerciseId: string;
+  name: string;
+  sets: ExerciseSet[];
+  notes?: string;
+  order: number;
+}
+
+interface ExerciseSet {
+  setNumber: number;
+  reps?: number;
+  weight?: number;
+  durationSeconds?: number;
+  restSeconds?: number;
+  completed: boolean;
+  notes?: string;
 }
 
 interface Exercise {
@@ -217,22 +250,66 @@ export default function WorkoutsScreen({navigation}: any) {
 
       const response = await apiClient.getWorkouts(); // This actually gets workout plans
       if (response && Array.isArray(response)) {
-        const transformedPlans: WorkoutPlan[] = response.map((plan: any) => ({
-          id: plan.id || plan.WorkoutPlanId,
-          userId: plan.userId || plan.UserId,
-          name: plan.name || plan.Name || 'Workout Plan',
-          description: plan.description || plan.Description,
-          difficulty: plan.difficulty || plan.Difficulty || 'beginner',
-          durationWeeks: plan.durationWeeks || plan.duration_weeks || 4,
-          frequencyPerWeek:
-            plan.frequencyPerWeek || plan.frequency_per_week || 3,
-          exercises: plan.exercises || plan.Exercises || [],
-          createdAt:
-            plan.createdAt || plan.created_at || new Date().toISOString(),
-          updatedAt:
-            plan.updatedAt || plan.updated_at || new Date().toISOString(),
-          isActive: plan.isActive ?? plan.is_active ?? true,
-        }));
+        // OPTIMIZATION: Fetch ALL sessions once instead of N queries
+        let allSessions: any[] = [];
+        try {
+          allSessions = await apiClient.getWorkoutSessions();
+        } catch (sessionError) {
+          console.error('Failed to fetch workout sessions:', sessionError);
+          // Continue without sessions if fetch fails
+        }
+
+        // Group sessions by workout plan ID for O(1) lookup
+        const sessionsByPlanId: Record<string, any[]> = allSessions.reduce(
+          (acc: Record<string, any[]>, session: any) => {
+            const planId = session.workout_plan_id || session.workoutPlanId;
+            if (planId) {
+              if (!acc[planId]) {
+                acc[planId] = [];
+              }
+              acc[planId].push(session);
+            }
+            return acc;
+          },
+          {},
+        );
+
+        // Map plans with their sessions
+        const transformedPlans: WorkoutPlan[] = response.map((plan: any) => {
+          const planSessions =
+            sessionsByPlanId[plan.id || plan.WorkoutPlanId] || [];
+          return {
+            id: plan.id || plan.WorkoutPlanId,
+            userId: plan.userId || plan.UserId,
+            name: plan.name || plan.Name || 'Workout Plan',
+            description: plan.description || plan.Description,
+            difficulty: plan.difficulty || plan.Difficulty || 'beginner',
+            durationWeeks: plan.durationWeeks || plan.duration_weeks || 4,
+            frequencyPerWeek:
+              plan.frequencyPerWeek || plan.frequency_per_week || 3,
+            exercises: plan.exercises || plan.Exercises || [],
+            sessions: planSessions.map((session: any) => ({
+              id: session.id,
+              userId: session.user_id || session.userId,
+              workoutPlanId: session.workout_plan_id || session.workoutPlanId,
+              name: session.name,
+              startedAt: session.started_at || session.startedAt,
+              completedAt: session.completed_at || session.completedAt,
+              durationMinutes:
+                session.duration_minutes || session.durationMinutes,
+              notes: session.notes,
+              exercises: session.exercises || [],
+              createdAt: session.created_at || session.createdAt,
+              updatedAt: session.updated_at || session.updatedAt,
+            })),
+            createdAt:
+              plan.createdAt || plan.created_at || new Date().toISOString(),
+            updatedAt:
+              plan.updatedAt || plan.updated_at || new Date().toISOString(),
+            isActive: plan.isActive ?? plan.is_active ?? true,
+          };
+        });
+
         setWorkoutPlans(transformedPlans);
       } else {
         setWorkoutPlans([]);
@@ -874,9 +951,11 @@ export default function WorkoutsScreen({navigation}: any) {
               )}
               <View style={styles.workoutInfo}>
                 <Text style={styles.workoutDetail}>
-                  {t('workouts_screen.labels.exercises_count', {
-                    count: plan.exercises.length,
-                  })}
+                  {plan.sessions && plan.sessions.length > 0
+                    ? `${plan.sessions.length} sessions`
+                    : t('workouts_screen.labels.exercises_count', {
+                        count: plan.exercises.length,
+                      })}
                 </Text>
                 <Text style={styles.workoutDetail}>
                   {t('workouts_screen.labels.weeks', {
@@ -889,6 +968,30 @@ export default function WorkoutsScreen({navigation}: any) {
                   })}
                 </Text>
               </View>
+
+              {/* Show session preview if sessions exist */}
+              {plan.sessions && plan.sessions.length > 0 && (
+                <View style={styles.sessionPreview}>
+                  <Text style={styles.sessionPreviewTitle}>
+                    Workout Sessions:
+                  </Text>
+                  {plan.sessions.slice(0, 3).map((session, idx) => (
+                    <View key={session.id} style={styles.sessionPreviewItem}>
+                      <Text style={styles.sessionPreviewText}>
+                        {idx + 1}. {session.name}
+                      </Text>
+                      <Text style={styles.sessionPreviewExercises}>
+                        {session.exercises.length} exercises
+                      </Text>
+                    </View>
+                  ))}
+                  {plan.sessions.length > 3 && (
+                    <Text style={styles.sessionPreviewMore}>
+                      +{plan.sessions.length - 3} more sessions
+                    </Text>
+                  )}
+                </View>
+              )}
               <View style={styles.workoutActions}>
                 <Button
                   title={t('common.view_details', 'View Details')}
@@ -1942,6 +2045,39 @@ const styles = StyleSheet.create({
   workoutDetail: {
     fontSize: 14,
     color: '#374151',
+  },
+  sessionPreview: {
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+  },
+  sessionPreviewTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  sessionPreviewItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  sessionPreviewText: {
+    fontSize: 13,
+    color: '#111827',
+    flex: 1,
+  },
+  sessionPreviewExercises: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  sessionPreviewMore: {
+    fontSize: 12,
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   workoutActions: {
     flexDirection: 'row',

@@ -122,13 +122,14 @@ pub async fn delete_workout_plan(req: Request, ctx: Context) -> Result<Response,
 pub async fn get_workout_sessions(req: Request, ctx: Context) -> Result<Response, RouterError> {
     let auth_context = get_auth_context(&ctx);
     let user_id = req.query("userId").map(|s| s.to_string());
+    let workout_plan_id = req.query("workoutPlanId").map(|s| s.to_string());
 
     let controller = WORKOUT_SESSION_CONTROLLER
         .get()
         .ok_or("Controller not initialized")?;
 
     match controller
-        .get_workout_sessions(user_id, &auth_context)
+        .get_workout_sessions(user_id, workout_plan_id, &auth_context)
         .await
     {
         Ok(response_value) => Ok(Response::from_json_value(response_value)),

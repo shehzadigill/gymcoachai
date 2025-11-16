@@ -1101,6 +1101,7 @@ export class GymCoachAIStack extends cdk.Stack {
         ],
         resources: [
           'arn:aws:bedrock:*::foundation-model/openai.gpt-oss-20b-1:0',
+          'arn:aws:bedrock:*::foundation-model/mistral.mistral-7b-instruct-v0:2',
           'arn:aws:bedrock:*::foundation-model/openai.gpt-oss-120b-1:0',
           'arn:aws:bedrock:*::foundation-model/amazon.nova-micro-v1:0',
           'arn:aws:bedrock:*::foundation-model/amazon.titan-text-express-v1',
@@ -1403,7 +1404,8 @@ export class GymCoachAIStack extends cdk.Stack {
         COGNITO_USER_POOL_ID: this.userPool.userPoolId,
         PYTHONPATH: '/var/runtime:/var/task',
         // AI Service specific environment variables
-        BEDROCK_MODEL_ID: 'openai.gpt-oss-20b-1:0', // OpenAI GPT-OSS 20B - reliable and well-supported in eu-west-1
+        // BEDROCK_MODEL_ID: 'openai.gpt-oss-20b-1:0', // OpenAI GPT-OSS 20B - reliable and well-supported in eu-west-1
+        BEDROCK_MODEL_ID: 'mistral.mistral-7b-instruct-v0:2', // Mistral 7B Instruct V0 - strong performance and cost-effective
         RATE_LIMIT_FREE_TIER: '10', // Requests per day for free tier
         RATE_LIMIT_PREMIUM_TIER: '50', // Requests per day for premium tier
         RATE_LIMIT_HARD_LIMIT: '100', // Hard limit to prevent abuse

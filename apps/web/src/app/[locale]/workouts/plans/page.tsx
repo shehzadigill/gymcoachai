@@ -32,6 +32,7 @@ interface WorkoutPlan {
   durationWeeks: number;
   frequencyPerWeek: number;
   exercises: WorkoutPlanExercise[];
+  sessions?: WorkoutSession[]; // Sessions contain the actual exercises
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
@@ -41,6 +42,38 @@ interface WorkoutPlan {
   tags?: string[];
   rating?: number;
   isTemplate?: boolean;
+}
+
+interface WorkoutSession {
+  id: string;
+  userId: string;
+  workoutPlanId?: string;
+  name: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMinutes?: number;
+  notes?: string;
+  exercises: SessionExercise[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SessionExercise {
+  exerciseId: string;
+  name: string;
+  sets: ExerciseSet[];
+  notes?: string;
+  order: number;
+}
+
+interface ExerciseSet {
+  setNumber: number;
+  reps?: number;
+  weight?: number;
+  durationSeconds?: number;
+  restSeconds?: number;
+  completed: boolean;
+  notes?: string;
 }
 
 interface WorkoutPlanExercise {
@@ -106,31 +139,74 @@ export default function WorkoutPlansPage() {
       setLoading(true);
       const response = await api.getWorkoutPlans();
       if (response && Array.isArray(response)) {
-        const plans: WorkoutPlan[] = response.map((plan: any) => ({
-          id: plan.id,
-          userId: plan.user_id || plan.userId,
-          name: plan.name,
-          description: plan.description,
-          difficulty: plan.difficulty,
-          durationWeeks: plan.duration_weeks || plan.durationWeeks,
-          frequencyPerWeek: plan.frequency_per_week || plan.frequencyPerWeek,
-          exercises: plan.exercises || [],
-          createdAt: plan.created_at || plan.createdAt,
-          updatedAt: plan.updated_at || plan.updatedAt,
-          isActive:
-            plan.is_active !== undefined
-              ? plan.is_active
-              : plan.isActive !== undefined
-                ? plan.isActive
-                : true,
-          rating: plan.rating || 0,
-          isTemplate:
-            plan.is_template !== undefined
-              ? plan.is_template
-              : plan.isTemplate || false,
-          tags: plan.tags || [],
-        }));
-        setWorkoutPlans(plans);
+        // OPTIMIZATION: Fetch ALL sessions once instead of N queries
+        let allSessions: any[] = [];
+        try {
+          allSessions = await api.getWorkoutSessions();
+        } catch (sessionError) {
+          console.error('Failed to fetch workout sessions:', sessionError);
+          // Continue without sessions if fetch fails
+        }
+
+        // Group sessions by workout plan ID for O(1) lookup
+        const sessionsByPlanId = allSessions.reduce(
+          (acc: Record<string, any[]>, session: any) => {
+            const planId = session.workout_plan_id || session.workoutPlanId;
+            if (planId) {
+              if (!acc[planId]) {
+                acc[planId] = [];
+              }
+              acc[planId].push(session);
+            }
+            return acc;
+          },
+          {}
+        );
+
+        // Map plans with their sessions
+        const plansWithSessions = response.map((plan: any) => {
+          const planSessions = sessionsByPlanId[plan.id] || [];
+          return {
+            id: plan.id,
+            userId: plan.user_id || plan.userId,
+            name: plan.name,
+            description: plan.description,
+            difficulty: plan.difficulty,
+            durationWeeks: plan.duration_weeks || plan.durationWeeks,
+            frequencyPerWeek: plan.frequency_per_week || plan.frequencyPerWeek,
+            exercises: plan.exercises || [],
+            sessions: planSessions.map((session: any) => ({
+              id: session.id,
+              userId: session.user_id || session.userId,
+              workoutPlanId: session.workout_plan_id || session.workoutPlanId,
+              name: session.name,
+              startedAt: session.started_at || session.startedAt,
+              completedAt: session.completed_at || session.completedAt,
+              durationMinutes:
+                session.duration_minutes || session.durationMinutes,
+              notes: session.notes,
+              exercises: session.exercises || [],
+              createdAt: session.created_at || session.createdAt,
+              updatedAt: session.updated_at || session.updatedAt,
+            })),
+            createdAt: plan.created_at || plan.createdAt,
+            updatedAt: plan.updated_at || plan.updatedAt,
+            isActive:
+              plan.is_active !== undefined
+                ? plan.is_active
+                : plan.isActive !== undefined
+                  ? plan.isActive
+                  : true,
+            rating: plan.rating || 0,
+            isTemplate:
+              plan.is_template !== undefined
+                ? plan.is_template
+                : plan.isTemplate || false,
+            tags: plan.tags || [],
+          };
+        });
+
+        setWorkoutPlans(plansWithSessions);
       }
     } catch (e: any) {
       console.error('Failed to fetch workout plans:', e);
@@ -684,9 +760,40 @@ function WorkoutPlanCard({
           </div>
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
             <Dumbbell className="h-4 w-4 mr-2" />
-            {plan.exercises.length} exercises
+            {plan.sessions && plan.sessions.length > 0
+              ? `${plan.sessions.length} sessions`
+              : `${plan.exercises.length} exercises`}
           </div>
         </div>
+
+        {/* Show session summary if sessions exist */}
+        {plan.sessions && plan.sessions.length > 0 && (
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Workout Sessions:
+            </div>
+            <div className="space-y-1">
+              {plan.sessions.slice(0, 3).map((session, idx) => (
+                <div
+                  key={session.id}
+                  className="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-between"
+                >
+                  <span>
+                    {idx + 1}. {session.name}
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-500">
+                    {session.exercises.length} exercises
+                  </span>
+                </div>
+              ))}
+              {plan.sessions.length > 3 && (
+                <div className="text-xs text-gray-500 dark:text-gray-500 italic">
+                  +{plan.sessions.length - 3} more sessions
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {plan.tags && plan.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
